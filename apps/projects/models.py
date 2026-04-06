@@ -7,6 +7,13 @@ from apps.users.models import Role
 User = get_user_model()
 
 
+class ProjectStatus(models.TextChoices):
+    PLANNING = 'planning', 'Planning'
+    ACTIVE = 'active', 'Active'
+    COMPLETED = 'completed', 'Completed'
+    CANCELLED = 'cancelled', 'Cancelled'
+
+
 class Status(models.TextChoices):
     TODO = 'todo', 'To Do'
     IN_PROGRESS = 'in_progress', 'In Progress'
@@ -34,6 +41,7 @@ class Project(models.Model):
     description = models.TextField()
     start_date = models.DateTimeField(auto_now_add=True)
     deadline = models.DateTimeField()
+    status = models.CharField(max_length=20, choices=ProjectStatus.choices, default=ProjectStatus.PLANNING)
 
     manager = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='manager_projects')
     employees = models.ManyToManyField(User, related_name='employee_projects', limit_choices_to={'role': Role.EMPLOYEE})
