@@ -66,7 +66,10 @@ class TaskViewSet(viewsets.ModelViewSet):
         return TaskSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'destroy']:
+        if self.action == 'create':
+            return [(IsAdmin | IsManager | IsEmployee)()]
+
+        if self.action == 'destroy':
             return [(IsAdmin | IsManager)()]
 
         if self.action in ['update', 'partial_update']:

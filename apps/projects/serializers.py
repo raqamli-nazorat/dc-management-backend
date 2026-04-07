@@ -1,7 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
-from apps.users.models import Role
 from apps.users.serializers import ProfileSerializer
 from .models import Project, Task, TaskAttachment
 
@@ -22,14 +21,16 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'description', 'manager', 'manager_info',
             'auditors', 'auditors_info', 'employees', 'employees_info',
-            'start_date', 'deadline', 'status'
+            'start_date', 'deadline', 'status', 'created_at', 'updated_at', 'is_active'
         )
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskAttachment
-        fields = ('id', 'task', 'file', 'uploaded_at')
+        fields = ('id', 'task', 'file', 'created_at', 'updated_at', 'is_active')
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -44,8 +45,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ('id', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type', 'assignee', 'assignee_info',
-                  'deadline', 'estimated_hours', 'actual_hours', 'reopened_count', 'attachments')
+        fields = ('id', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type', 'assignee',
+                  'assignee_info', 'deadline', 'estimated_hours', 'actual_hours',
+                  'reopened_count', 'attachments', 'created_at',
+                  'updated_at', 'is_active')
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
     def get_project_info(self, obj):
         project = obj.project
@@ -74,6 +78,7 @@ class TaskSerializer(serializers.ModelSerializer):
                 })
 
         return attrs
+
 
 class TaskStatusUpdateSerializer(serializers.ModelSerializer):
     class Meta:

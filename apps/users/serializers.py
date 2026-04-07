@@ -1,10 +1,14 @@
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.hashers import check_password
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
+from django.db.models import Q, Count
 
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
+
+from apps.projects.models import Status, ProjectStatus
 
 User = get_user_model()
 
@@ -59,10 +63,57 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    stats = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('id', 'username', 'phone_number', 'first_name', 'last_name', 'role')
-        read_only_fields = ('id', 'role')
+        fields = ('id', 'username', 'phone_number', 'first_name', 'last_name',
+                  'role', 'stats', 'fixed_salary', 'date_joined')
+        read_only_fields = ('id', 'role', 'fixed_salary', 'date_joined')
+
+    def get_stats(self, obj):
+        all_projects = (
+                obj.manager_projects.all() |
+                obj.employee_projects.all() |
+                obj.audited_projects.all()
+        ).distinct()
+
+        p_stats = all_projects.aggregate(
+            total=Count('id'),
+            planning=Count('id', filter=Q(status=ProjectStatus.PLANNING)),
+            active=Count('id', filter=Q(status=ProjectStatus.ACTIVE)),
+            completed=Count('id', filter=Q(status=ProjectStatus.COMPLETED)),
+            cancelled=Count('id', filter=Q(status=ProjectStatus.CANCELLED)),
+        )
+
+        t_stats = obj.tasks.aggregate(
+            total=Count('id'),
+            todo=Count('id', filter=Q(status=Status.TODO)),
+            in_progress=Count('id', filter=Q(status=Status.IN_PROGRESS)),
+            done=Count('id', filter=Q(status=Status.DONE)),
+            checked=Count('id', filter=Q(status=Status.CHECKED)),
+            production=Count('id', filter=Q(status=Status.PRODUCTION))
+        )
+
+        return {
+            "projects": {
+                "total": p_stats['total'],
+                "planning": p_stats['planning'],
+                "active": p_stats['active'],
+                "completed": p_stats['completed'],
+                "cancelled": p_stats['cancelled'],
+                "current_work": p_stats['planning'] + p_stats['active']
+            },
+            "tasks": {
+                "total": t_stats['total'],
+                "todo": t_stats['todo'],
+                "in_progress": t_stats['in_progress'],
+                "done": t_stats['done'],
+                "checked": t_stats['checked'],
+                "production": t_stats['production'],
+                "overall_completed": t_stats['done'] + t_stats['checked'] + t_stats['production']
+            }
+        }
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -142,3 +193,36 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
             pass
 
         return data
+
+
+class PinSetSerializer(serializers.Serializer):
+    pin = serializers.CharField(
+        min_length=4,
+        max_length=4,
+        write_only=True,
+    )
+
+    def validate_pin(self, value):
+        if not value.isdigit():
+            raise serializers.ValidationError("The PIN must consist only of numbers!")
+        return value
+
+
+class PinCheckSerializer(serializers.Serializer):
+    pin = serializers.CharField(min_length=4, max_length=4, write_only=True)
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        pin = attrs.get('pin')
+
+        if not user.pin_code:
+            raise serializers.ValidationError({
+                "pin": "PIN has not been set yet. Please set a PIN first."
+            })
+
+        if not check_password(pin, user.pin_code):
+            raise serializers.ValidationError({
+                "pin": "The entered PIN code is incorrect!"
+            })
+
+        return attrs
