@@ -1,6 +1,8 @@
 from django.contrib.auth import get_user_model
 from django.db import models
 
+from apps.common.models import BaseModel
+
 User = get_user_model()
 
 
@@ -11,7 +13,7 @@ class ActionType(models.TextChoices):
     CONFIRM = 'confirm', 'Confirm'
 
 
-class AuditLog(models.Model):
+class AuditLog(BaseModel):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
     action = models.CharField(max_length=50, choices=ActionType.choices)
     ip_address = models.GenericIPAddressField(null=True, blank=True)

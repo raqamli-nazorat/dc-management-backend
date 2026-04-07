@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.common.models import BaseModel
 from apps.users.models import Role
 
 User = get_user_model()
@@ -23,7 +24,7 @@ class TransactionType(models.TextChoices):
     CREDIT = 'credit', 'Credit'
 
 
-class ExpenseRequest(models.Model):
+class ExpenseRequest(BaseModel):
     employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='expenses',
                                  limit_choices_to={'role': Role.EMPLOYEE})
     amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -37,7 +38,6 @@ class ExpenseRequest(models.Model):
                                    related_name='approved_expenses',
                                    limit_choices_to={'role': Role.ACCOUNTANT})
 
-    created_at = models.DateTimeField(auto_now_add=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     confirmed_at = models.DateTimeField(null=True, blank=True)
 
@@ -57,11 +57,10 @@ class ExpenseRequest(models.Model):
         super().save(*args, **kwargs)
 
 
-class Ledger(models.Model):
+class Ledger(BaseModel):
     expense = models.ForeignKey(ExpenseRequest, on_delete=models.PROTECT, null=True, blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
 
     transaction_type = models.CharField(max_length=10, choices=TransactionType.choices)
 
     description = models.CharField(max_length=255)
-    created_at = models.DateTimeField(auto_now_add=True)
