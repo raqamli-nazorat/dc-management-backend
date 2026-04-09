@@ -17,13 +17,13 @@ class AuditLogAdmin(ModelAdmin):
                        'pretty_old_values', 'pretty_new_values', 'timestamp')
 
     fieldsets = (
-        ('User & Request Info', {
+        ('Foydalanuvchi va so\'rov haqida ma\'lumot', {
             'fields': ('timestamp', 'user', 'ip_address')
         }),
-        ('Action Details', {
+        ('Harakat tafsilotlari', {
             'fields': ('action', 'table_name', 'record_id')
         }),
-        ('Data Changes (JSON)', {
+        ('Ma\'lumotlar o\'zgarishi', {
             'fields': ('pretty_old_values', 'pretty_new_values'),
         }),
     )
@@ -52,7 +52,7 @@ class AuditLogAdmin(ModelAdmin):
         return format_html('<span style="color: {}; font-weight: bold;">{}</span>',
                            colors.get(obj.action, 'black'), obj.get_action_display())
 
-    @admin.display(description='Eski qiymat (Old)')
+    @admin.display(description='Eski qiymat')
     def pretty_old_values(self, obj):
         if obj.old_values:
             formatted_json = json.dumps(obj.old_values, indent=4, ensure_ascii=False)
@@ -60,7 +60,7 @@ class AuditLogAdmin(ModelAdmin):
                                formatted_json)
         return "-"
 
-    @admin.display(description='Yangi qiymat (New)')
+    @admin.display(description='Yangi qiymat')
     def pretty_new_values(self, obj):
         if obj.new_values:
             formatted_json = json.dumps(obj.new_values, indent=4, ensure_ascii=False)

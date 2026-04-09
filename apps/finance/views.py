@@ -34,17 +34,17 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         if self.request.user.role in [Role.ADMIN, Role.AUDITOR]:
-            raise PermissionDenied("Your role is not authorized to create expense requests.")
+            raise PermissionDenied("Sizning rolingiz xarajatlar so'rovlarini yaratishga vakolatli emas.")
         serializer.save(user=self.request.user)
 
     def perform_update(self, serializer):
         if self.get_object().status != Status.PENDING:
-            raise PermissionDenied("You cannot edit a request that is already being processed or paid.")
+            raise PermissionDenied("Siz allaqachon ko'rib chiqilayotgan yoki to'langan so'rovni tahrirlay olmaysiz.")
         serializer.save()
 
     def perform_destroy(self, instance):
         if instance.status != Status.PENDING:
-            raise PermissionDenied("You cannot delete a processed request.")
+            raise PermissionDenied("Siz qayta ishlangan so'rovni o'chira olmaysiz.")
         instance.delete()
 
     @extend_schema(request=None)
@@ -53,16 +53,16 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
         expense = self.get_object()
 
         if request.user.role != Role.ACCOUNTANT:
-            raise PermissionDenied({'detail': "Only accountants are authorized to process payments."})
+            raise PermissionDenied({'detail': "To'lovlarni amalga oshirish uchun faqat buxgalterlar vakolatli."})
 
         if expense.status != Status.PENDING:
-            raise ValidationError({'status': "Only 'Pending' requests can be marked as 'Paid'."})
+            raise ValidationError({'status': "Faqat \"Kutilayotgan\" so'rovlarni \"To'langan\" deb belgilash mumkin."})
 
         expense.status = Status.PAID
         expense.accountant = request.user
         expense.paid_at = timezone.now()
         expense.save()
-        return Response({"message": "Payment processed successfully. Awaiting employee confirmation."},
+        return Response({"message": "To'lov muvaffaqiyatli amalga oshirildi. Xodimning tasdiqlanishi kutilmoqda."},
                         status=status.HTTP_200_OK)
 
     @extend_schema(request=None)
@@ -71,15 +71,15 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
         expense = self.get_object()
 
         if expense.user != request.user:
-            raise PermissionDenied({'detail': "Only the original requestor can confirm receipt of funds."})
+            raise PermissionDenied({'detail': "Faqat dastlabki so'rov beruvchi mablag'ni olganligini tasdiqlashi mumkin."})
 
         if expense.status != Status.PAID:
-            raise ValidationError({'status': "The request must be in 'Paid' status before it can be confirmed."})
+            raise ValidationError({'status': "So'rov tasdiqlanishidan oldin u “To'langan” holatida bo'lishi kerak."})
 
         expense.status = Status.CONFIRMED
         expense.save()
 
-        return Response({"message": "Expense confirmed successfully and archived in Ledger."},
+        return Response({"message": "Xarajatlar muvaffaqiyatli tasdiqlandi."},
                         status=status.HTTP_200_OK)
 
 

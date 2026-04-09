@@ -19,5 +19,9 @@ class User(AbstractUser):
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Balans")
     change_password = models.BooleanField(default=True)
 
+    class Meta:
+        verbose_name = 'Foydalanuvchi '
+        verbose_name_plural = 'Foydalanuvchilar'
+
     def __str__(self):
         return f"{self.username} - {self.role}"

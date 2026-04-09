@@ -1,5 +1,6 @@
 import json
 from django.core.serializers.json import DjangoJSONEncoder
+from django.db import transaction
 from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.forms.models import model_to_dict
@@ -59,37 +60,42 @@ def audit_post_save(sender, instance, created, **kwargs):
 
     request = get_current_request()
 
-    if created:
-        action = ActionType.CREATE
-    else:
-        new_status = getattr(instance, 'status', None)
-        old_values_dict = getattr(instance, '_old_values', {})
-        old_status = old_values_dict.get('status')
+    def create_log():
+        instance.refresh_from_db()
 
-        if new_status == 'confirmed' and old_status != 'confirmed':
-            action = ActionType.CONFIRM
+        if created:
+            action = ActionType.CREATE
         else:
-            action = ActionType.UPDATE
+            new_status = getattr(instance, 'status', None)
+            old_values_dict = getattr(instance, '_old_values', {})
+            old_status = old_values_dict.get('status')
 
-    new_values = serialize_data(model_to_dict(instance))
-    old_values = serialize_data(getattr(instance, '_old_values', {}))
+            if new_status == 'confirmed' and old_status != 'confirmed':
+                action = ActionType.CONFIRM
+            else:
+                action = ActionType.UPDATE
 
-    if not created:
-        changes = {k: v for k, v in new_values.items() if v != old_values.get(k)}
-        if not changes:
-            return
-        old_values = {k: old_values.get(k) for k in changes.keys()}
-        new_values = changes
+        new_values = serialize_data(model_to_dict(instance))
+        old_values = serialize_data(getattr(instance, '_old_values', {}))
 
-    AuditLog.objects.create(
-        user=request.user if request and request.user.is_authenticated else None,
-        action=action,
-        ip_address=get_client_ip(request) if request else None,
-        table_name=sender._meta.db_table,
-        record_id=instance.pk,
-        old_values=old_values,
-        new_values=new_values
-    )
+        if not created:
+            changes = {k: v for k, v in new_values.items() if v != old_values.get(k)}
+            if not changes:
+                return
+            old_values = {k: old_values.get(k) for k in changes.keys()}
+            new_values = changes
+
+        AuditLog.objects.create(
+            user=request.user if request and request.user.is_authenticated else None,
+            action=action,
+            ip_address=get_client_ip(request) if request else None,
+            table_name=sender._meta.db_table,
+            record_id=instance.pk,
+            old_values=old_values,
+            new_values=new_values
+        )
+
+    transaction.on_commit(create_log)
 
 
 @receiver(post_delete)

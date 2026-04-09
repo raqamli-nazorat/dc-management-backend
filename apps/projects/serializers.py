@@ -82,7 +82,7 @@ class TaskSerializer(serializers.ModelSerializer):
         if assignee and project:
             if not project.employees.filter(id=assignee.id).exists():
                 raise serializers.ValidationError({
-                    'assignee': "This employee is not assigned to this project team!"
+                    'assignee': "Bu xodim ushbu loyiha jamoasiga tayinlanmagan!"
                 })
 
         return attrs

@@ -14,17 +14,22 @@ class ActionType(models.TextChoices):
 
 
 class AuditLog(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs')
-    action = models.CharField(max_length=50, choices=ActionType.choices)
-    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='audit_logs',
+                             verbose_name='Foydalanuvchi')
+    action = models.CharField(max_length=50, choices=ActionType.choices, verbose_name='Harakati')
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name='IP manzili')
 
-    table_name = models.CharField(max_length=50)
-    record_id = models.PositiveIntegerField()
+    table_name = models.CharField(max_length=50, verbose_name='Jadval nomi')
+    record_id = models.PositiveIntegerField(verbose_name='Yozuv raqami')
 
-    old_values = models.JSONField(null=True, blank=True)
-    new_values = models.JSONField(null=True, blank=True)
+    old_values = models.JSONField(null=True, blank=True, verbose_name='Eski qiymati')
+    new_values = models.JSONField(null=True, blank=True, verbose_name='Yangi qiymati')
 
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Vaqti')
+
+    class Meta:
+        verbose_name = 'Tarix yozuvi '
+        verbose_name_plural = 'Tarix yozuvlari'
 
     def __str__(self):
         return self.table_name

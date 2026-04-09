@@ -17,7 +17,7 @@ class CustomUserAdmin(ModelAdmin):
             'fields': ('username', 'password')
         }),
         ('Lavozim va Moliya', {
-            'fields': ('role', 'fixed_salary', 'balance', 'change_password')
+            'fields': ('role', 'fixed_salary', 'balance')
         }),
         ('Huquqlar va Status', {
             'fields': ('is_active', 'is_staff', 'is_superuser', 'groups'),

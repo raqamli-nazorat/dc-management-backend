@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
     Project, Task, TaskAttachment, Meeting,
-    MeetingAttendance, ProjectStatus, Status, Priority, Type
+    MeetingAttendance, ProjectStatus, Type
 )
 
 from unfold.admin import ModelAdmin
@@ -41,7 +41,7 @@ class ProjectAdmin(ModelAdmin):
         }),
     )
 
-    @admin.display(description='Status', ordering='status')
+    @admin.display(description='Holati', ordering='status')
     def status_colored(self, obj):
         colors = {
             ProjectStatus.PLANNING: 'gray',
@@ -77,7 +77,7 @@ class TaskAdmin(ModelAdmin):
         }),
     )
 
-    @admin.display(description='Type')
+    @admin.display(description='Turi')
     def type_badge(self, obj):
         color = 'red' if obj.type == Type.BUG else 'green' if obj.type == Type.FEATURE else 'blue'
         return format_html('<b style="color: {};">{}</b>', color, obj.get_type_display())
@@ -113,7 +113,7 @@ class MeetingAttendanceAdmin(ModelAdmin):
     list_filter = ('is_attended', 'meeting', 'user')
     search_fields = ('meeting__title', 'user__username', 'absence_reason')
 
-    @admin.display(description='Reason')
+    @admin.display(description='Sababi')
     def absence_reason_excerpt(self, obj):
         if obj.absence_reason:
             return obj.absence_reason[:30] + '...' if len(obj.absence_reason) > 30 else obj.absence_reason

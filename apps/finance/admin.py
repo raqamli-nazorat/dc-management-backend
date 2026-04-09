@@ -4,6 +4,7 @@ from .models import ExpenseCategory, ExpenseRequest, Ledger, Payroll, Status, Tr
 
 from unfold.admin import ModelAdmin
 
+
 @admin.register(ExpenseCategory)
 class ExpenseCategoryAdmin(ModelAdmin):
     list_display = ('id', 'title', 'is_active')
@@ -19,31 +20,31 @@ class ExpenseRequestAdmin(ModelAdmin):
     list_display_links = ('id', 'user')
 
     list_filter = ('status', 'type', 'payment_method', 'created_at')
-    search_fields = ('user__username', 'user__first_name', 'user__last_name', 'reason', 'card_number')
+    search_fields = ('user__username', 'reason', 'card_number')
 
     readonly_fields = ('paid_at', 'confirmed_at', 'created_at', 'updated_at')
 
     fieldsets = (
-        ('Basic Information', {
+        ('Asosiy ma\'lumotlar', {
             'fields': ('user', 'type', 'expense_category', 'amount', 'reason')
         }),
-        ('Payment Details', {
+        ('To\'lov tafsilotlari', {
             'fields': ('payment_method', 'card_number', 'accountant')
         }),
-        ('Status & Timestamps', {
+        ('Holat va vaqtlar', {
             'fields': ('status', 'paid_at', 'confirmed_at')
         }),
-        ('System Info', {
+        ('Tizim haqida ma\'lumot', {
             'fields': ('created_at', 'updated_at'),
             'classes': ('collapse',),
         }),
     )
 
-    @admin.display(description='Amount', ordering='amount')
+    @admin.display(description='Miqdor', ordering='amount')
     def amount_formatted(self, obj):
         return f"{obj.amount:,.2f}"
 
-    @admin.display(description='Status', ordering='status')
+    @admin.display(description='Holati', ordering='status')
     def status_colored(self, obj):
         colors = {
             Status.PENDING: 'orange',
@@ -70,7 +71,7 @@ class LedgerAdmin(ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
-    @admin.display(description='Amount', ordering='amount')
+    @admin.display(description='Miqdori', ordering='amount')
     def amount_formatted(self, obj):
         return f"{obj.amount:,.2f}"
 
@@ -86,7 +87,7 @@ class PayrollAdmin(ModelAdmin):
     list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at')
     list_display_links = ('id', 'user')
     list_filter = ('month', 'created_at')
-    search_fields = ('user__username', 'user__first_name', 'user__last_name')
+    search_fields = ('user__username',)
 
     readonly_fields = ('total_amount', 'created_at', 'updated_at')
 
@@ -106,6 +107,6 @@ class PayrollAdmin(ModelAdmin):
         }),
     )
 
-    @admin.display(description='Total Amount', ordering='total_amount')
+    @admin.display(description='Jami miqdori', ordering='total_amount')
     def total_amount_formatted(self, obj):
         return f"{obj.total_amount:,.2f}"

@@ -107,20 +107,20 @@ class TaskViewSet(viewsets.ModelViewSet):
             allowed_for_employee = [Status.TODO, Status.IN_PROGRESS, Status.DONE]
             if new_status not in allowed_for_employee:
                 raise PermissionDenied(
-                    "You can only advance the task up to 'Done' status. "
-                    "Verification must be performed by a manager or tester."
+                    "Vazifani faqat \"Bajarildi\" holatiga o'tkazishingiz mumkin."
+                    "Tekshirish menejer yoki sinovchi tomonidan amalga oshirilishi kerak."
                 )
             serializer.save()
             return
 
         if is_tester:
             if is_assignee:
-                raise PermissionDenied("You cannot act as a tester for your own assigned task.")
+                raise PermissionDenied("Siz o'zingizga tayinlangan vazifa uchun sinovchi sifatida harakat qila olmaysiz.")
 
             serializer.save()
             return
 
-        raise PermissionDenied("You do not have permission to update the status of this task.")
+        raise PermissionDenied("Sizda bu vazifaning holatini yangilash uchun ruxsat yo'q.")
 
 
 @extend_schema(tags=['Task Attachments'])
@@ -149,7 +149,7 @@ class TaskAttachmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         task = serializer.validated_data.get('task')
         if task.status == Status.PRODUCTION:
-            raise ValidationError("You cannot add a file to a task in production.")
+            raise ValidationError("Ishlab chiqarishdagi vazifaga fayl qo'sha olmaysiz.")
 
         serializer.save()
 
@@ -184,14 +184,14 @@ class MeetingViewSet(viewsets.ModelViewSet):
         meeting = self.get_object()
 
         if meeting.is_completed:
-            raise ValidationError({"detail": "This meeting has already ended."})
+            raise ValidationError({"detail": "Bu uchrashuv allaqachon tugagan."})
 
         meeting.is_completed = True
         meeting.save()
 
         absent_users = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False)
 
-        return Response({"message": "Meeting closed and notifications sent to absent users."})
+        return Response({"message": "Uchrashuv yopildi va yo'q foydalanuvchilarga bildirishnomalar yuborildi."})
 
 
 class MeetingAttendanceViewSet(viewsets.ModelViewSet):
@@ -215,9 +215,9 @@ class MeetingAttendanceViewSet(viewsets.ModelViewSet):
 
         if attendance.user == user:
             if 'is_attended' in self.request.data:
-                raise PermissionDenied("You cannot change your own attendance status.")
+                raise PermissionDenied("Siz o'zingizning ishtirok etish holatingizni o'zgartira olmaysiz.")
 
             serializer.save()
             return
 
-        raise PermissionDenied("You don't have permission to edit this record.")
+        raise PermissionDenied("Sizda bu yozuvni tahrirlash uchun ruxsat yo'q.")
