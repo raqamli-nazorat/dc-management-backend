@@ -25,3 +25,6 @@ class AuditLog(BaseModel):
     new_values = models.JSONField(null=True, blank=True)
 
     timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.table_name

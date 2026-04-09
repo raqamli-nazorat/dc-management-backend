@@ -28,11 +28,24 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
+
+# CSRF trusted origins
+CSRF_TRUSTED_ORIGINS = []
+
 
 # Application definition
 
 INSTALLED_APPS = [
+    'unfold',
+    'unfold.contrib.filters',
+    'unfold.contrib.forms',
+    'unfold.contrib.inlines',
+    'unfold.contrib.import_export',
+    'unfold.contrib.guardian',
+    'unfold.contrib.simple_history',
+    'unfold.contrib.location_field',
+    'unfold.contrib.constance',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -42,7 +55,7 @@ INSTALLED_APPS = [
 
     'apps.common.apps.CommonConfig',
     'apps.users.apps.UsersConfig',
-    'apps.finance.apps.FinanceConfig',
+    # 'apps.finance.apps.FinanceConfig',
     'apps.projects.apps.ProjectsConfig',
     'apps.audit.apps.AuditConfig',
 
@@ -62,6 +75,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.audit.middleware.AuditLogMiddleware',
 ]
 
 AUTH_USER_MODEL = 'users.User'
@@ -121,9 +135,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'uz'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Tashkent'
 
 USE_I18N = True
 

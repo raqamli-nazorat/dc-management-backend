@@ -58,11 +58,14 @@ class Project(BaseModel):
     )
 
     employees = models.ManyToManyField(User, related_name='employee_projects', limit_choices_to={'role': Role.EMPLOYEE})
-    auditors = models.ManyToManyField(User, related_name='audited_projects', limit_choices_to={'role': Role.AUDITOR})
+    testers = models.ManyToManyField(User, related_name='tester_projects')
+
+    def __str__(self):
+        return self.title
 
 
 class Task(BaseModel):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='tasks')
+    project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='tasks')
     title = models.CharField(max_length=255)
     description = models.TextField()
 
@@ -74,6 +77,7 @@ class Task(BaseModel):
                                  limit_choices_to={'role': Role.EMPLOYEE}, db_index=True)
 
     deadline = models.DateTimeField(db_index=True)
+    task_price = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     estimated_hours = models.FloatField(default=0.0)
     actual_hours = models.FloatField(default=0.0)
     reopened_count = models.PositiveIntegerField(default=0)
@@ -91,7 +95,45 @@ class Task(BaseModel):
         self.full_clean()
         return super().save(*args, **kwargs)
 
+    def __str__(self):
+        return self.title
+
 
 class TaskAttachment(BaseModel):
-    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='attachments')
+    task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name='attachments')
     file = models.FileField(upload_to='task_files/')
+
+    def __str__(self):
+        return self.file.name
+
+
+class Meeting(BaseModel):
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='meetings')
+    organizer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='organized_meetings')
+
+    title = models.CharField(max_length=255)
+    description = models.TextField()
+    link = models.URLField()
+
+    start_time = models.DateTimeField()
+    duration_minutes = models.PositiveIntegerField()
+    is_completed = models.BooleanField(default=False)
+
+    participants = models.ManyToManyField(User, through='MeetingAttendance', related_name='meeting_participants')
+
+    def __str__(self):
+        return self.title
+
+
+class MeetingAttendance(BaseModel):
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='attendances')
+    meeting = models.ForeignKey(Meeting, on_delete=models.SET_NULL, null=True, related_name='attendances')
+
+    is_attended = models.BooleanField(default=True)
+    absence_reason = models.TextField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('user', 'meeting')
+
+    def __str__(self):
+        return self.meeting.title

@@ -1,6 +1,3 @@
-from django.contrib.auth.password_validation import validate_password
-from django.contrib.auth.hashers import check_password
-from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count
 
@@ -15,15 +12,15 @@ User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, required=False, min_length=6)
+    password = serializers.CharField(write_only=True, required=False)
     confirm_password = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'phone_number', 'first_name',
-            'last_name', 'role', 'password', 'confirm_password',
-            'fixed_salary',
+            'id', 'username', 'role',
+            'password', 'confirm_password',
+            'fixed_salary', 'balance'
         )
         read_only_fields = ('id',)
 
@@ -32,8 +29,10 @@ class UserSerializer(serializers.ModelSerializer):
         confirm_password = attrs.get('confirm_password')
 
         if password is not None:
+            if not password.isdigit():
+                raise serializers.ValidationError({"password": "Parol faqat raqamlardan iborat bo'lishi kerak."})
             if password != confirm_password:
-                raise serializers.ValidationError({"password": "The passwords did not match."})
+                raise serializers.ValidationError({"password": "Parollar mos kelmayapti. Qaytadan urinib ko'ring."})
 
         return attrs
 
@@ -42,10 +41,12 @@ class UserSerializer(serializers.ModelSerializer):
         password = validated_data.pop('password', None)
 
         user = User(**validated_data)
+
         if password:
             user.set_password(password)
         else:
             user.set_unusable_password()
+
         user.save()
         return user
 
@@ -58,9 +59,16 @@ class UserSerializer(serializers.ModelSerializer):
 
         if password:
             instance.set_password(password)
+            instance.must_change_password = True
 
         instance.save()
         return instance
+
+
+class UserShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'date_joined', 'role', 'is_active')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -68,20 +76,18 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'phone_number', 'first_name', 'last_name',
-                  'role', 'stats', 'fixed_salary', 'date_joined')
-        read_only_fields = ('id', 'role', 'fixed_salary', 'date_joined')
+        fields = ('id', 'username', 'role', 'stats', 'fixed_salary', 'balance', 'date_joined', 'change_password', 'is_active')
+        read_only_fields = ('id', 'username', 'role', 'fixed_salary', 'date_joined', 'change_password', 'is_active')
 
     def get_stats(self, obj):
-        allowed_roles = [Role.MANAGER, Role.EMPLOYEE, Role.AUDITOR]
+        allowed_roles = [Role.MANAGER, Role.EMPLOYEE]
 
         if obj.role not in allowed_roles:
             return None
 
         all_projects = (
                 obj.manager_projects.all() |
-                obj.employee_projects.all() |
-                obj.audited_projects.all()
+                obj.employee_projects.all()
         ).distinct()
 
         p_stats = all_projects.aggregate(
@@ -123,39 +129,42 @@ class ProfileSerializer(serializers.ModelSerializer):
 
 
 class ChangePasswordSerializer(serializers.Serializer):
-    old_password = serializers.CharField(min_length=8, max_length=128, write_only=True,
-                                         style={'input_type': 'password'})
-    new_password = serializers.CharField(min_length=8, max_length=128, write_only=True,
-                                         style={'input_type': 'password'})
-    confirm_new_password = serializers.CharField(min_length=8, max_length=128, write_only=True,
-                                                 style={'input_type': 'password'})
+    old_password = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True)
+    confirm_new_password = serializers.CharField(write_only=True)
 
     def validate_old_password(self, value):
         user = self.context['request'].user
         if not user.check_password(value):
-            raise serializers.ValidationError("The old password is incorrect.")
+            raise serializers.ValidationError("Eski parol noto'g'ri.")
         return value
 
     def validate(self, attrs):
-        if attrs['new_password'] != attrs['confirm_new_password']:
+        new_password = attrs.get('new_password')
+        confirm_new_password = attrs.get('confirm_new_password')
+        old_password = attrs.get('old_password')
+
+        if not new_password.isdigit():
             raise serializers.ValidationError({
-                'password': "The new password fields did not match."
-            })
-        if attrs['old_password'] == attrs['new_password']:
-            raise serializers.ValidationError({
-                'password': "The new password must be different from the old one."
+                'new_password': "Parol faqat raqamlardan iborat bo'lishi kerak."
             })
 
-        try:
-            validate_password(attrs['new_password'], user=self.context['request'].user)
-        except ValidationError as e:
-            raise serializers.ValidationError({'password': e.messages})
+        if new_password != confirm_new_password:
+            raise serializers.ValidationError({
+                'new_password': "Yangi parol maydonlari mos kelmadi."
+            })
+
+        if old_password == new_password:
+            raise serializers.ValidationError({
+                'new_password': "Yangi parol eskisidan farq qilishi kerak."
+            })
 
         return attrs
 
     def save(self, **kwargs):
         user = self.context['request'].user
         user.set_password(self.validated_data['new_password'])
+        user.must_change_password = False
         user.save()
         return user
 
@@ -163,16 +172,14 @@ class ChangePasswordSerializer(serializers.Serializer):
 class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data: dict = super().validate(attrs)
-
         user = self.user
 
         data["user"] = {
             "id": user.id,
             "username": user.username,
-            "phone_number": user.phone_number,
-            "first_name": user.first_name,
-            "last_name": user.last_name,
             "role": user.role,
+            "change_password": user.change_password,
+            "is_active": user.is_active,
         }
 
         return data
@@ -190,45 +197,11 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
             data["user"] = {
                 "id": user.id,
                 "username": user.username,
-                "phone_number": user.phone_number,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
                 "role": user.role,
+                "change_password": user.change_password,
+                "is_active": user.is_active,
             }
         except User.DoesNotExist:
             pass
 
         return data
-
-
-class PinSetSerializer(serializers.Serializer):
-    pin = serializers.CharField(
-        min_length=4,
-        max_length=4,
-        write_only=True,
-    )
-
-    def validate_pin(self, value):
-        if not value.isdigit():
-            raise serializers.ValidationError("The PIN must consist only of numbers!")
-        return value
-
-
-class PinCheckSerializer(serializers.Serializer):
-    pin = serializers.CharField(min_length=4, max_length=4, write_only=True)
-
-    def validate(self, attrs):
-        user = self.context['request'].user
-        pin = attrs.get('pin')
-
-        if not user.pin_code:
-            raise serializers.ValidationError({
-                "pin": "PIN has not been set yet. Please set a PIN first."
-            })
-
-        if not check_password(pin, user.pin_code):
-            raise serializers.ValidationError({
-                "pin": "The entered PIN code is incorrect!"
-            })
-
-        return attrs
