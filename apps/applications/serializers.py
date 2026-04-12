@@ -1,15 +1,30 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.applications.models import Application, ApplicationStatus
+from apps.applications.models import Region, Direction, Application, ApplicationStatus
+
+
+class RegionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Region
+        fields = ('id', 'title', 'is_active')
+        read_only_fields = ('id', 'title')
+
+
+class DirectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Direction
+        fields = ('id', 'title', 'is_active')
+        read_only_fields = ('id', 'title')
 
 
 class ApplicationCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
-        fields = ('full_name', 'birth_date', 'is_student', 'university', 'region',
-                  'phone', 'telegram', 'direction', 'resume', 'extra_info', 'portfolio',
+        fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region',
+                  'phone', 'telegram', 'direction', 'resume', 'extra_info', 'portfolio', 'is_active'
                   )
+        read_only_fields = ('id', 'is_active')
 
     def validate(self, attrs):
         if attrs.get('is_student') and not attrs.get('university'):

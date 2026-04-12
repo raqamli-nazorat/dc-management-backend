@@ -51,7 +51,7 @@ class TaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = Task
         fields = (
-            'id', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
+            'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
             'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
 
             'estimated_minutes', 'actual_minutes',
@@ -61,7 +61,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at', 'is_active'
         )
         read_only_fields = (
-            'id', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
+            'id', 'uid', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
             'estimated_minutes', 'actual_minutes'
         )
 
@@ -167,10 +167,10 @@ class MeetingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meeting
         fields = (
-            'id', 'project', 'organizer', 'title', 'description',
+            'id', 'uid', 'project', 'organizer', 'title', 'description',
             'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed', 'participants_info',
         )
-        read_only_fields = ('organizer', 'participants_info', 'penalty_percentage')
+        read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'penalty_percentage')
 
 
 class MeetingAttendanceSerializer(serializers.ModelSerializer):

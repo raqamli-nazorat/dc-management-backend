@@ -2,24 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/apps/applications/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/applications/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/applications/validators.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/projects/utils.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/projects/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/tasks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/commands.txt" beforeDir="false" afterPath="$PROJECT_DIR$/commands.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/urls.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -153,7 +137,7 @@
       <workItem from="1775894042502" duration="2805000" />
       <workItem from="1775898286353" duration="138000" />
       <workItem from="1775899598774" duration="6658000" />
-      <workItem from="1775921849850" duration="8903000" />
+      <workItem from="1775921849850" duration="9403000" />
     </task>
     <servers />
   </component>
