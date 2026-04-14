@@ -1,4 +1,3 @@
-from django.utils import timezone
 from rest_framework import serializers
 
 from apps.applications.models import Region, Direction, Application, ApplicationStatus
@@ -7,15 +6,15 @@ from apps.applications.models import Region, Direction, Application, Application
 class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
-        fields = ('id', 'title', 'is_active')
-        read_only_fields = ('id', 'title')
+        fields = ('id', 'name', 'is_application', 'is_active')
+        read_only_fields = ('id',)
 
 
 class DirectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Direction
-        fields = ('id', 'title', 'is_active')
-        read_only_fields = ('id', 'title')
+        fields = ('id', 'name', 'is_application', 'is_active')
+        read_only_fields = ('id',)
 
 
 class ApplicationSerializer(serializers.ModelSerializer):

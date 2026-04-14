@@ -9,6 +9,14 @@ from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingA
 User = get_user_model()
 
 
+class ProjectShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = (
+            'id', 'title', 'description', 'status', 'is_active'
+        )
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     manager_info = UserShortSerializer(source='manager', read_only=True)
     employees_info = UserShortSerializer(source='employees', many=True, read_only=True)
@@ -191,3 +199,12 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
             attrs['absence_reason'] = None
 
         return attrs
+
+
+class MeetingAttendanceReasonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetingAttendance
+        fields = ('absence_reason',)
+        extra_kwargs = {
+            'absence_reason': {'required': True, 'allow_blank': False}
+        }

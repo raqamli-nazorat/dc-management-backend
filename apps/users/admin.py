@@ -42,8 +42,14 @@ class CustomUserAdmin(ModelAdmin):
         ('Kirish ma\'lumotlari', {
             'fields': ('username', 'password')
         }),
+        ('Shaxsiy ma\'lumotlar', {
+            'fields': (
+                'avatar', 'phone_number', 'region',
+                'passport_series', 'passport_image'
+            )
+        }),
         ('Lavozim va Moliya', {
-            'fields': ('position', 'role', 'fixed_salary', 'balance')
+            'fields': ('direction', 'role', 'fixed_salary', 'balance')
         }),
         ('Huquqlar va Status', {
             'fields': ('is_active', 'is_staff', 'is_superuser'),
@@ -54,7 +60,9 @@ class CustomUserAdmin(ModelAdmin):
     add_fieldsets = (
         ('Yangi xodim', {
             'classes': ('wide',),
-            'fields': ('username', 'password', 'position', 'role', 'fixed_salary'),
+            'fields': ('username', 'phone_number', 'region', 'direction',
+                       'passport_series', 'passport_image', 'role',
+                       'fixed_salary', 'password'),
         }),
     )
 

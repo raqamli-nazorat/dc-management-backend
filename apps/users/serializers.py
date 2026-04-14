@@ -21,11 +21,12 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'position', 'role',
+            'id', 'username', 'phone_number', 'region', 'direction',
+            'passport_series', 'passport_image', 'role',
             'password', 'confirm_password',
-            'fixed_salary', 'balance'
+            'fixed_salary', 'balance',
         )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'balance')
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -85,13 +86,13 @@ class UserSerializer(serializers.ModelSerializer):
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'date_joined', 'position', 'role', 'is_active')
+        fields = ('id', 'username', 'phone_number', 'region', 'direction', 'role', 'date_joined', 'is_active')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'position', 'role', 'fixed_salary', 'balance', 'date_joined', 'change_password',
+        fields = ('id', 'username', 'phone_number', 'region', 'direction', 'role', 'fixed_salary', 'balance', 'date_joined', 'change_password',
                   'is_active')
 
 

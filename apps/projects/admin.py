@@ -102,7 +102,7 @@ class MeetingAdmin(ModelAdmin):
 
     fieldsets = (
         ('Meeting Details', {
-            'fields': ('project', 'organizer', 'title', 'description', 'link')
+            'fields': ('project', 'organizer', 'title', 'description', 'link', 'penalty_percentage')
         }),
         ('Schedule', {
             'fields': ('start_time', 'duration_minutes', 'is_completed')

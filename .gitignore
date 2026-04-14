@@ -176,3 +176,6 @@ cython_debug/
 
 # commands for celery
 commands.txt
+
+# firebase key
+firebase-key.json

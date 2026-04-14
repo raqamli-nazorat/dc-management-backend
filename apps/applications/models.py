@@ -1,35 +1,37 @@
-from django.contrib.auth import get_user_model
 from django.db import models
+from django.conf import settings
 
 from apps.common.models import BaseModel
 from .validators import (phone_validator, telegram_validator,
                          portfolio_validator, validate_resume)
 
-User = get_user_model()
+User = settings.AUTH_USER_MODEL
 
 
 class Region(BaseModel):
-    title = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    name = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
 
     class Meta:
         verbose_name = "Viloyat"
         verbose_name_plural = "Viloyatlar"
-        ordering = ['title']
+        ordering = ['name']
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
 class Direction(BaseModel):
-    title = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    name = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
 
     class Meta:
         verbose_name = "Yo'nalish"
         verbose_name_plural = "Yo'nalishlar"
-        ordering = ['title']
+        ordering = ['name']
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
 class ApplicationStatus(models.TextChoices):

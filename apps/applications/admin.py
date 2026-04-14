@@ -8,14 +8,14 @@ from .models import Application, ApplicationStatus, Direction, Region
 
 @admin.register(Region)
 class RegionAdmin(ModelAdmin):
-    list_display = ('id', 'title', 'created_at')
-    search_fields = ('title',)
+    list_display = ('id', 'name', 'created_at')
+    search_fields = ('name',)
 
 
 @admin.register(Direction)
 class DirectionAdmin(ModelAdmin):
-    list_display = ('id', 'title', 'created_at')
-    search_fields = ('title',)
+    list_display = ('id', 'name', 'created_at')
+    search_fields = ('name',)
 
 
 @admin.register(Application)

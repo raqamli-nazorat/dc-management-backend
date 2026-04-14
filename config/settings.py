@@ -15,6 +15,9 @@ from celery.schedules import crontab
 from datetime import timedelta
 from pathlib import Path
 
+import firebase_admin
+from firebase_admin import credentials
+
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -26,6 +29,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('SECRET_KEY')
 
+# SECURITY WARNING: keep the secret key used in production secret!
+cred_path = os.path.join(BASE_DIR, 'firebase-key.json')
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -34,9 +42,14 @@ ALLOWED_HOSTS = ['*']
 # CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = []
 
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+
     'unfold',
     'unfold.contrib.filters',
     'unfold.contrib.forms',
@@ -66,6 +79,7 @@ INSTALLED_APPS = [
     'apps.finance.apps.FinanceConfig',
     'apps.projects.apps.ProjectsConfig',
     'apps.applications.apps.ApplicationsConfig',
+    'apps.notifications.apps.NotificationsConfig',
     'apps.audit.apps.AuditConfig',
 ]
 
@@ -99,6 +113,17 @@ TEMPLATES = [
     },
 ]
 
+# Channel Layers
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": ["redis://127.0.0.1:6379/1"],
+        },
+    }
+}
+
+ASGI_APPLICATION = 'config.asgi.application'
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Redis
@@ -117,7 +142,7 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_BEAT_SCHEDULE = {
     'check-deadlines-every-10-min': {
         'task': 'apps.projects.tasks.update_overdue_status_and_notify',
-        'schedule': crontab(minute='*/10'),
+        'schedule': crontab(minute='*'),
     },
 
     'morning-task-reminders': {
@@ -199,14 +224,14 @@ REST_FRAMEWORK = {
 
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,
 }
 
 # Simple JWT
 # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
 }
@@ -215,7 +240,7 @@ SIMPLE_JWT = {
 # https://drf-spectacular.readthedocs.io/en/latest/readme.html
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'API',
+    'TITLE': 'Raqamli Nazorat API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }

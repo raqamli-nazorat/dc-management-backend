@@ -1,11 +1,13 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
+from django.db.models import F
 from django.utils import timezone
 
 from apps.common.models import BaseModel
 from apps.users.models import Role
+from apps.projects.models import Project
 
 User = get_user_model()
 
@@ -47,6 +49,15 @@ class ExpenseCategory(BaseModel):
 class ExpenseRequest(BaseModel):
     user = models.ForeignKey(User, on_delete=models.PROTECT, related_name='expenses', verbose_name='Foydalanuvchi')
 
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='expenses',
+        verbose_name='Loyiha'
+    )
+
     type = models.CharField(max_length=20, choices=ExpenseType.choices, default=ExpenseType.WITHDRAWAL,
                             verbose_name='Turi')
 
@@ -78,6 +89,14 @@ class ExpenseRequest(BaseModel):
 
     def clean(self):
         super().clean()
+
+        if self.type == ExpenseType.COMPANY_EXPENSE and not self.project:
+            raise ValidationError({
+                'project': "Kompaniya xarajati uchun loyihani tanlash shart!"
+            })
+
+        if self.type != ExpenseType.COMPANY_EXPENSE and self.project:
+            self.project = None
 
         if self.payment_method == PaymentMethod.CARD and not self.card_number:
             raise ValidationError({
@@ -180,14 +199,73 @@ class Payroll(BaseModel):
     deadline_missed = models.PositiveIntegerField(default=0, verbose_name='Muddatdan o\'tkazib yuborilganlar')
     bug_count = models.PositiveIntegerField(default=0, verbose_name='Xatolar')
 
-    def save(self, *args, **kwargs):
-        self.total_amount = self.fixed_salary + self.kpi_bonus - self.penalty_amount
-        super().save(*args, **kwargs)
+    is_confirmed = models.BooleanField(default=False, verbose_name='Tasdiqlandimi?')
 
     class Meta:
         verbose_name = "Ish haqi "
         verbose_name_plural = "Ish haqlari"
         unique_together = ('user', 'month')
+        ordering = ['-month']
 
     def __str__(self):
         return self.user.get_username()
+
+    def clean(self):
+        super().clean()
+
+        if self.pk:
+            old_instance = Payroll.objects.get(pk=self.pk)
+
+            if old_instance.is_confirmed and not self.is_confirmed:
+                raise ValidationError({
+                    'is_confirmed': "Tasdiqlangan oylikni bekor qilib bo'lmaydi."
+                })
+
+            if old_instance.is_confirmed:
+                if (old_instance.fixed_salary != self.fixed_salary or
+                        old_instance.kpi_bonus != self.kpi_bonus or
+                        old_instance.penalty_amount != self.penalty_amount):
+                    raise ValidationError(
+                        "Tasdiqlangan oylik ma'lumotlarini tahrirlash taqiqlanadi!"
+                    )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        self.total_amount = self.fixed_salary + self.kpi_bonus - self.penalty_amount
+
+        is_new = self.pk is None
+
+        if not is_new:
+            old_instance = Payroll.objects.get(pk=self.pk)
+
+            if not old_instance.is_confirmed and self.is_confirmed:
+                with transaction.atomic():
+                    if self.total_amount != 0:
+                        User.objects.filter(pk=self.user.pk).update(
+                            balance=F('balance') + self.total_amount
+                        )
+
+                    month_label = self.month.strftime("%Y-%m")
+                    ledger_entries = []
+
+                    if self.fixed_salary > 0:
+                        ledger_entries.append(Ledger(
+                            user=self.user, payroll=self, amount=self.fixed_salary,
+                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun asosiy maosh"
+                        ))
+                    if self.kpi_bonus > 0:
+                        ledger_entries.append(Ledger(
+                            user=self.user, payroll=self, amount=self.kpi_bonus,
+                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun KPI bonusi"
+                        ))
+                    if self.penalty_amount > 0:
+                        ledger_entries.append(Ledger(
+                            user=self.user, payroll=self, amount=self.penalty_amount,
+                            transaction_type=TransactionType.DEBIT,
+                            description=f"{month_label} oyi uchun jami jarimalar"
+                        ))
+
+                    if ledger_entries:
+                        Ledger.objects.bulk_create(ledger_entries)
+
+        super().save(*args, **kwargs)

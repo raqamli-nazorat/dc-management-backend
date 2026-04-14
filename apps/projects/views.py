@@ -10,9 +10,33 @@ from rest_framework.response import Response
 
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
-from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
-from .serializers import ProjectSerializer, TaskSerializer, TaskAttachmentSerializer, TaskStatusUpdateSerializer, \
-    MeetingSerializer, MeetingAttendanceSerializer
+from apps.notifications.models import Notification, NotificationType
+from apps.notifications.tasks import mass_notification_sender
+
+from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
+from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer, TaskAttachmentSerializer, \
+                          TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
+                          MeetingAttendanceReasonSerializer)
+
+
+@extend_schema(tags=['Projects'])
+class ProjectShortViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = ProjectShortSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+
+        queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
+
+        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]:
+            return queryset.all()
+
+        return queryset.filter(
+            Q(manager=user) |
+            Q(testers=user) |
+            Q(employees=user),
+            is_active=True
+        ).exclude(status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]).distinct()
 
 
 @extend_schema(tags=['Projects'])
@@ -175,6 +199,7 @@ class TaskAttachmentViewSet(viewsets.ModelViewSet):
 
         serializer.save()
 
+
 @extend_schema(tags=['Meetings'])
 class MeetingViewSet(viewsets.ModelViewSet):
     queryset = Meeting.objects.filter(is_active=True)
@@ -182,25 +207,55 @@ class MeetingViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [(IsAdmin | IsManager)()]
+            return [(permissions.IsAdminUser | IsManager)()]  # Permission nomlarini tekshirib oling
         return [permissions.IsAuthenticated()]
 
     @transaction.atomic
     def perform_create(self, serializer):
         project = serializer.validated_data.get('project')
-
         meeting = serializer.save(organizer=self.request.user)
+
         project_members = set(project.employees.all()) | set(project.testers.all())
 
         attendances = [
             MeetingAttendance(user=user, meeting=meeting)
             for user in project_members
         ]
-
         MeetingAttendance.objects.bulk_create(attendances)
 
+        notifications_to_bulk = []
+        broadcast_data = []
+        start_time_str = meeting.start_time.strftime('%d.%m %H:%M')
+
+        for member in project_members:
+            if member.id != self.request.user.id:  # Tashkilotchining o'ziga yubormaymiz
+                msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}"
+
+                notifications_to_bulk.append(Notification(
+                    user_id=member.id,
+                    title="Yangi uchrashuv belgilandi",
+                    message=msg,
+                    type=NotificationType.MEETING
+                ))
+
+                broadcast_data.append({
+                    "user_id": member.id,
+                    "title": "Yangi uchrashuv belgilandi",
+                    "message": msg,
+                    "type": NotificationType.MEETING,
+                    "extra_data": {
+                        "meeting_id": meeting.id,
+                        "action": "open_meeting",
+                        "project_id": project.id
+                    }
+                })
+
+        if notifications_to_bulk:
+            Notification.objects.bulk_create(notifications_to_bulk)
+            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
     @extend_schema(request=None)
-    @action(detail=True, methods=['post'], permission_classes=[IsManager | IsAdmin])
+    @action(detail=True, methods=['post'], url_path='close')
     def close_meeting(self, request, pk=None):
         meeting = self.get_object()
 
@@ -210,11 +265,41 @@ class MeetingViewSet(viewsets.ModelViewSet):
         meeting.is_completed = True
         meeting.save()
 
-        absent_users = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False)
+        absent_attendances = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False).select_related('user')
 
-        return Response({"message": "Uchrashuv yopildi va yo'q foydalanuvchilarga bildirishnomalar yuborildi."})
+        notifications_to_bulk = []
+        broadcast_data = []
+
+        for attendance in absent_attendances:
+            msg = f"Siz '{meeting.title}' mavzusidagi uchrashuvda qatnashmadingiz. Sababini ko'rsatishingiz so'raladi."
+
+            notifications_to_bulk.append(Notification(
+                user_id=attendance.user.id,
+                title="Yig'ilishda ishtirok etmadingiz.",
+                message=msg,
+                type=NotificationType.MEETING
+            ))
+
+            broadcast_data.append({
+                "user_id": attendance.user.id,
+                "title": "Yig'ilishda ishtirok etmadingiz.",
+                "message": msg,
+                "type": NotificationType.MEETING,
+                "extra_data": {
+                    "meeting_id": meeting.id,
+                    "action": "open_meeting",
+                    "project_id": meeting.project_id
+                }
+            })
+
+        if notifications_to_bulk:
+            Notification.objects.bulk_create(notifications_to_bulk)
+            mass_notification_sender.delay(broadcast_data)
+
+        return Response({"message": "Uchrashuv yopildi va bildirishnomalar yuborildi."})
 
 
+@extend_schema(tags=['Meeting Attendance'])
 class MeetingAttendanceViewSet(viewsets.ModelViewSet):
     queryset = MeetingAttendance.objects.all()
     serializer_class = MeetingAttendanceSerializer
@@ -242,3 +327,16 @@ class MeetingAttendanceViewSet(viewsets.ModelViewSet):
             return
 
         raise PermissionDenied("Sizda bu yozuvni tahrirlash uchun ruxsat yo'q.")
+
+
+@extend_schema(tags=['Meeting Attendance'])
+class MeetingAttendanceReasonViewSet(viewsets.ModelViewSet):
+    serializer_class = MeetingAttendanceReasonSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['patch']
+
+    def get_queryset(self):
+        return MeetingAttendance.objects.filter(
+            user=self.request.user,
+            is_attended=False
+        )

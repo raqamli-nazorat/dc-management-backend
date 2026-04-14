@@ -26,7 +26,7 @@ class ExpenseRequestAdmin(ModelAdmin):
 
     fieldsets = (
         ('Asosiy ma\'lumotlar', {
-            'fields': ('user', 'type', 'expense_category', 'amount', 'reason')
+            'fields': ('user', 'type', 'project', 'expense_category', 'amount', 'reason')
         }),
         ('To\'lov tafsilotlari', {
             'fields': ('payment_method', 'card_number', 'accountant')
@@ -96,7 +96,7 @@ class PayrollAdmin(ModelAdmin):
             'fields': ('user', 'month')
         }),
         ('Ish haqi taqsimoti', {
-            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount')
+            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount', 'is_confirmed')
         }),
         ('Ishlash ko\'rsatkichlari', {
             'fields': ('tasks_completed', 'deadline_missed', 'bug_count')

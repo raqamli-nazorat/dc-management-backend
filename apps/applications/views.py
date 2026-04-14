@@ -24,7 +24,7 @@ class ActiveObjectsMixin:
         user = self.request.user
         if user.is_authenticated and user.role in self.admin_roles:
             return super().get_queryset()
-        return super().get_queryset().filter(is_active=True)
+        return super().get_queryset().filter(is_application=True, is_active=True)
 
 
 @extend_schema(tags=['Region'])

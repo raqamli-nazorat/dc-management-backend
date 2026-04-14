@@ -1,3 +1,4 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, generics, filters, status
@@ -16,8 +17,9 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAdmin]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['username', 'first_name', 'last_name']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filter_fields = ['role', 'region', 'direction']
+    search_fields = ['username']
 
 
 @extend_schema(tags=['Profile'])
