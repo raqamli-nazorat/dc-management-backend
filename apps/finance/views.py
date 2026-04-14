@@ -1,9 +1,8 @@
+from django.db import transaction
 from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
-from rest_framework.serializers import ValidationError as DRFValidationError
-from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework import viewsets, status, decorators, filters, permissions
 from rest_framework.response import Response
@@ -11,6 +10,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
 
 from apps.notifications.models import Notification, NotificationType
+from apps.notifications.tasks import mass_notification_sender
+
 from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
 from .serializers import ExpenseRequestSerializer, PayrollSerializer, LedgerSerializer, ExpenseCategorySerializer, \
     PayrollStatusUpdateSerializer
@@ -168,36 +169,60 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
         request=PayrollStatusUpdateSerializer,
         responses={200: PayrollStatusUpdateSerializer}
     )
-    @action(detail=True, methods=['patch'], url_path='confirm')
-    def confirm_payroll(self, request, pk=None):
-        payroll = self.get_object()
+    @action(detail=False, methods=['post'], url_path='confirm')
+    def confirm_payroll(self, request):
         user = request.user
 
         if user.role not in [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT]:
             raise PermissionDenied("Sizda oyliklarni tasdiqlash huquqi yo'q.")
 
-        serializer = self.get_serializer(payroll, data=request.data, partial=True)
+        serializer = PayrollStatusUpdateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        payroll_ids = serializer.validated_data['payroll_ids']
+
+        payrolls = Payroll.objects.filter(id__in=payroll_ids, is_confirmed=False)
+
+        if not payrolls.exists():
+            return Response({"detail": "Hech qanday tasdiqlanishi kerak bo'lgan oylik topilmadi."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        notifications_to_bulk = []
+        broadcast_data = []
 
         try:
-            serializer.save()
+            with transaction.atomic():
+                for payroll in payrolls:
+                    payroll.is_confirmed = True
+                    payroll.save()
+                    month_name = payroll.month.strftime("%B, %Y")
+                    msg = f"{month_name} oyi uchun maoshingiz tasdiqlandi."
 
-            if serializer.instance.is_confirmed:
-                month_name = payroll.month.strftime("%B, %Y")
+                    notifications_to_bulk.append(Notification(
+                        user=payroll.user,
+                        title="Oylik maosh tushdi!",
+                        message=msg,
+                        type=NotificationType.FINANCE
+                    ))
 
-                Notification.objects.create(
-                    user=payroll.user,
-                    title="Oylik maosh tushdi!",
-                    message=f"{month_name} oyi uchun maoshingiz tasdiqlandi va balansingizga qo'shildi.",
-                    type=NotificationType.FINANCE,
-                    extra_data={'payroll_id': payroll.id}
-                )
+                    broadcast_data.append({
+                        "user_id": payroll.user.id,
+                        "title": "Oylik maosh tushdi!",
+                        "message": msg,
+                        "type": "finance",
+                        "extra_data": {"payroll_id": payroll.id}
+                    })
 
-        except DjangoValidationError as e:
-            raise DRFValidationError(e.message_dict if hasattr(e, 'message_dict') else str(e))
+                if notifications_to_bulk:
+                    Notification.objects.bulk_create(notifications_to_bulk)
+
+                transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+        except Exception as e:
+            return Response({"detail": f"Xatolik yuz berdi: {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         return Response({
-            "message": "Oylik holati muvaffaqiyatli yangilandi va balansga qo'shildi.",
+            "message": f"{payrolls.count()} ta oylik muvaffaqiyatli tasdiqlandi va balansga o'tkazildi."
         }, status=status.HTTP_200_OK)
 
 

@@ -20,4 +20,4 @@ class NotificationSerializer(serializers.ModelSerializer):
 class UserDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDevice
-        fields = ('fcm_token', 'device_type')
+        fields = ('fcm_token', 'device_type', 'device_id')

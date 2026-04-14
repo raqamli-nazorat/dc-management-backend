@@ -2,44 +2,14 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/apps/notifications/consumers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/middleware.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/routing.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/serializers.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/signals.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/tasks.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/notifications/urls.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/apps/users/utils.py" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/notifications_readme.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/dc-management-backend.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/dc-management-backend.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/applications/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/applications/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/applications/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/applications/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/finance/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/tasks.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/finance/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/notifications/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/notifications/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/apps.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/notifications/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/notifications/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/notifications/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/tasks.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/notifications/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/tasks.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/config/asgi.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/asgi.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/config/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/config/settings.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -184,7 +154,8 @@
       <workItem from="1775957149522" duration="487000" />
       <workItem from="1776056535028" duration="17318000" />
       <workItem from="1776094767149" duration="10167000" />
-      <workItem from="1776139162150" duration="5836000" />
+      <workItem from="1776139162150" duration="6356000" />
+      <workItem from="1776153005668" duration="2053000" />
     </task>
     <servers />
   </component>

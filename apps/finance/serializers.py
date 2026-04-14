@@ -22,14 +22,17 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
     accountant_info = UserShortSerializer(source='accountant', read_only=True)
     expense_category_info = ExpenseCategorySerializer(source='expense_category', read_only=True)
 
-    expense_category = serializers.PrimaryKeyRelatedField(queryset=ExpenseCategory.objects.all(), required=False, allow_null=True, write_only=True)
-    project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.filter(is_active=True), required=False, allow_null=True, write_only=True)
+    expense_category = serializers.PrimaryKeyRelatedField(queryset=ExpenseCategory.objects.all(), required=False,
+                                                          allow_null=True, write_only=True)
+    project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.filter(is_active=True), required=False,
+                                                 allow_null=True, write_only=True)
     project_info = ProjectShortSerializer(source='project', read_only=True)
 
     class Meta:
         model = ExpenseRequest
         fields = (
-            'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount', 'reason',
+            'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
+            'reason',
             'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
             'confirmed_at', 'created_at', 'updated_at'
         )
@@ -99,11 +102,11 @@ class PayrollSerializer(serializers.ModelSerializer):
         return obj.month.strftime('%B, %Y')
 
 
-class PayrollStatusUpdateSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payroll
-        fields = ('id', 'is_confirmed')
-        read_only_fields = ('id',)
+class PayrollStatusUpdateSerializer(serializers.Serializer):
+    payroll_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        allow_empty=False
+    )
 
 
 class LedgerSerializer(serializers.ModelSerializer):

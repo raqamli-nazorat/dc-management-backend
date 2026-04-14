@@ -92,7 +92,8 @@ class UserShortSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'phone_number', 'region', 'direction', 'role', 'fixed_salary', 'balance', 'date_joined', 'change_password',
+        fields = ('id', 'username', 'phone_number', 'region', 'direction', 'role', 'fixed_salary', 'balance',
+                  'date_joined', 'change_password',
                   'is_active')
 
 
@@ -260,6 +261,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["user"] = {
             "id": user.id,
             "username": user.username,
+            "phone_number": user.phone_number,
+            "avatar": user.avatar,
             "role": user.role,
             "change_password": user.change_password,
             "is_active": user.is_active,
@@ -280,6 +283,8 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
             data["user"] = {
                 "id": user.id,
                 "username": user.username,
+                "phone_number": user.phone_number,
+                "avatar": user.avatar,
                 "role": user.role,
                 "change_password": user.change_password,
                 "is_active": user.is_active,

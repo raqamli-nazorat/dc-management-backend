@@ -81,18 +81,17 @@ class UserDeviceRegisterView(APIView):
         serializer.is_valid(raise_exception=True)
 
         token = serializer.validated_data['fcm_token']
+        device_id = serializer.validated_data['device_id']
         device_type = serializer.validated_data['device_type']
 
         device, created = UserDevice.objects.update_or_create(
-            fcm_token=token,
+            device_id=device_id,
             defaults={
                 'user': request.user,
+                'fcm_token': token,
                 'device_type': device_type
             }
         )
 
-        status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
-        return Response(
-            {"message": "Qurilma muvaffaqiyatli ro'yxatdan o'tkazildi"},
-            status=status_code
-        )
+        msg = "Yangi qurilma qo'shildi" if created else "Qurilma ma'lumotlari yangilandi"
+        return Response({"message": msg}, status=status.HTTP_200_OK)
