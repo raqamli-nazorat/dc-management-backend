@@ -26,56 +26,72 @@ def _get_month_range(now):
     return first_of_prev_month, last_of_prev_month
 
 
-def _calc_meeting_penalty(user, start: any, end: any) -> Decimal:
-    missed_qs = (
+def _calc_meeting_penalty(user, start, end) -> Decimal:
+    missed_qs = list(
         MeetingAttendance.objects
         .filter(
             user=user,
             is_attended=False,
+            payroll_processed=False,
             absence_reason__isnull=True,
-            meeting__start_time__range=(start, end),
+            is_active=True,
+            meeting__is_active=True,
         )
         .exclude(meeting__organizer=user)
         .select_related("meeting")
     )
 
     total_penalty = Decimal("0.00")
+    processed_atts = []
+
     for att in missed_qs:
+        processed_atts.append(att.id)
         pct = att.meeting.penalty_percentage
         if pct > 0 and user.fixed_salary > 0:
             total_penalty += _round((user.fixed_salary * Decimal(str(pct))) / 100)
+
+    if processed_atts:
+        MeetingAttendance.objects.filter(id__in=processed_atts).update(payroll_processed=True)
 
     return total_penalty
 
 
 def _calc_manager_kpi(user, start, end):
-    completed_projects = (
+    completed_projects = list(
         Project.objects
         .filter(
             manager=user,
             status=ProjectStatus.COMPLETED,
-            updated_at__range=(start, end),
+            payroll_processed=False,
+            is_active=True,
         )
-        .only("title", "project_price", "penalty_percentage", "updated_at", "deadline")
+        .only("id", "title", "project_price", "updated_at", "deadline")
     )
 
     kpi_bonus = Decimal("0.00")
     total_penalty = Decimal("0.00")
+    processed_project_ids = []
 
     for project in completed_projects:
+        processed_project_ids.append(project.id)
+        
+        if project.updated_at > project.deadline:
+            logger.debug(
+                "Manager %s | loyiha '%s' muddatidan kechikkan. KPI va jarima olinmaydi.",
+                user.username, project.title
+            )
+            continue
+
         gross = _round(project.project_price)
-        penalty = Decimal("0.00")
-
-        if project.penalty_percentage > 0 and project.updated_at > project.deadline:
-            penalty = _round((gross * Decimal(str(project.penalty_percentage))) / 100)
-
         kpi_bonus += gross
-        total_penalty += penalty
 
         logger.debug(
-            "Manager %s | loyiha '%s' | gross=%s | penalty=%s",
-            user.username, project.title, gross, penalty,
+            "Manager %s | loyiha '%s' | gross=%s | penalty=0",
+            user.username, project.title, gross,
         )
+
+    if processed_project_ids:
+        Project.objects.filter(id__in=processed_project_ids).update(payroll_processed=True)
 
     return kpi_bonus, total_penalty
 
@@ -86,10 +102,11 @@ def _calc_employee_kpi(user, start, end):
         .filter(
             assignee=user,
             status__in=[TaskStatus.CHECKED, TaskStatus.PRODUCTION],
-            updated_at__range=(start, end),
+            payroll_processed=False,
+            is_active=True,
         )
         .only(
-            "title", "task_price", "penalty_percentage",
+            "id", "title", "task_price", "penalty_percentage",
             "estimated_minutes", "actual_minutes", "reopened_count",
             "deadline", "updated_at",
         )
@@ -98,9 +115,30 @@ def _calc_employee_kpi(user, start, end):
     kpi_bonus = Decimal("0.00")
     total_penalty = Decimal("0.00")
     bugs_count = 0
+    processed_task_ids = []
+    missed_deadlines = 0
 
     for task in completed_tasks:
+        processed_task_ids.append(task.id)
         gross = _round(task.task_price)
+        bugs_count += task.reopened_count
+        
+        penalty = Decimal("0.00")
+        if task.penalty_percentage > 0 and task.reopened_count > 0:
+            reopen_penalty = _round(
+                (gross * Decimal(str(task.penalty_percentage))) / 100
+            ) * task.reopened_count
+            penalty += reopen_penalty
+            
+        total_penalty += penalty
+
+        if task.updated_at > task.deadline:
+            missed_deadlines += 1
+            logger.debug(
+                "Employee %s | task '%s' muddatidan kechikkan. Qaytarilish jarimasi: %s, KPI bonus: 0",
+                user.username, task.title, penalty
+            )
+            continue
 
         est = task.estimated_minutes or 0
         act = task.actual_minutes or 0
@@ -111,47 +149,15 @@ def _calc_employee_kpi(user, start, end):
             velocity = Decimal("1.0")
 
         weighted_bonus = _round(gross * velocity)
-
-        penalty = Decimal("0.00")
-        if task.penalty_percentage > 0 and task.updated_at > task.deadline:
-            penalty += _round((gross * Decimal(str(task.penalty_percentage))) / 100)
-
-        if task.penalty_percentage > 0 and task.reopened_count > 0:
-            reopen_penalty = _round(
-                (gross * Decimal(str(task.penalty_percentage))) / 100
-            ) * task.reopened_count
-            penalty += reopen_penalty
-
         kpi_bonus += weighted_bonus
-        total_penalty += penalty
-        bugs_count += task.reopened_count
 
         logger.debug(
             "Employee %s | task '%s' | gross=%s | velocity=%s | weighted=%s | penalty=%s",
             user.username, task.title, gross, velocity, weighted_bonus, penalty,
         )
 
-    overdue_tasks = list(
-        Task.objects
-        .filter(
-            assignee=user,
-            status=TaskStatus.OVERDUE,
-            updated_at__range=(start, end),
-        )
-        .only("title", "task_price", "penalty_percentage")
-    )
-    missed_deadlines = len(overdue_tasks)
-
-    for task in overdue_tasks:
-        if task.penalty_percentage > 0 and task.task_price > 0:
-            overdue_penalty = _round(
-                (_round(task.task_price) * Decimal(str(task.penalty_percentage))) / 100
-            )
-            total_penalty += overdue_penalty
-            logger.debug(
-                "Employee %s | overdue task '%s' | task_price=%s | penalty=%s",
-                user.username, task.title, task.task_price, overdue_penalty,
-            )
+    if processed_task_ids:
+        Task.objects.filter(id__in=processed_task_ids).update(payroll_processed=True)
 
     tasks_done = len(completed_tasks)
 
@@ -169,7 +175,7 @@ def calculate_monthly_salaries(self):
     users_qs = (
         User.objects
         .filter(is_active=True)
-        .only("id", "username", "role", "fixed_salary", "balance")
+        .only("id", "username", "roles", "fixed_salary", "balance")
         .iterator(chunk_size=500)
     )
 
@@ -205,19 +211,25 @@ def _process_user(user: User, month_start, month_end):
         missed_deadlines = 0
         bugs_count = 0
 
-        if user.role == Role.MANAGER:
-            kpi_bonus, proj_penalty = _calc_manager_kpi(user, month_start, month_end)
+        if user.has_role(Role.MANAGER):
+            mgr_kpi, proj_penalty = _calc_manager_kpi(user, month_start, month_end)
+            kpi_bonus += mgr_kpi
             total_penalty += proj_penalty
 
-        elif user.role == Role.EMPLOYEE:
+        if user.has_role(Role.EMPLOYEE):
             meeting_penalty = _calc_meeting_penalty(user, month_start, month_end)
             total_penalty += meeting_penalty
 
             (
-                kpi_bonus, task_penalty, tasks_done,
-                missed_deadlines, bugs_count
+                emp_kpi, task_penalty, emp_tasks_done,
+                emp_missed_deadlines, emp_bugs_count
             ) = _calc_employee_kpi(user, month_start, month_end)
+
+            kpi_bonus += emp_kpi
             total_penalty += task_penalty
+            tasks_done += emp_tasks_done
+            missed_deadlines += emp_missed_deadlines
+            bugs_count += emp_bugs_count
 
         Payroll.objects.create(
             user=user,
@@ -231,7 +243,7 @@ def _process_user(user: User, month_start, month_end):
         )
 
         logger.info(
-            "Hisoblandi (Tasdiqlanmagan) | %s (%s) | fixed=%s | kpi=%s | penalty=%s",
-            user.username, user.role,
+            "Hisoblandi | %s (%s) | fixed=%s | kpi=%s | penalty=%s",
+            user.username, user.roles,
             user.fixed_salary, kpi_bonus, total_penalty,
         )

@@ -15,7 +15,7 @@ def get_user_from_ticket(ticket):
     if user_id:
         cache.delete(cache_key)
         try:
-            return User.objects.only('id', 'username', 'role').get(pk=user_id)
+            return User.objects.only('id', 'username', 'roles').get(pk=user_id)
         except User.DoesNotExist:
             return AnonymousUser()
     return AnonymousUser()

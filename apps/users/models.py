@@ -1,5 +1,5 @@
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
-from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.users.utils import user_avatar_path, passport_path
@@ -18,8 +18,8 @@ class Role(models.TextChoices):
 
 class User(AbstractUser):
     username = models.CharField(max_length=150, unique=True, db_index=True, verbose_name="F.I.O")
-    role = models.CharField(max_length=20, choices=Role.choices, default=Role.EMPLOYEE, db_index=True,
-                            verbose_name="Roli")
+    roles = ArrayField(models.CharField(max_length=20, choices=Role.choices), default=list, blank=True,
+                       verbose_name="Rollari")
 
     region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Viloyati")
     phone_number = models.CharField(validators=[phone_validator], max_length=13, blank=True,
@@ -40,4 +40,7 @@ class User(AbstractUser):
         verbose_name_plural = 'Foydalanuvchilar'
 
     def __str__(self):
-        return f"{self.username} - {self.role}"
+        return f"{self.username}"
+
+    def has_role(self, *allowed_roles):
+        return bool(set(self.roles) & set(allowed_roles))

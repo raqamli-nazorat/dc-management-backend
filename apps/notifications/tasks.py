@@ -43,7 +43,7 @@ def send_push_notification_task(self, user_id, title, message, notification_type
     device_tokens = list(UserDevice.objects.filter(user_id=user_id).values_list('fcm_token', flat=True))
 
     if not device_tokens:
-        return f"User {user_id} uchun tokenlar yo'q."
+        return f"Foydalanuvchi {user_id} uchun tokenlar yo'q."
 
     fcm_data = {
         "payload": json.dumps(extra_data or {}),

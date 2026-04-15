@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
 
     'rest_framework',
     'rest_framework_simplejwt',
@@ -80,6 +81,7 @@ INSTALLED_APPS = [
     'apps.projects.apps.ProjectsConfig',
     'apps.applications.apps.ApplicationsConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.todos.apps.TodosConfig',
     'apps.audit.apps.AuditConfig',
 ]
 

@@ -55,14 +55,11 @@ class Project(BaseModel):
         verbose_name="Holati"
     )
 
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
+
     project_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         verbose_name="Menejer bonusi (Loyiha uchun)"
-    )
-    penalty_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="Kechikkanlik uchun jarima foizi (%)"
     )
 
     manager = models.ForeignKey(
@@ -71,19 +68,29 @@ class Project(BaseModel):
         null=True,
         related_name='manager_projects',
         limit_choices_to={
-            'role': Role.MANAGER
+            'roles__contains': [Role.MANAGER]
         },
         db_index=True,
         verbose_name="Menejer"
     )
 
-    employees = models.ManyToManyField(User, related_name='employee_projects', limit_choices_to={'role': Role.EMPLOYEE},
+    employees = models.ManyToManyField(User, related_name='employee_projects',
+                                       limit_choices_to={'roles__contains': [Role.EMPLOYEE]},
                                        verbose_name="Xodimlar")
     testers = models.ManyToManyField(User, related_name='tester_projects', verbose_name="Sinovchilar")
 
     class Meta:
         verbose_name = "Loyiha "
         verbose_name_plural = "Loyihalar"
+
+    def clean(self):
+        super().clean()
+        if self.pk and self.employees.filter(id=self.manager_id).exists():
+            raise ValidationError({'employees': "Loyiha menejeri xodim sifatida qo'shila olmaydi!"})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -99,13 +106,15 @@ class Task(BaseModel):
 
     status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.TODO, db_index=True,
                               verbose_name='Holati')
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM, db_index=True,
                                 verbose_name='Darajasi')
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.FEATURE, db_index=True,
                             verbose_name='Turi')
 
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
-                                 limit_choices_to={'role': Role.EMPLOYEE}, db_index=True, verbose_name='Topshiruvchi')
+                                 limit_choices_to={'roles__contains': [Role.EMPLOYEE]}, db_index=True,
+                                 verbose_name='Topshiruvchi')
 
     deadline = models.DateTimeField(db_index=True, verbose_name='Muddati')
     started_at = models.DateTimeField(null=True, blank=True)
@@ -194,6 +203,7 @@ class MeetingAttendance(BaseModel):
                                 verbose_name='Uchrashuv')
 
     is_attended = models.BooleanField(default=True, verbose_name='Qatnashdimi?')
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
     absence_reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
 
     class Meta:

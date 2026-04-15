@@ -26,14 +26,27 @@ class ProjectSerializer(serializers.ModelSerializer):
     testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
     employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
 
+    completion_percentage = serializers.SerializerMethodField()
+
     class Meta:
         model = Project
         fields = (
             'id', 'title', 'description', 'manager', 'manager_info',
             'testers', 'testers_info', 'employees', 'employees_info',
-            'start_date', 'deadline', 'status', 'created_at', 'updated_at', 'is_active'
+            'start_date', 'deadline', 'status', 'created_at', 'updated_at', 'is_active',
+            'completion_percentage'
         )
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def get_completion_percentage(self, obj):
+        total_tasks = obj.tasks.count()
+        if total_tasks == 0:
+            return 0.0
+        
+        completed_statuses = [TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]
+        completed_tasks = obj.tasks.filter(status__in=completed_statuses).count()
+        
+        return round((completed_tasks / total_tasks) * 100, 1)
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
@@ -75,7 +88,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     def validate_task_price(self, value):
         user = self.context['request'].user
-        if user.role == Role.EMPLOYEE and value > 0:
+        if user.has_role(Role.EMPLOYEE) and value > 0:
             return 0.00
         return value
 

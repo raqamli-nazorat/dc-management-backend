@@ -76,7 +76,7 @@ class ExpenseRequest(BaseModel):
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name='Holati')
     accountant = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='approved_expenses',
-                                   limit_choices_to={'role': Role.ACCOUNTANT},
+                                   limit_choices_to={'roles__contains': [Role.ACCOUNTANT]},
                                    verbose_name='Hisobchi')
 
     paid_at = models.DateTimeField(null=True, blank=True, verbose_name='To\'langan vaqti')

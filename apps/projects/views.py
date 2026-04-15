@@ -13,6 +13,7 @@ from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender
 
+from .filters import TaskFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
 from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer, TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
@@ -22,13 +23,16 @@ from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSeriali
 @extend_schema(tags=['Projects'])
 class ProjectShortViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = ProjectShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
-
         queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]:
+        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
+            return Project.objects.none()
+
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
             return queryset.all()
 
         return queryset.filter(
@@ -60,10 +64,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-
         queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]:
+        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
+            return Project.objects.none()
+
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
             return queryset.all()
 
         return queryset.filter(
@@ -85,7 +91,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         filters.OrderingFilter
     ]
 
-    filterset_fields = ['status', 'priority', 'type', 'project']
+    filterset_class = TaskFilter
     search_fields = ['title', 'description']
     ordering_fields = ['deadline', 'priority', 'status', 'created_at']
     ordering = ['deadline']
@@ -104,10 +110,13 @@ class TaskViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]:
+        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
+            return Task.objects.none()
+
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
             return queryset.all()
 
-        if user.role == Role.MANAGER:
+        if user.has_role(Role.MANAGER):
             return queryset.filter(project__manager=user, is_active=True)
 
         return queryset.filter(
@@ -120,8 +129,20 @@ class TaskViewSet(viewsets.ModelViewSet):
         new_status = serializer.validated_data.get('status')
         current_status = task.status
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN] or task.project.manager == user:
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
+            old_status = task.status
             serializer.save()
+            new_status_saved = serializer.instance.status
+            
+            if old_status != new_status_saved and new_status_saved == TaskStatus.REJECTED:
+                if task.assignee:
+                    Notification.objects.create(
+                        user=task.assignee,
+                        title="Vazifangiz rad etildi",
+                        message=f"'{task.title}' vazifasi tester/menejer tomonidan rad etildi. Sababi: {serializer.instance.rejection_reason or 'Izohsiz'}",
+                        type=NotificationType.TASK,
+                        extra_data={'task_id': task.id}
+                    )
             return
 
         if task.assignee == user:
@@ -155,15 +176,36 @@ class TaskViewSet(viewsets.ModelViewSet):
                 raise PermissionDenied("Tester faqat 'Checked' yoki 'Rejected' qila oladi.")
 
             serializer.save()
+            
+            if new_status == TaskStatus.REJECTED and task.assignee:
+                Notification.objects.create(
+                    user=task.assignee,
+                    title="Vazifangiz rad etildi",
+                    message=f"'{task.title}' vazifasi tester tomonidan rad etildi. Sababi: {serializer.instance.rejection_reason or 'Izohsiz'}",
+                    type=NotificationType.TASK,
+                    extra_data={'task_id': task.id}
+                )
             return
 
         raise PermissionDenied("Sizda ushbu vazifa holatini o'zgartirish huquqi yo'q.")
+
+    def perform_create(self, serializer):
+        task = serializer.save()
+        if task.assignee:
+            Notification.objects.create(
+                user=task.assignee,
+                title="Yangi vazifa biriktirildi",
+                message=f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Deadline: {task.deadline.strftime('%Y-%m-%d %H:%M')}",
+                type=NotificationType.TASK,
+                extra_data={'task_id': task.id}
+            )
 
 
 @extend_schema(tags=['Task Attachments'])
 class TaskAttachmentViewSet(viewsets.ModelViewSet):
     queryset = TaskAttachment.objects.all()
     serializer_class = TaskAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     http_method_names = ['get', 'post', 'delete']
 
@@ -171,10 +213,13 @@ class TaskAttachmentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = TaskAttachment.objects.select_related('task__project', 'task__assignee')
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]:
+        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
+            return TaskAttachment.objects.none()
+
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
             return queryset.all()
 
-        if user.role == Role.MANAGER:
+        if user.has_role(Role.MANAGER):
             return queryset.filter(task__project__manager=user, is_active=True)
 
         return queryset.filter(
@@ -207,7 +252,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [(permissions.IsAdminUser | IsManager)()]  # Permission nomlarini tekshirib oling
+            return [(IsAdmin | IsManager)()]
         return [permissions.IsAuthenticated()]
 
     @transaction.atomic
@@ -221,38 +266,40 @@ class MeetingViewSet(viewsets.ModelViewSet):
             MeetingAttendance(user=user, meeting=meeting)
             for user in project_members
         ]
-        MeetingAttendance.objects.bulk_create(attendances)
+        if attendances:
+            MeetingAttendance.objects.bulk_create(attendances)
 
-        notifications_to_bulk = []
-        broadcast_data = []
-        start_time_str = meeting.start_time.strftime('%d.%m %H:%M')
+            notifications_to_bulk = []
+            broadcast_data = []
+            start_time_str = meeting.start_time.strftime('%d.%m %H:%M')
 
-        for member in project_members:
-            if member.id != self.request.user.id:  # Tashkilotchining o'ziga yubormaymiz
-                msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}"
+            for member in project_members:
+                if member.id != self.request.user.id:
+                    msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}"
 
-                notifications_to_bulk.append(Notification(
-                    user_id=member.id,
-                    title="Yangi uchrashuv belgilandi",
-                    message=msg,
-                    type=NotificationType.MEETING
-                ))
+                    notifications_to_bulk.append(Notification(
+                        user=member,
+                        title="Yangi uchrashuv belgilandi",
+                        message=msg,
+                        type=NotificationType.MEETING
+                    ))
 
-                broadcast_data.append({
-                    "user_id": member.id,
-                    "title": "Yangi uchrashuv belgilandi",
-                    "message": msg,
-                    "type": NotificationType.MEETING,
-                    "extra_data": {
-                        "meeting_id": meeting.id,
-                        "action": "open_meeting",
-                        "project_id": project.id
-                    }
-                })
+                    broadcast_data.append({
+                        "user_id": member.id,
+                        "title": "Yangi uchrashuv belgilandi",
+                        "message": msg,
+                        "type": "meeting",
+                        "extra_data": {
+                            "meeting_id": meeting.id,
+                            "action": "open_meeting",
+                            "project_id": project.id
+                        }
+                    })
 
-        if notifications_to_bulk:
-            Notification.objects.bulk_create(notifications_to_bulk)
-            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+            if notifications_to_bulk:
+                Notification.objects.bulk_create(notifications_to_bulk)
+                transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
 
     @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='close')
@@ -315,7 +362,7 @@ class MeetingAttendanceViewSet(viewsets.ModelViewSet):
         user = self.request.user
         attendance = self.get_object()
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.MANAGER]:
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.MANAGER):
             serializer.save()
             return
 

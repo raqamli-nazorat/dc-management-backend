@@ -32,8 +32,7 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
         model = ExpenseRequest
         fields = (
             'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
-            'reason',
-            'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
+            'reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
             'confirmed_at', 'created_at', 'updated_at'
         )
         read_only_fields = (
@@ -53,7 +52,7 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
 
             privileged_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
-            if hasattr(user, 'role') and not (user.is_superuser or user.role in privileged_roles):
+            if hasattr(user, 'roles') and not (user.is_superuser or user.has_role(*privileged_roles)):
                 self.fields['project'].queryset = queryset.filter(
                     Q(manager=user) |
                     Q(employees=user) |

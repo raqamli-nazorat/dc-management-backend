@@ -2,9 +2,12 @@ from django.contrib import admin
 from django.contrib.admin.sites import NotRegistered
 from django.contrib.auth.models import Group
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
+
 from .models import User, Role
 
 from unfold.admin import ModelAdmin
+from .forms import UserAdminForm
 
 from django_celery_beat.models import (
     ClockedSchedule,
@@ -32,9 +35,11 @@ for model in models_to_hide:
 
 @admin.register(User)
 class CustomUserAdmin(ModelAdmin):
+    form = UserAdminForm
+
     list_display = ('id', 'username', 'role_colored', 'fixed_salary_formatted', 'balance_colored', 'is_active')
     list_display_links = ('id', 'username')
-    list_filter = ('role', 'is_active')
+    list_filter = ('is_active',)
     search_fields = ('username',)
     ordering = ('id',)
 
@@ -49,7 +54,7 @@ class CustomUserAdmin(ModelAdmin):
             )
         }),
         ('Lavozim va Moliya', {
-            'fields': ('direction', 'role', 'fixed_salary', 'balance')
+            'fields': ('direction', 'roles', 'fixed_salary', 'balance')
         }),
         ('Huquqlar va Status', {
             'fields': ('is_active', 'is_staff', 'is_superuser'),
@@ -61,7 +66,7 @@ class CustomUserAdmin(ModelAdmin):
         ('Yangi xodim', {
             'classes': ('wide',),
             'fields': ('username', 'phone_number', 'region', 'direction',
-                       'passport_series', 'passport_image', 'role',
+                       'passport_series', 'passport_image', 'roles',
                        'fixed_salary', 'password'),
         }),
     )
@@ -77,16 +82,27 @@ class CustomUserAdmin(ModelAdmin):
                 obj.must_change_password = True
         super().save_model(request, obj, form, change)
 
-    @admin.display(description='Roli', ordering='role')
+    @admin.display(description='Roli')
     def role_colored(self, obj):
-        colors = {
-            Role.SUPERADMIN: 'red',
-            Role.ADMIN: '#d35400',
-            Role.MANAGER: '#2980b9',
-            Role.EMPLOYEE: '#27ae60',
-        }
-        return format_html('<span style="color: {}; font-weight: bold;">{}</span>',
-                           colors.get(obj.role, 'black'), obj.get_role_display())
+        if not obj.roles or len(obj.roles) == 0:
+            return mark_safe('<span style="color: gray; font-style: italic;">Qo\'shilmadi</span>')
+
+        try:
+            first_role = obj.roles[0]
+            colors = {
+                Role.SUPERADMIN: 'red',
+                Role.ADMIN: '#d35400',
+                Role.MANAGER: '#2980b9',
+                Role.EMPLOYEE: '#27ae60',
+                Role.AUDITOR: '#8e44ad',
+                Role.ACCOUNTANT: '#f39c12',
+            }
+            display_text = dict(Role.choices).get(first_role, first_role)
+            color = colors.get(first_role, 'black')
+
+            return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, display_text)
+        except Exception:
+            return "-"
 
     @admin.display(description='Oylik maosh', ordering='fixed_salary')
     def fixed_salary_formatted(self, obj):

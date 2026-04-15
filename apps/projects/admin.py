@@ -34,7 +34,7 @@ class ProjectAdmin(ModelAdmin):
             'fields': ('title', 'description', 'status', 'is_active')
         }),
         ('Narxlar', {
-            'fields': ('project_price', 'penalty_percentage')
+            'fields': ('project_price',)
         }),
         ('Jamoa', {
             'fields': ('manager', 'employees', 'testers')

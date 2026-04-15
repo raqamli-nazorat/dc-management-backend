@@ -12,6 +12,7 @@ from django.utils import timezone
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender
 
+from .filters import ExpenseRequestFilter, PayrollFilter
 from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
 from .serializers import ExpenseRequestSerializer, PayrollSerializer, LedgerSerializer, ExpenseCategorySerializer, \
     PayrollStatusUpdateSerializer
@@ -32,16 +33,7 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-
-    filterset_fields = {
-        'user__direction': ['exact'],
-        'user__role': ['exact'],
-        'status': ['exact'],
-        'type': ['exact'],
-        'expense_category': ['exact'],
-        'amount': ['exact', 'gte', 'lte'],
-        'created_at': ['date', 'date__gte', 'date__lte'],
-    }
+    filterset_class = ExpenseRequestFilter
 
     search_fields = [
         'user__username'
@@ -53,10 +45,10 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.is_superuser or user.role in [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]:
+        if user.is_superuser or user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return self.queryset
 
-        if user.role == Role.MANAGER:
+        if user.has_role(Role.MANAGER):
             return self.queryset.filter(
                 Q(user=user) |
                 Q(user__employee_projects__manager=user) |
@@ -66,7 +58,7 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(user=user)
 
     def perform_create(self, serializer):
-        if self.request.user.role in [Role.ADMIN, Role.AUDITOR]:
+        if self.request.user.has_role(Role.ADMIN, Role.AUDITOR):
             raise PermissionDenied("Sizning rolingiz xarajatlar so'rovlarini yaratishga vakolatli emas.")
         serializer.save(user=self.request.user)
 
@@ -85,7 +77,7 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
     def pay_expense(self, request, pk=None):
         expense = self.get_object()
 
-        if request.user.role != Role.ACCOUNTANT:
+        if not request.user.has_role(Role.ACCOUNTANT, Role.SUPERADMIN):
             raise PermissionDenied({'detail': "To'lovlarni amalga oshirish uchun faqat buxgalterlar vakolatli."})
 
         if expense.status != Status.PENDING:
@@ -141,13 +133,7 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-
-    filterset_fields = {
-        'is_confirmed': ['exact'],
-        'user__role': ['exact', 'in'],
-        'user__direction': ['exact'],
-        'month': ['exact', 'gte', 'lte'],
-    }
+    filterset_class = PayrollFilter
 
     search_fields = ['user__username']
     ordering_fields = ['month', 'total_amount', 'created_at']
@@ -160,7 +146,7 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]:
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return self.queryset
 
         return self.queryset.filter(user=user)
@@ -173,7 +159,7 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
     def confirm_payroll(self, request):
         user = request.user
 
-        if user.role not in [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT]:
+        if not user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT):
             raise PermissionDenied("Sizda oyliklarni tasdiqlash huquqi yo'q.")
 
         serializer = PayrollStatusUpdateSerializer(data=request.data)
@@ -194,7 +180,16 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
                 for payroll in payrolls:
                     payroll.is_confirmed = True
                     payroll.save()
-                    month_name = payroll.month.strftime("%B, %Y")
+
+                    months = {
+                        1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel",
+                        5: "May", 6: "Iyun", 7: "Iyul", 8: "Avgust",
+                        9: "Sentabr", 10: "Oktabr", 11: "Noyabr", 12: "Dekabr"
+                    }
+
+                    month_number = payroll.month.month
+                    month_name = months.get(month_number)
+
                     msg = f"{month_name} oyi uchun maoshingiz tasdiqlandi."
 
                     notifications_to_bulk.append(Notification(
@@ -241,7 +236,7 @@ class LedgerViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = self.request.user
 
-        if user.role in [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]:
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return self.queryset
 
         return self.queryset.filter(user=user)
