@@ -14,6 +14,8 @@ class ExpenseRequestFilter(filters.FilterSet):
             'expense_category': ['exact'],
             'amount': ['exact', 'gte', 'lte'],
             'created_at': ['date', 'date__gte', 'date__lte'],
+            'paid_at': ['date', 'date__gte', 'date__lte'],
+            'confirmed_at': ['date', 'date__gte', 'date__lte'],
         }
 
     def filter_by_user_roles(self, queryset, name, value):

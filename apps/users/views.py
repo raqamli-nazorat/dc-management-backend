@@ -70,9 +70,13 @@ class ChangePasswordView(generics.UpdateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+from apps.common.throttles import CustomScopedRateThrottle
+
 @extend_schema(tags=["Authorization"])
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+    throttle_classes = [CustomScopedRateThrottle]
+    throttle_scope = 'login'
 
 
 @extend_schema(tags=["Authorization"])
