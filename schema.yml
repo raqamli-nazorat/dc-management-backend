@@ -1,0 +1,4278 @@
+openapi: 3.0.3
+info:
+  title: Raqamli Nazorat API
+  version: 1.0.0
+paths:
+  /api/applications/:
+    get:
+      operationId: applications_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Holati
+          enum:
+          - accepted
+          - pending
+          - rejected
+        description: |-
+          * `pending` - Kutilmoqda
+          * `accepted` - Qabul qilindi
+          * `rejected` - Rad etildi
+      tags:
+      - Application
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedApplicationList'
+          description: ''
+    post:
+      operationId: applications_create
+      tags:
+      - Application
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Application'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Application'
+        required: true
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+          description: ''
+  /api/applications/{id}/:
+    get:
+      operationId: applications_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Application
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Application'
+          description: ''
+    patch:
+      operationId: applications_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Application
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedApplicationStatusUpdate'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationStatusUpdate'
+          description: ''
+  /api/applications/directions/:
+    get:
+      operationId: applications_directions_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Direction
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedDirectionList'
+          description: ''
+    post:
+      operationId: applications_directions_create
+      tags:
+      - Direction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Direction'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+          description: ''
+  /api/applications/directions/{id}/:
+    get:
+      operationId: applications_directions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yo'nalish.
+        required: true
+      tags:
+      - Direction
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+          description: ''
+    put:
+      operationId: applications_directions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yo'nalish.
+        required: true
+      tags:
+      - Direction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Direction'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+          description: ''
+    patch:
+      operationId: applications_directions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yo'nalish.
+        required: true
+      tags:
+      - Direction
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDirection'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Direction'
+          description: ''
+    delete:
+      operationId: applications_directions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yo'nalish.
+        required: true
+      tags:
+      - Direction
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/applications/regions/:
+    get:
+      operationId: applications_regions_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Region
+      security:
+      - jwtAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedRegionList'
+          description: ''
+    post:
+      operationId: applications_regions_create
+      tags:
+      - Region
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Region'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+          description: ''
+  /api/applications/regions/{id}/:
+    get:
+      operationId: applications_regions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Viloyat.
+        required: true
+      tags:
+      - Region
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+          description: ''
+    put:
+      operationId: applications_regions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Viloyat.
+        required: true
+      tags:
+      - Region
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Region'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+          description: ''
+    patch:
+      operationId: applications_regions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Viloyat.
+        required: true
+      tags:
+      - Region
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRegion'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Region'
+          description: ''
+    delete:
+      operationId: applications_regions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Viloyat.
+        required: true
+      tags:
+      - Region
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/auditlog/:
+    get:
+      operationId: auditlog_list
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+          title: Harakati
+          enum:
+          - confirm
+          - create
+          - delete
+          - update
+        description: |-
+          * `create` - Create
+          * `update` - Update
+          * `delete` - Delete
+          * `confirm` - Confirm
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: record_id
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: table_name
+        schema:
+          type: string
+      - in: query
+        name: user
+        schema:
+          type: integer
+      tags:
+      - Audit Logs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/auditlog/{id}/:
+    get:
+      operationId: auditlog_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Tarix yozuvi .
+        required: true
+      tags:
+      - Audit Logs
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLog'
+          description: ''
+  /api/auth/login/:
+    post:
+      operationId: auth_login_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - Authorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MyTokenObtainPair'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyTokenObtainPair'
+          description: ''
+  /api/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - Authorization
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MyTokenRefresh'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyTokenRefresh'
+          description: ''
+  /api/devices/register/:
+    post:
+      operationId: devices_register_create
+      tags:
+      - Register User Device
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserDevice'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDevice'
+          description: ''
+  /api/expense-category/:
+    get:
+      operationId: expense_category_list
+      tags:
+      - Expense Category
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ExpenseCategory'
+          description: ''
+  /api/expense-category/{id}/:
+    get:
+      operationId: expense_category_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajatlar toifasi .
+        required: true
+      tags:
+      - Expense Category
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseCategory'
+          description: ''
+  /api/expense-request/:
+    get:
+      operationId: expense_request_list
+      parameters:
+      - in: query
+        name: amount
+        schema:
+          type: number
+      - in: query
+        name: amount__gte
+        schema:
+          type: number
+      - in: query
+        name: amount__lte
+        schema:
+          type: number
+      - in: query
+        name: confirmed_at__date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: confirmed_at__date__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: confirmed_at__date__lte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: created_at__date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: created_at__date__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: created_at__date__lte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: expense_category
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: paid_at__date
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: paid_at__date__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: paid_at__date__lte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: project
+        schema:
+          type: integer
+      - in: query
+        name: roles
+        schema:
+          type: string
+        description: Rollar
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Holati
+          enum:
+          - confirmed
+          - paid
+          - pending
+        description: |-
+          * `pending` - Kutilmoqda
+          * `paid` - To'landi
+          * `confirmed` - Tasdiqlandi
+      - in: query
+        name: type
+        schema:
+          type: string
+          title: Turi
+          enum:
+          - company
+          - other
+          - withdrawal
+        description: |-
+          * `withdrawal` - Mablag' chiqarish
+          * `company` - Kompaniya xarajatlari
+          * `other` - Boshqa xarajatlar
+      - in: query
+        name: user__direction
+        schema:
+          type: integer
+      tags:
+      - Expense
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedExpenseRequestList'
+          description: ''
+    post:
+      operationId: expense_request_create
+      tags:
+      - Expense
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+  /api/expense-request/{id}/:
+    get:
+      operationId: expense_request_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+    put:
+      operationId: expense_request_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpenseRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+    patch:
+      operationId: expense_request_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedExpenseRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+    delete:
+      operationId: expense_request_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/expense-request/{id}/confirm/:
+    post:
+      operationId: expense_request_confirm_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+  /api/expense-request/{id}/pay/:
+    post:
+      operationId: expense_request_pay_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Xarajat so'rovi .
+        required: true
+      tags:
+      - Expense
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExpenseRequest'
+          description: ''
+  /api/ledger/:
+    get:
+      operationId: ledger_list
+      parameters:
+      - in: query
+        name: expense
+        schema:
+          type: integer
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: payroll
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: transaction_type
+        schema:
+          type: string
+          title: Tranzaksiya turi
+          enum:
+          - credit
+          - debit
+        description: |-
+          * `debit` - Chiqim
+          * `credit` - Kirim
+      - in: query
+        name: user
+        schema:
+          type: integer
+      tags:
+      - Ledger
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedLedgerList'
+          description: ''
+  /api/ledger/{id}/:
+    get:
+      operationId: ledger_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Arxiv .
+        required: true
+      tags:
+      - Ledger
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ledger'
+          description: ''
+  /api/meeting-attendance/:
+    get:
+      operationId: meeting_attendance_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Meeting Attendance
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMeetingAttendanceList'
+          description: ''
+    post:
+      operationId: meeting_attendance_create
+      tags:
+      - Meeting Attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingAttendance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAttendance'
+          description: ''
+  /api/meeting-attendance/{id}/:
+    get:
+      operationId: meeting_attendance_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilishga qatnashish
+          .
+        required: true
+      tags:
+      - Meeting Attendance
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAttendance'
+          description: ''
+    put:
+      operationId: meeting_attendance_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilishga qatnashish
+          .
+        required: true
+      tags:
+      - Meeting Attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingAttendance'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAttendance'
+          description: ''
+    patch:
+      operationId: meeting_attendance_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilishga qatnashish
+          .
+        required: true
+      tags:
+      - Meeting Attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeetingAttendance'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAttendance'
+          description: ''
+    delete:
+      operationId: meeting_attendance_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilishga qatnashish
+          .
+        required: true
+      tags:
+      - Meeting Attendance
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/meeting-reasons/{id}/:
+    patch:
+      operationId: meeting_reasons_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - Meeting Attendance
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeetingAttendanceReason'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingAttendanceReason'
+          description: ''
+  /api/meetings/:
+    get:
+      operationId: meetings_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Meetings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMeetingList'
+          description: ''
+    post:
+      operationId: meetings_create
+      tags:
+      - Meetings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Meeting'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+  /api/meetings/{id}/:
+    get:
+      operationId: meetings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilish .
+        required: true
+      tags:
+      - Meetings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+    put:
+      operationId: meetings_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilish .
+        required: true
+      tags:
+      - Meetings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Meeting'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+    patch:
+      operationId: meetings_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilish .
+        required: true
+      tags:
+      - Meetings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedMeeting'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+    delete:
+      operationId: meetings_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilish .
+        required: true
+      tags:
+      - Meetings
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/meetings/{id}/close/:
+    post:
+      operationId: meetings_close_create
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Yig'ilish .
+        required: true
+      tags:
+      - Meetings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Meeting'
+          description: ''
+  /api/notifications/:
+    get:
+      operationId: notifications_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedNotificationList'
+          description: ''
+  /api/notifications/{id}/read/:
+    patch:
+      operationId: notifications_read_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/notifications/read-all/:
+    post:
+      operationId: notifications_read_all_create
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/notifications/tickets/:
+    post:
+      operationId: notifications_tickets_create
+      tags:
+      - Notifications
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/payroll/:
+    get:
+      operationId: payroll_list
+      parameters:
+      - in: query
+        name: is_confirmed
+        schema:
+          type: boolean
+      - in: query
+        name: month
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: month__gte
+        schema:
+          type: string
+          format: date
+      - in: query
+        name: month__lte
+        schema:
+          type: string
+          format: date
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: roles
+        schema:
+          type: string
+        description: Rollar
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: user__direction
+        schema:
+          type: integer
+      tags:
+      - Payroll
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPayrollList'
+          description: ''
+  /api/payroll/{id}/:
+    get:
+      operationId: payroll_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Ish haqi .
+        required: true
+      tags:
+      - Payroll
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payroll'
+          description: ''
+  /api/payroll/confirm/:
+    post:
+      operationId: payroll_confirm_create
+      tags:
+      - Payroll
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayrollStatusUpdate'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayrollStatusUpdate'
+          description: ''
+  /api/project-shorts/:
+    get:
+      operationId: project_shorts_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjectShortList'
+          description: ''
+  /api/project-shorts/{id}/:
+    get:
+      operationId: project_shorts_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Loyiha .
+        required: true
+      tags:
+      - Projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectShort'
+          description: ''
+  /api/projects/:
+    get:
+      operationId: projects_list
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Holati
+          enum:
+          - active
+          - cancelled
+          - completed
+          - overdue
+          - planning
+        description: |-
+          * `planning` - Rejalashtirilmoqda
+          * `active` - Faol
+          * `overdue` - Muddati o'tgan
+          * `completed` - Yakunlangan
+          * `cancelled` - Bekor qilingan
+      tags:
+      - Projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedProjectList'
+          description: ''
+    post:
+      operationId: projects_create
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+  /api/projects/{id}/:
+    get:
+      operationId: projects_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Loyiha .
+        required: true
+      tags:
+      - Projects
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    put:
+      operationId: projects_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Loyiha .
+        required: true
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Project'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    patch:
+      operationId: projects_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Loyiha .
+        required: true
+      tags:
+      - Projects
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProject'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+          description: ''
+    delete:
+      operationId: projects_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Loyiha .
+        required: true
+      tags:
+      - Projects
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/task-attachments/:
+    get:
+      operationId: task_attachments_list
+      parameters:
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      tags:
+      - Task Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTaskAttachmentList'
+          description: ''
+    post:
+      operationId: task_attachments_create
+      tags:
+      - Task Attachments
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TaskAttachment'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+  /api/task-attachments/{id}/:
+    get:
+      operationId: task_attachments_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa fayli .
+        required: true
+      tags:
+      - Task Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskAttachment'
+          description: ''
+    delete:
+      operationId: task_attachments_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa fayli .
+        required: true
+      tags:
+      - Task Attachments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/tasks/:
+    get:
+      operationId: tasks_list
+      parameters:
+      - in: query
+        name: my_tasks
+        schema:
+          type: boolean
+        description: Mening vazifalarim
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: priority
+        schema:
+          type: string
+          title: Darajasi
+          enum:
+          - critical
+          - high
+          - low
+          - medium
+        description: |-
+          * `low` - Past
+          * `medium` - Oʻrta
+          * `high` - Yuqori
+          * `critical` - Kritik
+      - in: query
+        name: project
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          title: Holati
+          enum:
+          - checked
+          - done
+          - in_progress
+          - overdue
+          - production
+          - rejected
+          - todo
+        description: |-
+          * `todo` - Kutilmoqda
+          * `in_progress` - Jarayonda
+          * `overdue` - Muddati o'tgan
+          * `done` - Bajarildi
+          * `production` - Ishga tushirildi
+          * `checked` - Tekshirildi
+          * `rejected` - Rad etildi
+      - in: query
+        name: type
+        schema:
+          type: string
+          title: Turi
+          enum:
+          - bug
+          - extra
+          - feature
+          - research
+        description: |-
+          * `bug` - Xatolik (Bug)
+          * `extra` - Qoʻshimcha
+          * `feature` - Yangi funksiya
+          * `research` - Tadqiqot/Oʻrganish
+      tags:
+      - Tasks
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTaskList'
+          description: ''
+    post:
+      operationId: tasks_create
+      tags:
+      - Tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+  /api/tasks/{id}/:
+    get:
+      operationId: tasks_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa .
+        required: true
+      tags:
+      - Tasks
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    put:
+      operationId: tasks_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa .
+        required: true
+      tags:
+      - Tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    patch:
+      operationId: tasks_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa .
+        required: true
+      tags:
+      - Tasks
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTask'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+          description: ''
+    delete:
+      operationId: tasks_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Vazifa .
+        required: true
+      tags:
+      - Tasks
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/todos/:
+    get:
+      operationId: todos_list
+      parameters:
+      - in: query
+        name: is_done
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Todo
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTodoList'
+          description: ''
+    post:
+      operationId: todos_create
+      tags:
+      - Todo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Todo'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+          description: ''
+  /api/todos/{id}/:
+    get:
+      operationId: todos_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Eslatma .
+        required: true
+      tags:
+      - Todo
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+          description: ''
+    put:
+      operationId: todos_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Eslatma .
+        required: true
+      tags:
+      - Todo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Todo'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+          description: ''
+    patch:
+      operationId: todos_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Eslatma .
+        required: true
+      tags:
+      - Todo
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedTodo'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Todo'
+          description: ''
+    delete:
+      operationId: todos_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Eslatma .
+        required: true
+      tags:
+      - Todo
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users/:
+    get:
+      operationId: users_list
+      summary: Admin
+      parameters:
+      - in: query
+        name: direction
+        schema:
+          type: integer
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: region
+        schema:
+          type: integer
+      - in: query
+        name: roles
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserList'
+          description: ''
+    post:
+      operationId: users_create
+      summary: Admin
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+  /api/users/{id}/:
+    get:
+      operationId: users_retrieve
+      summary: Admin
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Foydalanuvchi .
+        required: true
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: users_update
+      summary: Admin
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Foydalanuvchi .
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: users_partial_update
+      summary: Admin
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Foydalanuvchi .
+        required: true
+      tags:
+      - Users
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: users_destroy
+      summary: Admin
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Foydalanuvchi .
+        required: true
+      tags:
+      - Users
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/users/me/:
+    get:
+      operationId: users_me_retrieve
+      tags:
+      - Profile
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Profile'
+          description: ''
+  /api/users/me/change-password/:
+    put:
+      operationId: users_me_change_password_update
+      tags:
+      - Profile
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChangePassword'
+          description: ''
+  /api/users/me/stats/:
+    get:
+      operationId: users_me_stats_retrieve
+      tags:
+      - Profile
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserStats'
+          description: ''
+components:
+  schemas:
+    ActionEnum:
+      enum:
+      - create
+      - update
+      - delete
+      - confirm
+      type: string
+      description: |-
+        * `create` - Create
+        * `update` - Update
+        * `delete` - Delete
+        * `confirm` - Confirm
+    Application:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        full_name:
+          type: string
+          title: To'liq ism sharif
+          maxLength: 255
+        birth_date:
+          type: string
+          format: date
+          title: Tug'ilgan sana
+        is_student:
+          type: boolean
+          title: Talabami?
+        university:
+          type: string
+          nullable: true
+          title: O'qish joyi va kursi
+          maxLength: 255
+        region:
+          type: integer
+          title: Viloyat
+        phone:
+          type: string
+          title: Telefon raqami
+          pattern: ^\+998\d{9}$
+          maxLength: 20
+        telegram:
+          type: string
+          nullable: true
+          title: Telegram profil havolasi
+          pattern: ^https://(t\.me/.+|[a-zA-Z0-9_]+\.t\.me)$
+          maxLength: 255
+        direction:
+          type: integer
+          title: Yo'nalish
+        resume:
+          type: string
+          format: uri
+          title: Rezyume (CV)
+        extra_info:
+          type: string
+          nullable: true
+          title: Qo'shimcha ma'lumot
+        portfolio:
+          type: string
+          nullable: true
+          title: Portfolio manzili
+          pattern: ^https://.+$
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status5f9Enum'
+          readOnly: true
+          title: Holati
+        is_active:
+          type: boolean
+          readOnly: true
+          title: Faolmi?
+      required:
+      - birth_date
+      - direction
+      - full_name
+      - id
+      - is_active
+      - phone
+      - region
+      - resume
+      - status
+    ApplicationStatusUpdate:
+      type: object
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status5f9Enum'
+          title: Holati
+        conclusion:
+          type: string
+          nullable: true
+          title: Xulosa
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          nullable: true
+          title: Foydalanuvchi
+        user_details:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        action:
+          allOf:
+          - $ref: '#/components/schemas/ActionEnum'
+          title: Harakati
+        ip_address:
+          type: string
+          nullable: true
+          title: IP manzili
+        table_name:
+          type: string
+          title: Jadval nomi
+          maxLength: 50
+        record_id:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Yozuv raqami
+        old_values:
+          nullable: true
+          title: Eski qiymati
+        new_values:
+          nullable: true
+          title: Yangi qiymati
+        timestamp:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Vaqti
+      required:
+      - action
+      - id
+      - record_id
+      - table_name
+      - timestamp
+      - user_details
+    ChangePassword:
+      type: object
+      properties:
+        old_password:
+          type: string
+          writeOnly: true
+        new_password:
+          type: string
+          writeOnly: true
+          minLength: 4
+        confirm_new_password:
+          type: string
+          writeOnly: true
+      required:
+      - confirm_new_password
+      - new_password
+      - old_password
+    DeviceTypeEnum:
+      enum:
+      - ios
+      - android
+      - web
+      type: string
+      description: |-
+        * `ios` - iOS
+        * `android` - Android
+        * `web` - Web
+    Direction:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Nomi
+          maxLength: 255
+        is_application:
+          type: boolean
+          title: Ariza uchun ham ishlatilsinmi?
+        is_active:
+          type: boolean
+          title: Faolmi?
+      required:
+      - id
+      - name
+    ExpenseCategory:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        is_active:
+          type: boolean
+          title: Faolmi?
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+      required:
+      - created_at
+      - id
+      - title
+      - updated_at
+    ExpenseRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseRequestTypeEnum'
+          title: Turi
+        project:
+          type: integer
+          writeOnly: true
+          nullable: true
+        project_info:
+          allOf:
+          - $ref: '#/components/schemas/ProjectShort'
+          readOnly: true
+        expense_category:
+          type: integer
+          writeOnly: true
+          nullable: true
+        expense_category_info:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseCategory'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Miqdori
+        reason:
+          type: string
+          title: Sababi
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          title: To'lov turi
+        card_number:
+          type: string
+          nullable: true
+          title: Karta raqami
+          maxLength: 20
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseRequestStatusEnum'
+          readOnly: true
+          title: Holati
+        accountant_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        paid_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: To'langan vaqti
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Tasdiqlangan vaqti
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+      required:
+      - accountant_info
+      - amount
+      - confirmed_at
+      - created_at
+      - expense_category_info
+      - id
+      - paid_at
+      - project_info
+      - reason
+      - status
+      - updated_at
+      - user_info
+    ExpenseRequestStatusEnum:
+      enum:
+      - pending
+      - paid
+      - confirmed
+      type: string
+      description: |-
+        * `pending` - Kutilmoqda
+        * `paid` - To'landi
+        * `confirmed` - Tasdiqlandi
+    ExpenseRequestTypeEnum:
+      enum:
+      - withdrawal
+      - company
+      - other
+      type: string
+      description: |-
+        * `withdrawal` - Mablag' chiqarish
+        * `company` - Kompaniya xarajatlari
+        * `other` - Boshqa xarajatlar
+    Ledger:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        is_active:
+          type: boolean
+          title: Faolmi?
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Miqdori
+        transaction_type:
+          allOf:
+          - $ref: '#/components/schemas/TransactionTypeEnum'
+          title: Tranzaksiya turi
+        description:
+          type: string
+          maxLength: 255
+        user:
+          type: integer
+          title: Foydalanuvchi
+        expense:
+          type: integer
+          nullable: true
+          title: Xarajat
+        payroll:
+          type: integer
+          nullable: true
+          title: Ish haqi
+      required:
+      - amount
+      - created_at
+      - description
+      - id
+      - transaction_type
+      - updated_at
+      - user
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        uid:
+          type: string
+          readOnly: true
+        project:
+          type: integer
+          nullable: true
+          title: Loyiha
+        organizer:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Tashkilotchi
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavfsifi
+        link:
+          type: string
+          format: uri
+          title: Havolasi
+          maxLength: 200
+        penalty_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Jarima foizi (%)
+        start_time:
+          type: string
+          format: date-time
+          title: Boshlanish vaqti
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Davomiyligi
+        is_completed:
+          type: boolean
+          title: Tugatildimi?
+        participants_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+      required:
+      - description
+      - duration_minutes
+      - id
+      - link
+      - organizer
+      - participants_info
+      - penalty_percentage
+      - start_time
+      - title
+      - uid
+    MeetingAttendance:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          writeOnly: true
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        meeting:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Uchrashuv
+        is_attended:
+          type: boolean
+          title: Qatnashdimi?
+        absence_reason:
+          type: string
+          nullable: true
+          title: Sababi
+      required:
+      - id
+      - meeting
+      - user
+      - user_info
+    MeetingAttendanceReason:
+      type: object
+      properties:
+        absence_reason:
+          type: string
+          nullable: true
+          title: Sababi
+      required:
+      - absence_reason
+    MyTokenObtainPair:
+      type: object
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - password
+      - username
+    MyTokenRefresh:
+      type: object
+      properties:
+        refresh:
+          type: string
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - refresh
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Sarlavha
+          maxLength: 255
+        message:
+          type: string
+          title: Xabar matni
+        type:
+          allOf:
+          - $ref: '#/components/schemas/NotificationTypeEnum'
+          title: Turi
+        extra_data:
+          nullable: true
+          title: Qo'shimcha ma'lumot
+        is_read:
+          type: boolean
+          title: O'qildimi?
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+      required:
+      - created_at
+      - id
+      - message
+      - title
+    NotificationTypeEnum:
+      enum:
+      - task
+      - finance
+      - meeting
+      - system
+      - alert
+      type: string
+      description: |-
+        * `task` - Vazifa
+        * `finance` - Moliya
+        * `meeting` - Yig'ilish
+        * `system` - Tizim xabari
+        * `alert` - Ogohlantirish
+    PaginatedApplicationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Application'
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedDirectionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Direction'
+    PaginatedExpenseRequestList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ExpenseRequest'
+    PaginatedLedgerList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ledger'
+    PaginatedMeetingAttendanceList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingAttendance'
+    PaginatedMeetingList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Meeting'
+    PaginatedNotificationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Notification'
+    PaginatedPayrollList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Payroll'
+    PaginatedProjectList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Project'
+    PaginatedProjectShortList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectShort'
+    PaginatedRegionList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Region'
+    PaginatedTaskAttachmentList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+    PaginatedTaskList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+    PaginatedTodoList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Todo'
+    PaginatedUserList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    PatchedApplicationStatusUpdate:
+      type: object
+      properties:
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status5f9Enum'
+          title: Holati
+        conclusion:
+          type: string
+          nullable: true
+          title: Xulosa
+    PatchedDirection:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Nomi
+          maxLength: 255
+        is_application:
+          type: boolean
+          title: Ariza uchun ham ishlatilsinmi?
+        is_active:
+          type: boolean
+          title: Faolmi?
+    PatchedExpenseRequest:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        type:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseRequestTypeEnum'
+          title: Turi
+        project:
+          type: integer
+          writeOnly: true
+          nullable: true
+        project_info:
+          allOf:
+          - $ref: '#/components/schemas/ProjectShort'
+          readOnly: true
+        expense_category:
+          type: integer
+          writeOnly: true
+          nullable: true
+        expense_category_info:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseCategory'
+          readOnly: true
+        amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Miqdori
+        reason:
+          type: string
+          title: Sababi
+        payment_method:
+          allOf:
+          - $ref: '#/components/schemas/PaymentMethodEnum'
+          title: To'lov turi
+        card_number:
+          type: string
+          nullable: true
+          title: Karta raqami
+          maxLength: 20
+        status:
+          allOf:
+          - $ref: '#/components/schemas/ExpenseRequestStatusEnum'
+          readOnly: true
+          title: Holati
+        accountant_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        paid_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: To'langan vaqti
+        confirmed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          title: Tasdiqlangan vaqti
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+    PatchedMeeting:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        uid:
+          type: string
+          readOnly: true
+        project:
+          type: integer
+          nullable: true
+          title: Loyiha
+        organizer:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Tashkilotchi
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavfsifi
+        link:
+          type: string
+          format: uri
+          title: Havolasi
+          maxLength: 200
+        penalty_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Jarima foizi (%)
+        start_time:
+          type: string
+          format: date-time
+          title: Boshlanish vaqti
+        duration_minutes:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Davomiyligi
+        is_completed:
+          type: boolean
+          title: Tugatildimi?
+        participants_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+    PatchedMeetingAttendance:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          writeOnly: true
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        meeting:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Uchrashuv
+        is_attended:
+          type: boolean
+          title: Qatnashdimi?
+        absence_reason:
+          type: string
+          nullable: true
+          title: Sababi
+    PatchedMeetingAttendanceReason:
+      type: object
+      properties:
+        absence_reason:
+          type: string
+          nullable: true
+          title: Sababi
+    PatchedProject:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavsifi
+        manager:
+          type: integer
+          writeOnly: true
+        manager_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        testers:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        testers_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        employees:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        employees_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        deadline:
+          type: string
+          format: date-time
+          title: Muddati
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusCb2Enum'
+          title: Holati
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+        completion_percentage:
+          type: string
+          readOnly: true
+    PatchedRegion:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Nomi
+          maxLength: 255
+        is_application:
+          type: boolean
+          title: Ariza uchun ham ishlatilsinmi?
+        is_active:
+          type: boolean
+          title: Faolmi?
+    PatchedTask:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        uid:
+          type: string
+          readOnly: true
+        project:
+          type: integer
+          writeOnly: true
+        project_info:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavsifi
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TaskStatusEnum'
+          title: Holati
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/PriorityEnum'
+          title: Darajasi
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TaskTypeEnum'
+          title: Turi
+        assignee:
+          type: integer
+          writeOnly: true
+          nullable: true
+        assignee_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        deadline:
+          type: string
+          format: date-time
+          title: Muddati
+        task_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Vazifa narxi
+        penalty_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          title: Jarima foizi (%)
+        estimated_minutes:
+          type: integer
+          readOnly: true
+          title: Taxminiy vaqt (daqiqa)
+        actual_minutes:
+          type: integer
+          readOnly: true
+          title: Haqiqiy ish vaqti (daqiqa)
+        estimated_input_hours:
+          type: integer
+          minimum: 0
+          writeOnly: true
+        estimated_input_minutes:
+          type: integer
+          maximum: 59
+          minimum: 0
+          writeOnly: true
+        reopened_count:
+          type: integer
+          readOnly: true
+          title: Qaytishlar soni
+        rejection_reason:
+          type: string
+          readOnly: true
+          nullable: true
+          title: Rad etish sababi
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+    PatchedTodo:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Eslatma egasi
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        title:
+          type: string
+          title: Eslatma matni
+          maxLength: 255
+        is_done:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+    PatchedUser:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: F.I.O
+          maxLength: 150
+        phone_number:
+          type: string
+          title: Telefon raqami
+          pattern: ^\+998\d{9}$
+          maxLength: 13
+        region:
+          type: integer
+          nullable: true
+          title: Viloyati
+        direction:
+          type: integer
+          nullable: true
+          title: Yo'nalishi
+        passport_series:
+          type: string
+          nullable: true
+          title: Passport seriyasi va raqami
+          maxLength: 9
+        passport_image:
+          type: string
+          format: uri
+          nullable: true
+          title: Passport rasmi
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolesEnum'
+          title: Rollari
+        password:
+          type: string
+          writeOnly: true
+        confirm_password:
+          type: string
+          writeOnly: true
+        fixed_salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Oylik maosh
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Balans
+    PaymentMethodEnum:
+      enum:
+      - cash
+      - card
+      type: string
+      description: |-
+        * `cash` - Naqd pul
+        * `card` - Karta raqam orqali
+    Payroll:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          writeOnly: true
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        month:
+          type: string
+          format: date
+          title: Oy
+        month_display:
+          type: string
+          readOnly: true
+        fixed_salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Oylik maosh
+        kpi_bonus:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: KPI bonusi
+        penalty_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Jarima miqdori
+        total_amount:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Jami miqdori
+        tasks_completed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Bajarilgan vazifalar
+        deadline_missed:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Muddatdan o'tkazib yuborilganlar
+        bug_count:
+          type: integer
+          maximum: 2147483647
+          minimum: 0
+          title: Xatolar
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        is_confirmed:
+          type: boolean
+          readOnly: true
+          title: Tasdiqlandimi?
+      required:
+      - created_at
+      - fixed_salary
+      - id
+      - is_confirmed
+      - month
+      - month_display
+      - total_amount
+      - user
+      - user_info
+    PayrollStatusUpdate:
+      type: object
+      properties:
+        payroll_ids:
+          type: array
+          items:
+            type: integer
+      required:
+      - payroll_ids
+    PriorityEnum:
+      enum:
+      - low
+      - medium
+      - high
+      - critical
+      type: string
+      description: |-
+        * `low` - Past
+        * `medium` - Oʻrta
+        * `high` - Yuqori
+        * `critical` - Kritik
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          title: Xodim avatari
+        username:
+          type: string
+          title: F.I.O
+          maxLength: 150
+        phone_number:
+          type: string
+          title: Telefon raqami
+          pattern: ^\+998\d{9}$
+          maxLength: 13
+        passport_series:
+          type: string
+          nullable: true
+          title: Passport seriyasi va raqami
+          maxLength: 9
+        region:
+          type: integer
+          nullable: true
+          title: Viloyati
+        direction:
+          type: integer
+          nullable: true
+          title: Yo'nalishi
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolesEnum'
+          title: Rollari
+        fixed_salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Oylik maosh
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Balans
+        date_joined:
+          type: string
+          format: date-time
+        change_password:
+          type: boolean
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - id
+      - username
+    Project:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavsifi
+        manager:
+          type: integer
+          writeOnly: true
+        manager_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        testers:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        testers_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        employees:
+          type: array
+          items:
+            type: integer
+            writeOnly: true
+          writeOnly: true
+        employees_info:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        deadline:
+          type: string
+          format: date-time
+          title: Muddati
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusCb2Enum'
+          title: Holati
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+        completion_percentage:
+          type: string
+          readOnly: true
+      required:
+      - completion_percentage
+      - created_at
+      - deadline
+      - description
+      - employees
+      - employees_info
+      - id
+      - manager
+      - manager_info
+      - testers
+      - testers_info
+      - title
+      - updated_at
+    ProjectShort:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavsifi
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusCb2Enum'
+          title: Holati
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+      required:
+      - created_at
+      - description
+      - id
+      - title
+    Region:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          title: Nomi
+          maxLength: 255
+        is_application:
+          type: boolean
+          title: Ariza uchun ham ishlatilsinmi?
+        is_active:
+          type: boolean
+          title: Faolmi?
+      required:
+      - id
+      - name
+    RolesEnum:
+      enum:
+      - superadmin
+      - admin
+      - manager
+      - employee
+      - auditor
+      - accountant
+      type: string
+      description: |-
+        * `superadmin` - Bosh administrator
+        * `admin` - Administrator
+        * `manager` - Menejer
+        * `employee` - Xodim
+        * `auditor` - Nazoratchi
+        * `accountant` - Hisobchi
+    Status5f9Enum:
+      enum:
+      - pending
+      - accepted
+      - rejected
+      type: string
+      description: |-
+        * `pending` - Kutilmoqda
+        * `accepted` - Qabul qilindi
+        * `rejected` - Rad etildi
+    StatusCb2Enum:
+      enum:
+      - planning
+      - active
+      - overdue
+      - completed
+      - cancelled
+      type: string
+      description: |-
+        * `planning` - Rejalashtirilmoqda
+        * `active` - Faol
+        * `overdue` - Muddati o'tgan
+        * `completed` - Yakunlangan
+        * `cancelled` - Bekor qilingan
+    Task:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        uid:
+          type: string
+          readOnly: true
+        project:
+          type: integer
+          writeOnly: true
+        project_info:
+          type: string
+          readOnly: true
+        title:
+          type: string
+          title: Nomi
+          maxLength: 255
+        description:
+          type: string
+          title: Tavsifi
+        status:
+          allOf:
+          - $ref: '#/components/schemas/TaskStatusEnum'
+          title: Holati
+        priority:
+          allOf:
+          - $ref: '#/components/schemas/PriorityEnum'
+          title: Darajasi
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TaskTypeEnum'
+          title: Turi
+        assignee:
+          type: integer
+          writeOnly: true
+          nullable: true
+        assignee_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        deadline:
+          type: string
+          format: date-time
+          title: Muddati
+        task_price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Vazifa narxi
+        penalty_percentage:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,3}(?:\.\d{0,2})?$
+          title: Jarima foizi (%)
+        estimated_minutes:
+          type: integer
+          readOnly: true
+          title: Taxminiy vaqt (daqiqa)
+        actual_minutes:
+          type: integer
+          readOnly: true
+          title: Haqiqiy ish vaqti (daqiqa)
+        estimated_input_hours:
+          type: integer
+          minimum: 0
+          writeOnly: true
+        estimated_input_minutes:
+          type: integer
+          maximum: 59
+          minimum: 0
+          writeOnly: true
+        reopened_count:
+          type: integer
+          readOnly: true
+          title: Qaytishlar soni
+        rejection_reason:
+          type: string
+          readOnly: true
+          nullable: true
+          title: Rad etish sababi
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskAttachment'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+      required:
+      - actual_minutes
+      - assignee_info
+      - attachments
+      - created_at
+      - deadline
+      - description
+      - estimated_minutes
+      - id
+      - project
+      - project_info
+      - rejection_reason
+      - reopened_count
+      - title
+      - uid
+      - updated_at
+    TaskAttachment:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        task:
+          type: integer
+          title: Vazifa
+        file:
+          type: string
+          format: uri
+          title: Fayl
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+      required:
+      - created_at
+      - file
+      - id
+      - task
+      - updated_at
+    TaskStatusEnum:
+      enum:
+      - todo
+      - in_progress
+      - overdue
+      - done
+      - production
+      - checked
+      - rejected
+      type: string
+      description: |-
+        * `todo` - Kutilmoqda
+        * `in_progress` - Jarayonda
+        * `overdue` - Muddati o'tgan
+        * `done` - Bajarildi
+        * `production` - Ishga tushirildi
+        * `checked` - Tekshirildi
+        * `rejected` - Rad etildi
+    TaskTypeEnum:
+      enum:
+      - bug
+      - extra
+      - feature
+      - research
+      type: string
+      description: |-
+        * `bug` - Xatolik (Bug)
+        * `extra` - Qoʻshimcha
+        * `feature` - Yangi funksiya
+        * `research` - Tadqiqot/Oʻrganish
+    Todo:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          nullable: true
+          title: Eslatma egasi
+        user_info:
+          allOf:
+          - $ref: '#/components/schemas/UserShort'
+          readOnly: true
+        title:
+          type: string
+          title: Eslatma matni
+          maxLength: 255
+        is_done:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yaratilgan vaqti
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          title: Yangilangan vaqti
+        is_active:
+          type: boolean
+          title: Faolmi?
+      required:
+      - created_at
+      - id
+      - title
+      - updated_at
+      - user
+      - user_info
+    TransactionTypeEnum:
+      enum:
+      - debit
+      - credit
+      type: string
+      description: |-
+        * `debit` - Chiqim
+        * `credit` - Kirim
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        username:
+          type: string
+          title: F.I.O
+          maxLength: 150
+        phone_number:
+          type: string
+          title: Telefon raqami
+          pattern: ^\+998\d{9}$
+          maxLength: 13
+        region:
+          type: integer
+          nullable: true
+          title: Viloyati
+        direction:
+          type: integer
+          nullable: true
+          title: Yo'nalishi
+        passport_series:
+          type: string
+          nullable: true
+          title: Passport seriyasi va raqami
+          maxLength: 9
+        passport_image:
+          type: string
+          format: uri
+          nullable: true
+          title: Passport rasmi
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolesEnum'
+          title: Rollari
+        password:
+          type: string
+          writeOnly: true
+        confirm_password:
+          type: string
+          writeOnly: true
+        fixed_salary:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          title: Oylik maosh
+        balance:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,10}(?:\.\d{0,2})?$
+          readOnly: true
+          title: Balans
+      required:
+      - balance
+      - id
+      - username
+    UserDevice:
+      type: object
+      properties:
+        fcm_token:
+          type: string
+        device_type:
+          $ref: '#/components/schemas/DeviceTypeEnum'
+        device_id:
+          type: string
+          maxLength: 255
+      required:
+      - device_id
+      - device_type
+      - fcm_token
+    UserShort:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        avatar:
+          type: string
+          format: uri
+          nullable: true
+          title: Xodim avatari
+        username:
+          type: string
+          title: F.I.O
+          maxLength: 150
+        phone_number:
+          type: string
+          title: Telefon raqami
+          pattern: ^\+998\d{9}$
+          maxLength: 13
+        region:
+          type: integer
+          nullable: true
+          title: Viloyati
+        direction:
+          type: integer
+          nullable: true
+          title: Yo'nalishi
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/RolesEnum'
+          title: Rollari
+        date_joined:
+          type: string
+          format: date-time
+        is_active:
+          type: boolean
+          title: Active
+          description: Designates whether this user should be treated as active. Unselect
+            this instead of deleting accounts.
+      required:
+      - id
+      - username
+    UserStats:
+      type: object
+      properties:
+        one_month:
+          type: string
+          readOnly: true
+        three_months:
+          type: string
+          readOnly: true
+      required:
+      - one_month
+      - three_months
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
