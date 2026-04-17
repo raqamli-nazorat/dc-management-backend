@@ -92,7 +92,7 @@ class TaskViewSet(viewsets.ModelViewSet):
     ]
 
     filterset_class = TaskFilter
-    search_fields = ['title', 'description']
+    search_fields = ['assignee__username', 'uid', 'title', 'description']
     ordering_fields = ['deadline', 'priority', 'status', 'created_at']
     ordering = ['deadline']
 

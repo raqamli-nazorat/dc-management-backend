@@ -43,10 +43,10 @@ class ProjectSerializer(serializers.ModelSerializer):
         total_tasks = obj.tasks.count()
         if total_tasks == 0:
             return 0.0
-        
+
         completed_statuses = [TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]
         completed_tasks = obj.tasks.filter(status__in=completed_statuses).count()
-        
+
         return round((completed_tasks / total_tasks) * 100, 1)
 
 
@@ -117,6 +117,13 @@ class TaskSerializer(serializers.ModelSerializer):
             if not project.employees.filter(id=assignee.id).exists():
                 raise serializers.ValidationError({
                     'assignee': "Bu xodim ushbu loyiha jamoasiga tayinlanmagan!"
+                })
+
+        if not self.instance:
+            status = attrs.get('status')
+            if status and status != TaskStatus.TODO:
+                raise serializers.ValidationError({
+                    'status': f"Yangi vazifa faqat '{TaskStatus.TODO}' holatida yaratilishi mumkin."
                 })
 
         hours = attrs.pop('estimated_input_hours', None)
