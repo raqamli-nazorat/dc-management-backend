@@ -203,7 +203,7 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingAttendance
         fields = ('id', 'user', 'user_info', 'meeting', 'is_attended', 'absence_reason')
-        read_only_fields = ('user', 'meeting')
+        read_only_fields = ('id', 'user', 'meeting')
 
     def validate(self, attrs):
         is_attended = attrs.get('is_attended')
