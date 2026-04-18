@@ -23,8 +23,8 @@ class MeetingAttendanceInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(ModelAdmin):
-    list_display = ('id', 'title', 'manager', 'status_colored', 'created_at', 'deadline')
-    list_display_links = ('id', 'title')
+    list_display = ('uid', 'title', 'manager', 'status_colored', 'created_at', 'deadline')
+    list_display_links = ('uid', 'title')
     list_filter = ('status', 'created_at', 'deadline', 'manager')
     search_fields = ('title', 'description', 'manager__username')
     filter_horizontal = ('employees', 'testers')
@@ -75,7 +75,7 @@ class TaskAdmin(ModelAdmin):
             'fields': ('status', 'priority', 'type')
         }),
         ('Topshiriq & narxlar', {
-            'fields': ('assignee', 'task_price', 'penalty_percentage')
+            'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
         }),
         ('Vaqtni kuzatish & Sifat', {
             'fields': ('deadline', 'estimated_minutes', 'actual_minutes', 'reopened_count')

@@ -1,13 +1,20 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.applications.models import Region, Direction, Application, ApplicationStatus
+from apps.applications.models import Region, District, Direction, Application, ApplicationStatus
 
 
 class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
         fields = ('id', 'name', 'is_application', 'is_active')
+        read_only_fields = ('id',)
+
+
+class DistrictSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = District
+        fields = ('id', 'region', 'name', 'is_application', 'is_active')
         read_only_fields = ('id',)
 
 
@@ -21,7 +28,7 @@ class DirectionSerializer(serializers.ModelSerializer):
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
-        fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region',
+        fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region', 'district',
                   'phone', 'telegram', 'direction', 'resume', 'extra_info', 'portfolio', 'status', 'is_active'
                   )
         read_only_fields = ('id', 'status', 'is_active')

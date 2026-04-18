@@ -3,9 +3,9 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from apps.common.utils import generate_unique_id
 from apps.common.models import BaseModel
 from apps.users.models import Role
-from .utils import generate_unique_id
 
 User = get_user_model()
 
@@ -43,6 +43,7 @@ class Type(models.TextChoices):
 
 
 class Project(BaseModel):
+    uid = models.CharField(max_length=10, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
     title = models.CharField(max_length=255, verbose_name="Nomi")
     description = models.TextField(verbose_name="Tavsifi")
     deadline = models.DateTimeField(verbose_name="Muddati")
@@ -97,6 +98,8 @@ class Project(BaseModel):
 
     def save(self, *args, **kwargs):
         self.full_clean()
+        if not self.uid:
+            self.uid = generate_unique_id('P', Project)
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -119,6 +122,8 @@ class Task(BaseModel):
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.FEATURE, db_index=True,
                             verbose_name='Turi')
 
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_tasks', verbose_name='Yaratuvchi')
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
                                  limit_choices_to={'roles__contains': [Role.EMPLOYEE]}, db_index=True,
                                  verbose_name='Topshiruvchi')
@@ -165,9 +170,9 @@ class Task(BaseModel):
                 })
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('T', Task)
-        self.full_clean()
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -212,6 +217,7 @@ class Meeting(BaseModel):
         verbose_name_plural = 'Yig\'lishlar'
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('M', Meeting)
         super().save(*args, **kwargs)

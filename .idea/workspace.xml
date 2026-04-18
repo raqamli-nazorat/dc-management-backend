@@ -1,7 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="" />
+    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/urls.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/validators.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/validators.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/applications/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/audit/signals.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/audit/signals.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/filters.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/filters.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/notifications/tasks.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/tasks.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/serializers.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/common/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/users/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/admin.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/users/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/serializers.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -66,6 +89,7 @@
 }</component>
   <component name="RecentsManager">
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="D:\Programming\my codes\python\works\dc-management-backend\apps\common" />
       <recent name="D:\Programming\my codes\python\works\dc-management-backend\core" />
     </key>
   </component>
@@ -158,6 +182,9 @@
       <workItem from="1776338342285" duration="28000" />
       <workItem from="1776361312796" duration="3647000" />
       <workItem from="1776416470130" duration="553000" />
+      <workItem from="1776443718635" duration="1247000" />
+      <workItem from="1776446322509" duration="5464000" />
+      <workItem from="1776489050299" duration="1295000" />
     </task>
     <servers />
   </component>

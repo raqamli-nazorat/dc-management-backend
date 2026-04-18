@@ -1,10 +1,11 @@
 from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.core.exceptions import ValidationError
 
 from apps.users.utils import user_avatar_path, passport_path
 from apps.applications.validators import phone_validator
-from apps.applications.models import Region, Direction
+from apps.applications.models import Region, District, Direction
 
 
 class Role(models.TextChoices):
@@ -22,6 +23,8 @@ class User(AbstractUser):
                        verbose_name="Rollari")
 
     region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Viloyati")
+    district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True, blank=True,
+                                 verbose_name="Tumani")
     phone_number = models.CharField(validators=[phone_validator], max_length=13, blank=True,
                                     verbose_name="Telefon raqami")
     passport_series = models.CharField(max_length=9, blank=True, null=True, verbose_name="Passport seriyasi va raqami")
@@ -44,3 +47,15 @@ class User(AbstractUser):
 
     def has_role(self, *allowed_roles):
         return bool(set(self.roles) & set(allowed_roles))
+
+    def clean(self):
+        super().clean()
+        if self.district and self.region:
+            if self.district.region_id != self.region_id:
+                raise ValidationError({
+                    'district': "Tanlangan tuman ushbu viloyatga tegishli emas!"
+                })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)

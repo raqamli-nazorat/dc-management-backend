@@ -5,8 +5,8 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny
 
-from apps.applications.models import Region, Direction, Application
-from apps.applications.serializers import (RegionSerializer, DirectionSerializer,
+from apps.applications.models import Region, District, Direction, Application
+from apps.applications.serializers import (RegionSerializer, DistrictSerializer, DirectionSerializer,
                                            ApplicationSerializer, ApplicationStatusUpdateSerializer)
 from apps.users.permissions import IsAdmin, IsManager, IsSuperAdmin
 from apps.users.models import Role
@@ -27,10 +27,17 @@ class ActiveObjectsMixin:
         return super().get_queryset().filter(is_application=True, is_active=True)
 
 
-@extend_schema(tags=['Region'])
 class RegionViewSet(ActiveObjectsMixin, viewsets.ModelViewSet):
     queryset = Region.objects.all()
     serializer_class = RegionSerializer
+
+
+@extend_schema(tags=['District'])
+class DistrictViewSet(ActiveObjectsMixin, viewsets.ModelViewSet):
+    queryset = District.objects.select_related('region').all()
+    serializer_class = DistrictSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['region']
 
 
 @extend_schema(tags=['Direction'])
@@ -55,14 +62,14 @@ class ApplicationView(ListCreateAPIView):
 
     def get_queryset(self):
         return Application.objects.select_related(
-            'region', 'direction', 'reviewed_by'
+            'region', 'district', 'direction', 'reviewed_by'
         ).all()
 
 
 @extend_schema(tags=['Application'])
 class ApplicationDetailView(RetrieveUpdateAPIView):
     queryset = Application.objects.select_related(
-        'region', 'direction', 'reviewed_by'
+        'region', 'district', 'direction', 'reviewed_by'
     ).all()
     permission_classes = (IsAdmin | IsManager,)
     http_method_names = ('get', 'patch',)

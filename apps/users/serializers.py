@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'phone_number', 'region', 'direction',
+            'id', 'username', 'phone_number', 'region', 'district', 'direction',
             'passport_series', 'passport_image', 'roles',
             'password', 'confirm_password',
             'fixed_salary', 'balance',
@@ -89,14 +89,14 @@ class UserSerializer(serializers.ModelSerializer):
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'region', 'direction', 'roles', 'date_joined',
+        fields = ('id', 'avatar', 'username', 'phone_number', 'region', 'district', 'direction', 'roles', 'date_joined',
                   'is_active')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'direction', 'roles',
+        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'direction', 'roles',
                   'fixed_salary', 'balance', 'date_joined', 'change_password', 'is_active')
 
 
@@ -266,7 +266,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "username": user.username,
             "phone_number": user.phone_number,
             "avatar": user.avatar or None,
-            "roles": user.roles,
+            "region": user.region.name if user.region else None,
+            "district": user.district.name if user.district else None,
             "change_password": user.change_password,
             "is_active": user.is_active,
         }
@@ -288,7 +289,8 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
                 "username": user.username,
                 "phone_number": user.phone_number,
                 "avatar": user.avatar or None,
-                "roles": user.roles,
+                "region": user.region.name if user.region else None,
+                "district": user.district.name if user.district else None,
                 "change_password": user.change_password,
                 "is_active": user.is_active,
             }

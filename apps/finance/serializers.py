@@ -31,12 +31,12 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseRequest
         fields = (
-            'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
+            'id', 'uid', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
             'reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
             'confirmed_at', 'created_at', 'updated_at'
         )
         read_only_fields = (
-            'id', 'status', 'paid_at', 'confirmed_at', 'created_at', 'updated_at'
+            'id', 'uid', 'status', 'paid_at', 'confirmed_at', 'created_at', 'updated_at'
         )
 
     def __init__(self, *args, **kwargs):
@@ -88,13 +88,13 @@ class PayrollSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payroll
         fields = (
-            'id', 'user', 'user_info', 'month', 'month_display',
+            'id', 'uid', 'user', 'user_info', 'month', 'month_display',
             'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
             'tasks_completed', 'deadline_missed', 'bug_count',
             'created_at', 'is_confirmed'
         )
         read_only_fields = (
-            'id', 'user', 'total_amount', 'created_at', 'is_confirmed'
+            'id', 'uid', 'user', 'total_amount', 'created_at', 'is_confirmed'
         )
 
     def get_month_display(self, obj):

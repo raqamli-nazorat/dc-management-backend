@@ -37,7 +37,7 @@ for model in models_to_hide:
 class CustomUserAdmin(ModelAdmin):
     form = UserAdminForm
 
-    list_display = ('id', 'username', 'role_colored', 'fixed_salary_formatted', 'balance_colored', 'is_active')
+    list_display = ('id', 'username', 'district', 'role_colored', 'fixed_salary_formatted', 'balance_colored', 'is_active')
     list_display_links = ('id', 'username')
     list_filter = ('is_active',)
     search_fields = ('username',)
@@ -49,7 +49,7 @@ class CustomUserAdmin(ModelAdmin):
         }),
         ('Shaxsiy ma\'lumotlar', {
             'fields': (
-                'avatar', 'phone_number', 'region',
+                'avatar', 'phone_number', 'region', 'district',
                 'passport_series', 'passport_image'
             )
         }),
@@ -65,7 +65,7 @@ class CustomUserAdmin(ModelAdmin):
     add_fieldsets = (
         ('Yangi xodim', {
             'classes': ('wide',),
-            'fields': ('username', 'phone_number', 'region', 'direction',
+            'fields': ('username', 'phone_number', 'region', 'district', 'direction',
                        'passport_series', 'passport_image', 'roles',
                        'fixed_salary', 'password'),
         }),

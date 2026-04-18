@@ -14,7 +14,7 @@ class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = (
-            'id', 'title', 'description', 'status', 'created_at'
+            'id', 'uid', 'title', 'description', 'status', 'created_at'
         )
 
 
@@ -32,12 +32,12 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = (
-            'id', 'title', 'description', 'manager', 'manager_info',
+            'id', 'uid', 'title', 'description', 'manager', 'manager_info',
             'testers', 'testers_info', 'employees', 'employees_info',
             'deadline', 'status', 'created_at', 'updated_at', 'is_active',
             'completion_percentage'
         )
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'uid', 'created_at', 'updated_at')
 
     def get_completion_percentage(self, obj):
         total_tasks = obj.tasks.count()
@@ -60,6 +60,7 @@ class TaskAttachmentSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     attachments = TaskAttachmentSerializer(many=True, read_only=True)
     assignee_info = UserShortSerializer(source='assignee', read_only=True)
+    created_by_info = UserShortSerializer(source='created_by', read_only=True)
 
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False, allow_null=True
@@ -74,7 +75,7 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = (
             'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
-            'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
+            'created_by_info', 'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
 
             'estimated_minutes', 'actual_minutes',
 
@@ -83,7 +84,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at', 'is_active'
         )
         read_only_fields = (
-            'id', 'uid', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
+            'id', 'uid', 'created_by', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
             'estimated_minutes', 'actual_minutes'
         )
 
@@ -192,14 +193,37 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
 
 class MeetingSerializer(serializers.ModelSerializer):
     participants_info = UserShortSerializer(source='participants', many=True, read_only=True)
+    participants = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, write_only=True, required=False
+    )
 
     class Meta:
         model = Meeting
         fields = (
             'id', 'uid', 'project', 'organizer', 'title', 'description',
-            'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed', 'participants_info',
+            'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
+            'participants', 'participants_info',
         )
         read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'penalty_percentage')
+
+    def validate(self, attrs):
+        project = attrs.get('project')
+        participants = attrs.get('participants', [])
+
+        if not project and self.instance:
+            project = self.instance.project
+
+        if project and participants:
+            project_member_ids = set(project.employees.values_list('id', flat=True)) | \
+                                 set(project.testers.values_list('id', flat=True))
+
+            for p in participants:
+                if p.id not in project_member_ids:
+                    raise serializers.ValidationError({
+                        "participants": f"{p.username} ushbu loyiha a'zosi emas."
+                    })
+
+        return attrs
 
 
 class MeetingAttendanceSerializer(serializers.ModelSerializer):

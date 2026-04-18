@@ -3,6 +3,7 @@ from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.db.models import Q
+from django.utils import timezone
 from rest_framework import viewsets, filters, permissions, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -11,7 +12,7 @@ from rest_framework.response import Response
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 from apps.notifications.models import Notification, NotificationType
-from apps.notifications.tasks import mass_notification_sender
+from apps.notifications.tasks import mass_notification_sender, notify_meeting_end
 
 from .filters import TaskFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
@@ -208,7 +209,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         raise PermissionDenied("Sizda tahrirlash huquqi yo'q.")
 
     def perform_create(self, serializer):
-        task = serializer.save()
+        task = serializer.save(created_by=self.request.user)
         if task.assignee:
             deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
 
@@ -274,25 +275,48 @@ class MeetingViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def perform_create(self, serializer):
-        project = serializer.validated_data.get('project')
+        participants = serializer.validated_data.pop('participants', [])
         meeting = serializer.save(organizer=self.request.user)
+        self._handle_participants(meeting, participants)
 
-        project_members = set(project.employees.all()) | set(project.testers.all())
+        if meeting.duration_minutes > 0:
+            transaction.on_commit(lambda: notify_meeting_end.apply_async(
+                args=[meeting.id],
+                eta=meeting.start_time + timezone.timedelta(minutes=meeting.duration_minutes)
+            ))
 
-        attendances = [
-            MeetingAttendance(user=user, meeting=meeting)
-            for user in project_members
-        ]
-        if attendances:
+    @transaction.atomic
+    def perform_update(self, serializer):
+        participants = serializer.validated_data.pop('participants', None)
+        meeting = serializer.save()
+        self._handle_participants(meeting, participants)
+
+    def _handle_participants(self, meeting, participants):
+        if participants is None:
+            return
+
+        current_attendee_ids = set(MeetingAttendance.objects.filter(meeting=meeting).values_list('user_id', flat=True))
+        new_participant_ids = {p.id for p in participants}
+
+        MeetingAttendance.objects.filter(meeting=meeting).exclude(user_id__in=new_participant_ids).delete()
+
+        to_add_ids = new_participant_ids - current_attendee_ids
+        to_add = [p for p in participants if p.id in to_add_ids]
+
+        if to_add:
+            attendances = [
+                MeetingAttendance(user=user, meeting=meeting)
+                for user in to_add
+            ]
             MeetingAttendance.objects.bulk_create(attendances)
 
             notifications_to_bulk = []
             broadcast_data = []
             start_time_str = meeting.start_time.strftime('%d.%m %H:%M')
 
-            for member in project_members:
+            for member in to_add:
                 if member.id != self.request.user.id:
-                    msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}"
+                    msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
 
                     notifications_to_bulk.append(Notification(
                         user=member,
@@ -309,7 +333,7 @@ class MeetingViewSet(viewsets.ModelViewSet):
                         "extra_data": {
                             "meeting_id": meeting.id,
                             "action": "open_meeting",
-                            "project_id": project.id
+                            "project_id": meeting.project_id
                         }
                     })
 

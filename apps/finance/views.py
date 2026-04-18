@@ -8,6 +8,7 @@ from rest_framework import viewsets, status, decorators, filters, permissions
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from django.contrib.auth import get_user_model
 
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender
@@ -16,6 +17,8 @@ from .filters import ExpenseRequestFilter, PayrollFilter
 from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
 from .serializers import ExpenseRequestSerializer, PayrollSerializer, LedgerSerializer, ExpenseCategorySerializer, \
     PayrollStatusUpdateSerializer
+
+User = get_user_model()
 
 
 @extend_schema(tags=['Expense Category'])
@@ -58,9 +61,33 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(user=user)
 
     def perform_create(self, serializer):
-        if self.request.user.has_role(Role.ADMIN, Role.AUDITOR):
-            raise PermissionDenied("Sizning rolingiz xarajatlar so'rovlarini yaratishga vakolatli emas.")
-        serializer.save(user=self.request.user)
+        expense = serializer.save(user=self.request.user)
+
+        accountants = User.objects.filter(roles__contains=[Role.ACCOUNTANT], is_active=True)
+        notifications_to_bulk = []
+        broadcast_data = []
+
+        for accountant in accountants:
+            msg = f"{self.request.user.username} tomonidan {expense.amount:,.0f} miqdorida yangi xarajat so'rovi yaratildi."
+            notifications_to_bulk.append(Notification(
+                user=accountant,
+                title="Yangi xarajat so'rovi",
+                message=msg,
+                type=NotificationType.FINANCE,
+                extra_data={'expense_id': expense.id, 'action': 'view_expense'}
+            ))
+
+            broadcast_data.append({
+                "user_id": accountant.id,
+                "title": "Yangi xarajat so'rovi",
+                "message": msg,
+                "type": "finance",
+                "extra_data": {'expense_id': expense.id, 'action': 'view_expense'}
+            })
+
+        if notifications_to_bulk:
+            Notification.objects.bulk_create(notifications_to_bulk)
+            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
 
     def perform_update(self, serializer):
         if self.get_object().status != Status.PENDING:

@@ -8,14 +8,18 @@ from .models import AuditLog, ActionType
 from .middleware import get_current_request
 
 AUDITED_MODELS = [
-    'Project', 'Task', 'TaskAttachment',
-    'ExpenseCategory', 'ExpenseRequest', 'Payroll',
-    'Meeting', 'MeetingAttendance'
+    'User', 'Project', 'Task', 'TaskAttachment',
+    'ExpenseCategory', 'ExpenseRequest', 'Payroll', 'Ledger',
+    'Meeting', 'MeetingAttendance', 'Application', 'Region', 'Direction',
+    'Todo', 'Notification', 'UserDevice'
 ]
 
 
 class AuditJSONEncoder(DjangoJSONEncoder):
     def default(self, o):
+        from django.db.models.fields.files import FieldFile
+        if isinstance(o, FieldFile):
+            return str(o.name) if o else None
         if hasattr(o, 'pk'):
             return o.pk
         return super().default(o)
