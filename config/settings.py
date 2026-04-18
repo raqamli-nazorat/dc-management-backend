@@ -151,6 +151,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.projects.tasks.send_morning_reminders',
         'schedule': crontab(hour=9, minute=0),
     },
+
+    'calculate-monthly-salaries-on-1st': {
+        'task': 'apps.finance.tasks.calculate_monthly_salaries',
+        'schedule': crontab(day_of_month=1, hour=0, minute=1),
+    },
 }
 
 # Database
