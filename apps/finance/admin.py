@@ -16,8 +16,8 @@ class ExpenseCategoryAdmin(ModelAdmin):
 
 @admin.register(ExpenseRequest)
 class ExpenseRequestAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'type', 'amount_formatted', 'status_colored', 'payment_method', 'created_at')
-    list_display_links = ('id', 'user')
+    list_display = ('uid', 'user', 'type', 'amount_formatted', 'status_colored', 'payment_method', 'created_at')
+    list_display_links = ('uid', 'user')
 
     list_filter = ('status', 'type', 'payment_method', 'created_at')
     search_fields = ('user__username', 'reason', 'card_number')
@@ -26,7 +26,7 @@ class ExpenseRequestAdmin(ModelAdmin):
 
     fieldsets = (
         ('Asosiy ma\'lumotlar', {
-            'fields': ('user', 'type', 'expense_category', 'amount', 'reason')
+            'fields': ('user', 'type', 'project', 'expense_category', 'amount', 'reason')
         }),
         ('To\'lov tafsilotlari', {
             'fields': ('payment_method', 'card_number', 'accountant')
@@ -57,8 +57,8 @@ class ExpenseRequestAdmin(ModelAdmin):
 
 @admin.register(Ledger)
 class LedgerAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'transaction_type_colored', 'amount_formatted', 'expense', 'payroll', 'created_at')
-    list_display_links = ('id', 'user')
+    list_display = ('uid', 'user', 'transaction_type_colored', 'amount_formatted', 'expense', 'payroll', 'created_at')
+    list_display_links = ('uid', 'user')
     list_filter = ('transaction_type', 'created_at')
     search_fields = ('user__username', 'description')
 
@@ -84,8 +84,8 @@ class LedgerAdmin(ModelAdmin):
 
 @admin.register(Payroll)
 class PayrollAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at')
-    list_display_links = ('id', 'user')
+    list_display = ('uid', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at')
+    list_display_links = ('uid', 'user')
     list_filter = ('month', 'created_at')
     search_fields = ('user__username',)
 
@@ -96,7 +96,7 @@ class PayrollAdmin(ModelAdmin):
             'fields': ('user', 'month')
         }),
         ('Ish haqi taqsimoti', {
-            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount')
+            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount', 'is_confirmed')
         }),
         ('Ishlash ko\'rsatkichlari', {
             'fields': ('tasks_completed', 'deadline_missed', 'bug_count')

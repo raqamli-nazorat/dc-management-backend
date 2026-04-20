@@ -4,9 +4,18 @@ from rest_framework import serializers
 
 from apps.users.serializers import UserShortSerializer
 from apps.users.models import Role
+
 from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
 
 User = get_user_model()
+
+
+class ProjectShortSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Project
+        fields = (
+            'id', 'uid', 'title', 'description', 'status', 'created_at'
+        )
 
 
 class ProjectSerializer(serializers.ModelSerializer):
@@ -18,14 +27,27 @@ class ProjectSerializer(serializers.ModelSerializer):
     testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
     employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
 
+    completion_percentage = serializers.SerializerMethodField()
+
     class Meta:
         model = Project
         fields = (
-            'id', 'title', 'description', 'manager', 'manager_info',
+            'id', 'uid', 'title', 'description', 'manager', 'manager_info',
             'testers', 'testers_info', 'employees', 'employees_info',
-            'start_date', 'deadline', 'status', 'created_at', 'updated_at', 'is_active'
+            'deadline', 'status', 'created_at', 'updated_at', 'is_active',
+            'completion_percentage'
         )
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'uid', 'created_at', 'updated_at')
+
+    def get_completion_percentage(self, obj):
+        total_tasks = obj.tasks.count()
+        if total_tasks == 0:
+            return 0.0
+
+        completed_statuses = [TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]
+        completed_tasks = obj.tasks.filter(status__in=completed_statuses).count()
+
+        return round((completed_tasks / total_tasks) * 100, 1)
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
@@ -38,6 +60,7 @@ class TaskAttachmentSerializer(serializers.ModelSerializer):
 class TaskSerializer(serializers.ModelSerializer):
     attachments = TaskAttachmentSerializer(many=True, read_only=True)
     assignee_info = UserShortSerializer(source='assignee', read_only=True)
+    created_by_info = UserShortSerializer(source='created_by', read_only=True)
 
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False, allow_null=True
@@ -52,7 +75,7 @@ class TaskSerializer(serializers.ModelSerializer):
         model = Task
         fields = (
             'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
-            'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
+            'created_by_info', 'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
 
             'estimated_minutes', 'actual_minutes',
 
@@ -61,13 +84,13 @@ class TaskSerializer(serializers.ModelSerializer):
             'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at', 'is_active'
         )
         read_only_fields = (
-            'id', 'uid', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
+            'id', 'uid', 'created_by', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
             'estimated_minutes', 'actual_minutes'
         )
 
     def validate_task_price(self, value):
         user = self.context['request'].user
-        if user.role == Role.EMPLOYEE and value > 0:
+        if user.has_role(Role.EMPLOYEE) and value > 0:
             return 0.00
         return value
 
@@ -77,9 +100,9 @@ class TaskSerializer(serializers.ModelSerializer):
             'id': project.id,
             'title': project.title,
             'description': project.description,
-            'start_date': project.start_date,
+            'status': project.status,
             'deadline': project.deadline,
-            'status': project.status
+            'created_at': project.created_at,
         }
 
     def validate(self, attrs):
@@ -95,6 +118,13 @@ class TaskSerializer(serializers.ModelSerializer):
             if not project.employees.filter(id=assignee.id).exists():
                 raise serializers.ValidationError({
                     'assignee': "Bu xodim ushbu loyiha jamoasiga tayinlanmagan!"
+                })
+
+        if not self.instance:
+            status = attrs.get('status')
+            if status and status != TaskStatus.TODO:
+                raise serializers.ValidationError({
+                    'status': f"Yangi vazifa faqat '{TaskStatus.TODO}' holatida yaratilishi mumkin."
                 })
 
         hours = attrs.pop('estimated_input_hours', None)
@@ -163,14 +193,37 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
 
 class MeetingSerializer(serializers.ModelSerializer):
     participants_info = UserShortSerializer(source='participants', many=True, read_only=True)
+    participants = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), many=True, write_only=True, required=False
+    )
 
     class Meta:
         model = Meeting
         fields = (
             'id', 'uid', 'project', 'organizer', 'title', 'description',
-            'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed', 'participants_info',
+            'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
+            'participants', 'participants_info',
         )
         read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'penalty_percentage')
+
+    def validate(self, attrs):
+        project = attrs.get('project')
+        participants = attrs.get('participants', [])
+
+        if not project and self.instance:
+            project = self.instance.project
+
+        if project and participants:
+            project_member_ids = set(project.employees.values_list('id', flat=True)) | \
+                                 set(project.testers.values_list('id', flat=True))
+
+            for p in participants:
+                if p.id not in project_member_ids:
+                    raise serializers.ValidationError({
+                        "participants": f"{p.username} ushbu loyiha a'zosi emas."
+                    })
+
+        return attrs
 
 
 class MeetingAttendanceSerializer(serializers.ModelSerializer):
@@ -181,7 +234,7 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = MeetingAttendance
         fields = ('id', 'user', 'user_info', 'meeting', 'is_attended', 'absence_reason')
-        read_only_fields = ('user', 'meeting')
+        read_only_fields = ('id', 'user', 'meeting')
 
     def validate(self, attrs):
         is_attended = attrs.get('is_attended')
@@ -191,3 +244,12 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
             attrs['absence_reason'] = None
 
         return attrs
+
+
+class MeetingAttendanceReasonSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MeetingAttendance
+        fields = ('absence_reason',)
+        extra_kwargs = {
+            'absence_reason': {'required': True, 'allow_blank': False}
+        }

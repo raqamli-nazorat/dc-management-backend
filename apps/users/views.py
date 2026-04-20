@@ -1,10 +1,12 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, generics, filters, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from .permissions import IsAdmin, IsEmployee, IsManager
+from .filters import UserFilter
+from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
 from .serializers import (UserSerializer, ProfileSerializer, ChangePasswordSerializer,
                           MyTokenRefreshSerializer, MyTokenObtainPairSerializer, UserStatsSerializer)
 
@@ -15,9 +17,15 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdmin]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['username', 'first_name', 'last_name']
+
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter]
+    filterset_class = UserFilter
+    search_fields = ['username']
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [(IsAdmin | IsAuditor)()]
+        return [IsAdmin()]
 
 
 @extend_schema(tags=['Profile'])
@@ -62,9 +70,13 @@ class ChangePasswordView(generics.UpdateAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+from apps.common.throttles import CustomScopedRateThrottle
+
 @extend_schema(tags=["Authorization"])
 class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
+    throttle_classes = [CustomScopedRateThrottle]
+    throttle_scope = 'login'
 
 
 @extend_schema(tags=["Authorization"])

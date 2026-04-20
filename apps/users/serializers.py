@@ -21,26 +21,30 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'position', 'role',
+            'id', 'username', 'phone_number', 'region', 'district', 'direction',
+            'passport_series', 'passport_image', 'roles',
             'password', 'confirm_password',
-            'fixed_salary', 'balance'
+            'fixed_salary', 'balance',
         )
-        read_only_fields = ('id',)
+        read_only_fields = ('id', 'balance')
 
     def validate(self, attrs):
         request = self.context.get('request')
         current_user = request.user
-        input_role = attrs.get('role')
+
+        input_roles = attrs.get('roles', [])
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
 
-        if current_user.role == Role.ADMIN:
-            if input_role in [Role.SUPERADMIN, Role.ADMIN]:
+        if current_user.has_role(Role.ADMIN) and not current_user.has_role(Role.SUPERADMIN):
+            restricted_roles = {Role.SUPERADMIN, Role.ADMIN}
+
+            if set(input_roles) & restricted_roles:
                 raise serializers.ValidationError({
-                    "role": "Siz ushbu darajadagi foydalanuvchilarni boshqara olmaysiz."
+                    "roles": "Siz ushbu darajadagi foydalanuvchilarni yarata yoki boshqara olmaysiz."
                 })
 
-            if self.instance and self.instance.role in [Role.SUPERADMIN, Role.ADMIN]:
+            if self.instance and self.instance.has_role(Role.SUPERADMIN, Role.ADMIN):
                 raise serializers.ValidationError({
                     "detail": "Ushbu foydalanuvchi ma'lumotlarini o'zgartirish huquqi sizda yo'q."
                 })
@@ -85,14 +89,15 @@ class UserSerializer(serializers.ModelSerializer):
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'date_joined', 'position', 'role', 'is_active')
+        fields = ('id', 'avatar', 'username', 'phone_number', 'region', 'district', 'direction', 'roles', 'date_joined',
+                  'is_active')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'position', 'role', 'fixed_salary', 'balance', 'date_joined', 'change_password',
-                  'is_active')
+        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'direction', 'roles',
+                  'fixed_salary', 'balance', 'date_joined', 'change_password', 'is_active')
 
 
 class UserStatsSerializer(serializers.Serializer):
@@ -259,7 +264,10 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         data["user"] = {
             "id": user.id,
             "username": user.username,
-            "role": user.role,
+            "phone_number": user.phone_number,
+            "avatar": user.avatar or None,
+            "region": user.region.name if user.region else None,
+            "district": user.district.name if user.district else None,
             "change_password": user.change_password,
             "is_active": user.is_active,
         }
@@ -279,7 +287,10 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
             data["user"] = {
                 "id": user.id,
                 "username": user.username,
-                "role": user.role,
+                "phone_number": user.phone_number,
+                "avatar": user.avatar or None,
+                "region": user.region.name if user.region else None,
+                "district": user.district.name if user.district else None,
                 "change_password": user.change_password,
                 "is_active": user.is_active,
             }

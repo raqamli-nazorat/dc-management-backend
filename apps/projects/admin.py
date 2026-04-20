@@ -23,18 +23,19 @@ class MeetingAttendanceInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(ModelAdmin):
-    list_display = ('id', 'title', 'manager', 'status_colored', 'start_date', 'deadline')
-    list_display_links = ('id', 'title')
-    list_filter = ('status', 'start_date', 'deadline', 'manager')
+    list_display = ('uid', 'title', 'manager', 'status_colored', 'created_at', 'deadline')
+    list_display_links = ('uid', 'title')
+    list_filter = ('status', 'created_at', 'deadline', 'manager')
     search_fields = ('title', 'description', 'manager__username')
     filter_horizontal = ('employees', 'testers')
+    exclude = ('payroll_processed',)
 
     fieldsets = (
         ('Loyiha haqida ma\'lumot', {
             'fields': ('title', 'description', 'status', 'is_active')
         }),
         ('Narxlar', {
-            'fields': ('project_price', 'penalty_percentage')
+            'fields': ('project_price',)
         }),
         ('Jamoa', {
             'fields': ('manager', 'employees', 'testers')
@@ -62,6 +63,7 @@ class TaskAdmin(ModelAdmin):
     list_display_links = ('uid', 'title')
     list_filter = ('status', 'priority', 'type', 'project', 'assignee', 'deadline')
     search_fields = ('title', 'description', 'project__title', 'assignee__username')
+    exclude = ('payroll_processed',)
 
     inlines = [TaskAttachmentInline]
 
@@ -73,7 +75,7 @@ class TaskAdmin(ModelAdmin):
             'fields': ('status', 'priority', 'type')
         }),
         ('Topshiriq & narxlar', {
-            'fields': ('assignee', 'task_price', 'penalty_percentage')
+            'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
         }),
         ('Vaqtni kuzatish & Sifat', {
             'fields': ('deadline', 'estimated_minutes', 'actual_minutes', 'reopened_count')
@@ -89,12 +91,14 @@ class TaskAdmin(ModelAdmin):
 @admin.register(TaskAttachment)
 class TaskAttachmentAdmin(ModelAdmin):
     list_display = ('id', 'task', 'file', 'created_at')
+    list_display_links = ('id', 'task')
     search_fields = ('task__title', 'file')
 
 
 @admin.register(Meeting)
 class MeetingAdmin(ModelAdmin):
     list_display = ('uid', 'title', 'project', 'organizer', 'start_time', 'is_completed')
+    list_display_links = ('uid', 'title')
     list_filter = ('is_completed', 'start_time', 'project', 'organizer')
     search_fields = ('title', 'description', 'project__title', 'organizer__username')
 
@@ -102,7 +106,7 @@ class MeetingAdmin(ModelAdmin):
 
     fieldsets = (
         ('Meeting Details', {
-            'fields': ('project', 'organizer', 'title', 'description', 'link')
+            'fields': ('project', 'organizer', 'title', 'description', 'link', 'penalty_percentage')
         }),
         ('Schedule', {
             'fields': ('start_time', 'duration_minutes', 'is_completed')
@@ -113,8 +117,10 @@ class MeetingAdmin(ModelAdmin):
 @admin.register(MeetingAttendance)
 class MeetingAttendanceAdmin(ModelAdmin):
     list_display = ('id', 'meeting', 'user', 'is_attended', 'absence_reason_excerpt')
+    list_display_links = ('id', 'meeting')
     list_filter = ('is_attended', 'meeting', 'user')
     search_fields = ('meeting__title', 'user__username', 'absence_reason')
+    exclude = ('payroll_processed',)
 
     @admin.display(description='Sababi')
     def absence_reason_excerpt(self, obj):

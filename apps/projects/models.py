@@ -3,9 +3,9 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from apps.common.utils import generate_unique_id
 from apps.common.models import BaseModel
 from apps.users.models import Role
-from .utils import generate_unique_id
 
 User = get_user_model()
 
@@ -43,9 +43,9 @@ class Type(models.TextChoices):
 
 
 class Project(BaseModel):
+    uid = models.CharField(max_length=10, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
     title = models.CharField(max_length=255, verbose_name="Nomi")
     description = models.TextField(verbose_name="Tavsifi")
-    start_date = models.DateTimeField(auto_now_add=True, verbose_name="Boshlanish sanasi")
     deadline = models.DateTimeField(verbose_name="Muddati")
     status = models.CharField(
         max_length=20,
@@ -55,14 +55,11 @@ class Project(BaseModel):
         verbose_name="Holati"
     )
 
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
+
     project_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         verbose_name="Menejer bonusi (Loyiha uchun)"
-    )
-    penalty_percentage = models.DecimalField(
-        max_digits=5, decimal_places=2, default=0.00,
-        validators=[MinValueValidator(0), MaxValueValidator(100)],
-        verbose_name="Kechikkanlik uchun jarima foizi (%)"
     )
 
     manager = models.ForeignKey(
@@ -71,19 +68,39 @@ class Project(BaseModel):
         null=True,
         related_name='manager_projects',
         limit_choices_to={
-            'role': Role.MANAGER
+            'roles__contains': [Role.MANAGER]
         },
         db_index=True,
         verbose_name="Menejer"
     )
 
-    employees = models.ManyToManyField(User, related_name='employee_projects', limit_choices_to={'role': Role.EMPLOYEE},
+    employees = models.ManyToManyField(User, related_name='employee_projects',
+                                       limit_choices_to={'roles__contains': [Role.EMPLOYEE]},
                                        verbose_name="Xodimlar")
-    testers = models.ManyToManyField(User, related_name='tester_projects', verbose_name="Sinovchilar")
+    testers = models.ManyToManyField(User, related_name='tester_projects',
+                                     limit_choices_to={'roles__overlap': [Role.MANAGER, Role.EMPLOYEE]},
+                                     verbose_name="Sinovchilar")
 
     class Meta:
         verbose_name = "Loyiha "
         verbose_name_plural = "Loyihalar"
+
+    def clean(self):
+        super().clean()
+
+        if self.pk:
+            old_project = Project.objects.get(pk=self.pk)
+            if old_project.status == ProjectStatus.ACTIVE:
+                if old_project.manager_id != self.manager_id:
+                    raise ValidationError({
+                        'manager': "Loyiha 'Faol' holatida menejerni o'zgartirib bo'lmaydi!"
+                    })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if not self.uid:
+            self.uid = generate_unique_id('P', Project)
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.title
@@ -99,13 +116,17 @@ class Task(BaseModel):
 
     status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.TODO, db_index=True,
                               verbose_name='Holati')
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM, db_index=True,
                                 verbose_name='Darajasi')
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.FEATURE, db_index=True,
                             verbose_name='Turi')
 
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='created_tasks', verbose_name='Yaratuvchi')
     assignee = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
-                                 limit_choices_to={'role': Role.EMPLOYEE}, db_index=True, verbose_name='Topshiruvchi')
+                                 limit_choices_to={'roles__contains': [Role.EMPLOYEE]}, db_index=True,
+                                 verbose_name='Topshiruvchi')
 
     deadline = models.DateTimeField(db_index=True, verbose_name='Muddati')
     started_at = models.DateTimeField(null=True, blank=True)
@@ -125,16 +146,33 @@ class Task(BaseModel):
     def clean(self):
         super().clean()
 
+        if self.pk:
+            old_task = Task.objects.get(pk=self.pk)
+            locked_statuses = [
+                TaskStatus.IN_PROGRESS,
+                TaskStatus.DONE,
+                TaskStatus.PRODUCTION,
+                TaskStatus.CHECKED,
+                TaskStatus.REJECTED,
+                TaskStatus.OVERDUE
+            ]
+
+            if old_task.status in locked_statuses:
+                if old_task.assignee_id != self.assignee_id:
+                    raise ValidationError({
+                        'assignee': f"Vazifa '{old_task.get_status_display()}' holatida bo'lgani uchun ijrochini o'zgartirib bo'lmaydi!"
+                    })
+
         if self.assignee and self.project:
             if not self.project.employees.filter(id=self.assignee.id).exists():
                 raise ValidationError({
-                    'assignee': "Bu xodim hozirgi jamoasiga qo'shilmagan!"
+                    'assignee': "Bu xodim loyiha jamoasiga qo'shilmagan!"
                 })
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('T', Task)
-        self.full_clean()
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -179,6 +217,7 @@ class Meeting(BaseModel):
         verbose_name_plural = 'Yig\'lishlar'
 
     def save(self, *args, **kwargs):
+        self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('M', Meeting)
         super().save(*args, **kwargs)
@@ -194,6 +233,7 @@ class MeetingAttendance(BaseModel):
                                 verbose_name='Uchrashuv')
 
     is_attended = models.BooleanField(default=True, verbose_name='Qatnashdimi?')
+    payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
     absence_reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
 
     class Meta:
