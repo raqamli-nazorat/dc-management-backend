@@ -7,6 +7,7 @@ from django.utils import timezone
 from rest_framework import viewsets, filters, permissions, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -18,15 +19,17 @@ from apps.notifications.tasks import mass_notification_sender, notify_meeting_en
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
 
 from .filters import TaskFilter
-from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
+from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, \
+    TaskRejectionFile
 from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer, TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
-                          MeetingAttendanceReasonSerializer)
+                          MeetingAttendanceReasonSerializer, TaskRejectionImageSerializer)
 
 
 @extend_schema(tags=['Project Shorts'])
 class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
-    queryset = Project.objects.filter(is_deleted=False, is_active=True).select_related('manager').prefetch_related('employees', 'testers')
+    queryset = Project.objects.filter(is_deleted=False, is_active=True).select_related('manager').prefetch_related(
+        'employees', 'testers')
     serializer_class = ProjectShortSerializer
     permission_classes = [permissions.IsAuthenticated]
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
@@ -81,7 +84,7 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             raise ValidationError({
                 "detail": f"Loyihani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Rejalashtirilmoqda' holatidagilarni o'chirish mumkin."
             })
-        
+
         instance.is_active = False
         instance.is_deleted = True
         instance.save()
@@ -90,11 +93,11 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     def trash(self, request):
         queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
         page = self.paginate_queryset(queryset)
-        
+
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -102,35 +105,36 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
         instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-        
+
         if not instance:
             return Response(status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(self.request, instance)
-        
+
         if not instance.is_deleted:
             return Response({"detail": "Loyiha korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         instance.is_active = True
         instance.is_deleted = False
         instance.save()
-        
+
         return Response({"detail": "Loyiha muvaffaqiyatli tiklandi."})
 
     @action(detail=True, methods=['delete'])
     def hard_delete(self, request, pk=None):
         instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-        
+
         if not instance:
             return Response(status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(self.request, instance)
-        
+
         if not instance.is_deleted:
-            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."}, status=status.HTTP_400_BAD_REQUEST)
-            
+            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         instance.is_deleted = False
         instance.is_active = False
         instance.save()
-        
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -197,21 +201,53 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             raise ValidationError({
                 "detail": f"Vazifani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
             })
-        
+
         instance.is_active = False
         instance.is_deleted = True
         instance.save()
+
+    @extend_schema(
+        tags=['Tasks'],
+        request=TaskRejectionImageSerializer
+    )
+    @action(
+        detail=True,
+        methods=['post'],
+        url_path='upload-rejection-image',
+        parser_classes=[MultiPartParser, FormParser]
+    )
+    def upload_rejection_image(self, request, pk=None):
+        task = self.get_object()
+
+        if task.status != TaskStatus.REJECTED:
+            raise PermissionDenied("Faqat rad etilgan vazifalarga rasm yuklash mumkin.")
+
+        user = request.user
+        if not (user.has_role(Role.SUPERADMIN,
+                              Role.ADMIN) or user in task.project.testers.all() or task.project.manager == user):
+            raise PermissionDenied("Sizda bu vazifaga rasm yuklash huquqi yo'q.")
+
+        serializer = TaskRejectionImageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        image = serializer.validated_data['rejection_image']
+
+        TaskRejectionFile.objects.create(
+            task=task,
+            file=image
+        )
+
+        return Response({"message": "Rad etish rasmi muvaffaqiyatli yuklandi."})
 
     @extend_schema(request=None)
     @action(detail=False, methods=['get'])
     def trash(self, request):
         queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
         page = self.paginate_queryset(queryset)
-        
+
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-        
+
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
@@ -223,31 +259,32 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         if not instance:
             return Response(status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(self.request, instance)
-        
+
         if not instance.is_deleted:
             return Response({"detail": "Vazifa korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         instance.is_active = True
         instance.is_deleted = False
         instance.save()
-        
+
         return Response({"detail": "Vazifa muvaffaqiyatli tiklandi."})
 
     @action(detail=True, methods=['delete'])
     def hard_delete(self, request, pk=None):
         instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-        
+
         if not instance:
             return Response(status=status.HTTP_404_NOT_FOUND)
         self.check_object_permissions(self.request, instance)
-        
+
         if not instance.is_deleted:
-            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."}, status=status.HTTP_400_BAD_REQUEST)
-            
+            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
         instance.is_deleted = False
         instance.is_active = False
         instance.save()
-        
+
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _send_task_notification(self, task, title, message):

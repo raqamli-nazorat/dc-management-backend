@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    Project, Task, TaskAttachment, Meeting,
+    Project, Task, TaskAttachment, TaskRejectionFile, Meeting,
     MeetingAttendance, ProjectStatus, Type
 )
 
@@ -10,6 +10,11 @@ from unfold.admin import ModelAdmin
 
 class TaskAttachmentInline(admin.TabularInline):
     model = TaskAttachment
+    extra = 0
+
+
+class TaskRejectionFileInline(admin.TabularInline):
+    model = TaskRejectionFile
     extra = 0
 
 
@@ -65,7 +70,7 @@ class TaskAdmin(ModelAdmin):
     search_fields = ('title', 'description', 'project__title', 'assignee__username')
     exclude = ('payroll_processed',)
 
-    inlines = [TaskAttachmentInline]
+    inlines = [TaskAttachmentInline, TaskRejectionFileInline]
 
     fieldsets = (
         ('Asosiy', {

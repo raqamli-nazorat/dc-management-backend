@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.users.serializers import UserShortSerializer
 from apps.users.models import Role
 
-from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
+from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, TaskRejectionFile
 
 User = get_user_model()
 
@@ -34,8 +34,8 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = (
             'id', 'uid', 'title', 'description', 'manager', 'manager_info',
-            'created_by_info', 'testers', 'testers_info', 
-            'employees', 'employees_info', 'deadline', 'status', 
+            'created_by_info', 'testers', 'testers_info',
+            'employees', 'employees_info', 'deadline', 'status',
             'created_at', 'updated_at', 'completion_percentage'
         )
         read_only_fields = ('id', 'uid', 'created_at', 'updated_at')
@@ -58,10 +58,18 @@ class TaskAttachmentSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at')
 
 
+class TaskRejectionFileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TaskRejectionFile
+        fields = ('id', 'file', 'created_at')
+
+
 class TaskSerializer(serializers.ModelSerializer):
     attachments = TaskAttachmentSerializer(many=True, read_only=True)
     assignee_info = UserShortSerializer(source='assignee', read_only=True)
     created_by_info = UserShortSerializer(source='created_by', read_only=True)
+
+    rejection_files = TaskRejectionFileSerializer(many=True, read_only=True)
 
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False, allow_null=True
@@ -82,7 +90,8 @@ class TaskSerializer(serializers.ModelSerializer):
 
             'estimated_input_hours', 'estimated_input_minutes',
 
-            'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at'
+            'reopened_count', 'rejection_reason', 'attachments', 'rejection_files',
+            'created_at', 'updated_at'
         )
         read_only_fields = (
             'id', 'uid', 'created_by', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
@@ -137,6 +146,10 @@ class TaskSerializer(serializers.ModelSerializer):
             attrs['estimated_minutes'] = (h * 60) + m
 
         return attrs
+
+
+class TaskRejectionImageSerializer(serializers.Serializer):
+    rejection_image = serializers.ImageField(required=True)
 
 
 class TaskStatusUpdateSerializer(serializers.ModelSerializer):

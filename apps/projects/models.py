@@ -194,7 +194,7 @@ class Task(BaseModel):
 
 class TaskAttachment(BaseModel):
     task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name='attachments', verbose_name='Vazifa')
-    file = models.FileField(upload_to='task_files/', verbose_name='Fayl')
+    file = models.FileField(upload_to='tasks/files/', verbose_name='Fayl')
 
     class Meta:
         verbose_name = 'Vazifa fayli '
@@ -202,6 +202,18 @@ class TaskAttachment(BaseModel):
 
     def __str__(self):
         return self.file.name
+
+
+class TaskRejectionFile(BaseModel):
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='rejection_files', verbose_name='Vazifa')
+    file = models.ImageField(upload_to='tasks/rejections/', verbose_name='Rasm (Skrinshot)')
+
+    class Meta:
+        verbose_name = 'Rad etish fayli '
+        verbose_name_plural = 'Rad etish fayllari'
+
+    def __str__(self):
+        return f"{self.task.title} - Rad etish rasmi"
 
 
 class Meeting(BaseModel):
