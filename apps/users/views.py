@@ -5,9 +5,11 @@ from rest_framework import viewsets, permissions, generics, filters, status
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from apps.common.throttles import CustomScopedRateThrottle
+
 from .filters import UserFilter
 from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
-from .serializers import (UserSerializer, ProfileSerializer, ChangePasswordSerializer,
+from .serializers import (UserSerializer, ProfileSerializer, SocialLinksSerializer, ChangePasswordSerializer,
                           MyTokenRefreshSerializer, MyTokenObtainPairSerializer, UserStatsSerializer)
 
 User = get_user_model()
@@ -26,6 +28,31 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [(IsAdmin | IsAuditor)()]
         return [IsAdmin()]
+
+
+@extend_schema(tags=['Profile'])
+class SocialLinksView(generics.UpdateAPIView):
+    serializer_class = SocialLinksSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['put']
+
+    def get_object(self):
+        return self.request.user
+
+    def put(self, request, *args, **kwargs):
+        serializer = SocialLinksSerializer(
+            data=request.data,
+            instance=self.get_object(),
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Ijtimoiy tarmoqlar muvaffaqiyatli yangilandi."
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 @extend_schema(tags=['Profile'])
@@ -69,8 +96,6 @@ class ChangePasswordView(generics.UpdateAPIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-from apps.common.throttles import CustomScopedRateThrottle
 
 @extend_schema(tags=["Authorization"])
 class MyTokenObtainPairView(TokenObtainPairView):

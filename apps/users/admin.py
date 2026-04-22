@@ -49,8 +49,8 @@ class CustomUserAdmin(ModelAdmin):
         }),
         ('Shaxsiy ma\'lumotlar', {
             'fields': (
-                'avatar', 'phone_number', 'region', 'district',
-                'passport_series', 'passport_image'
+                'avatar', 'phone_number', 'region', 'district', 
+                'passport_series', 'passport_image', 'social_links'
             )
         }),
         ('Lavozim va Moliya', {

@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'phone_number', 'region', 'district', 'position',
             'passport_series', 'passport_image', 'roles',
             'password', 'confirm_password',
-            'fixed_salary', 'balance',
+            'fixed_salary', 'balance', 'social_links', 'is_active'
         )
         read_only_fields = ('id', 'balance')
 
@@ -105,8 +105,14 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'position',
-                  'roles', 'fixed_salary', 'balance', 'date_joined', 'change_password')
+                  'roles', 'fixed_salary', 'balance', 'date_joined', 'change_password', 'social_links')
 
+
+class SocialLinksSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('social_links',)
+    
 
 class UserStatsSerializer(serializers.Serializer):
     one_month = serializers.SerializerMethodField()

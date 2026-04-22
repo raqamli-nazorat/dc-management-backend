@@ -37,6 +37,7 @@ class User(AbstractUser):
     fixed_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Oylik maosh")
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Balans")
     change_password = models.BooleanField(default=True)
+    social_links = models.JSONField(default=dict, blank=True, verbose_name="Ijtimoiy tarmoqlar")
 
     class Meta:
         verbose_name = 'Foydalanuvchi '
