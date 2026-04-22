@@ -268,6 +268,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "avatar": user.avatar.url if user.avatar else None,
             "region": user.region.name if user.region else None,
             "district": user.district.name if user.district else None,
+            "position": user.position.name if user.position else None,
+            "roles": user.roles,
             "change_password": user.change_password,
             "is_active": user.is_active,
         }
@@ -291,6 +293,8 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
                 "avatar": user.avatar.url if user.avatar else None,
                 "region": user.region.name if user.region else None,
                 "district": user.district.name if user.district else None,
+                "position": user.position.name if user.position else None,
+                "roles": user.roles,
                 "change_password": user.change_password,
                 "is_active": user.is_active,
             }
