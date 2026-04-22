@@ -58,6 +58,14 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
 
         return queryset.filter(user=user)
 
+    def perform_destroy(self, instance):
+        if instance.status != Status.PENDING:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({
+                "detail": f"Faqat 'Kutilmoqda' holatidagi so'rovlarni o'chirish mumkin. Joriy holat: {instance.get_status_display()}"
+            })
+        super().perform_destroy(instance)
+
     def perform_create(self, serializer):
         expense = serializer.save(user=self.request.user)
 

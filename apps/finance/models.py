@@ -118,7 +118,8 @@ class ExpenseRequest(BaseModel):
         if not self.pk:
             has_pending = ExpenseRequest.objects.filter(
                 user=self.user,
-                status__in=[Status.PENDING, Status.PAID]
+                status__in=[Status.PENDING, Status.PAID],
+                is_active=True
             ).exists()
 
             if has_pending:
