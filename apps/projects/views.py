@@ -98,6 +98,7 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
+    @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
         instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
