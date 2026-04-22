@@ -27,13 +27,14 @@ class WebSocketTicketView(APIView):
 
 @extend_schema(tags=["Notifications"])
 class NotificationListView(generics.ListAPIView):
+    queryset = Notification.objects.filter(is_active=True)
     serializer_class = NotificationSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['type', 'is_read']
 
     def get_queryset(self):
-        return Notification.objects.filter(user=self.request.user).order_by('is_read')
+        return super().get_queryset().filter(user=self.request.user).order_by('is_read')
 
 
 @extend_schema(tags=["Notifications"])

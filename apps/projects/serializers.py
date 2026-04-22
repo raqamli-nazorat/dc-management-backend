@@ -20,6 +20,7 @@ class ProjectShortSerializer(serializers.ModelSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     manager_info = UserShortSerializer(source='manager', read_only=True)
+    created_by_info = UserShortSerializer(source='created_by', read_only=True)
     employees_info = UserShortSerializer(source='employees', many=True, read_only=True)
     testers_info = UserShortSerializer(source='testers', many=True, read_only=True)
 
@@ -33,9 +34,9 @@ class ProjectSerializer(serializers.ModelSerializer):
         model = Project
         fields = (
             'id', 'uid', 'title', 'description', 'manager', 'manager_info',
-            'testers', 'testers_info', 'employees', 'employees_info',
-            'deadline', 'status', 'created_at', 'updated_at', 'is_active',
-            'completion_percentage'
+            'created_by_info', 'testers', 'testers_info', 
+            'employees', 'employees_info', 'deadline', 'status', 
+            'created_at', 'updated_at', 'completion_percentage'
         )
         read_only_fields = ('id', 'uid', 'created_at', 'updated_at')
 
@@ -53,7 +54,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskAttachment
-        fields = ('id', 'task', 'file', 'created_at', 'updated_at', 'is_active')
+        fields = ('id', 'task', 'file', 'created_at', 'updated_at')
         read_only_fields = ('id', 'created_at', 'updated_at')
 
 
@@ -81,7 +82,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
             'estimated_input_hours', 'estimated_input_minutes',
 
-            'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at', 'is_active'
+            'reopened_count', 'rejection_reason', 'attachments', 'created_at', 'updated_at'
         )
         read_only_fields = (
             'id', 'uid', 'created_by', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',

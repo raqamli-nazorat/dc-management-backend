@@ -19,7 +19,7 @@ class ProjectStatus(models.TextChoices):
 
 
 class TaskStatus(models.TextChoices):
-    TODO = 'todo', 'Kutilmoqda'
+    TODO = 'todo', 'Qilinishi kerak'
     IN_PROGRESS = 'in_progress', 'Jarayonda'
     OVERDUE = 'overdue', 'Muddati o\'tgan'
     DONE = 'done', 'Bajarildi'
@@ -60,6 +60,17 @@ class Project(BaseModel):
     project_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         verbose_name="Menejer bonusi (Loyiha uchun)"
+    )
+
+    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_projects',
+        verbose_name="Yaratuvchi"
     )
 
     manager = models.ForeignKey(
@@ -134,6 +145,8 @@ class Task(BaseModel):
     penalty_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
+
+    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
 
     estimated_minutes = models.PositiveIntegerField(default=0, verbose_name='Taxminiy vaqt (daqiqa)')
     actual_minutes = models.PositiveIntegerField(default=0, verbose_name="Haqiqiy ish vaqti (daqiqa)")

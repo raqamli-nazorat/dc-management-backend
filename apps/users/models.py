@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 from apps.users.utils import user_avatar_path, passport_path
 from apps.applications.validators import phone_validator
-from apps.applications.models import Region, District, Direction
+from apps.applications.models import Region, District, Position
 
 
 class Role(models.TextChoices):
@@ -32,8 +32,8 @@ class User(AbstractUser):
     passport_image = models.ImageField(upload_to=passport_path, null=True, blank=True, verbose_name="Passport rasmi")
     avatar = models.ImageField(upload_to=user_avatar_path, null=True, blank=True, verbose_name="Xodim avatari")
 
-    direction = models.ForeignKey(Direction, on_delete=models.SET_NULL, null=True, blank=True,
-                                  verbose_name='Yo\'nalishi')
+    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True,
+                                  verbose_name='Lavozimi')
     fixed_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Oylik maosh")
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Balans")
     change_password = models.BooleanField(default=True)

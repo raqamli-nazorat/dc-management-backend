@@ -36,13 +36,13 @@ class District(BaseModel):
         return f"{self.name} ({self.region.name})"
 
 
-class Direction(BaseModel):
+class Position(BaseModel):
     name = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
     is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
 
     class Meta:
-        verbose_name = "Yo'nalish"
-        verbose_name_plural = "Yo'nalishlar"
+        verbose_name = "Lavozim"
+        verbose_name_plural = "Lavozimlar"
         ordering = ['name']
 
     def __str__(self):
@@ -72,8 +72,8 @@ class Application(BaseModel):
     telegram = models.CharField(max_length=255, null=True, blank=True, validators=[telegram_validator],
                                 verbose_name="Telegram profil havolasi")
 
-    direction = models.ForeignKey(Direction, on_delete=models.PROTECT,
-                                  related_name='applications', verbose_name="Yo'nalish")
+    position = models.ForeignKey(Position, on_delete=models.PROTECT,
+                                  related_name='applications', verbose_name="Lavozim")
 
     resume = models.FileField(upload_to='applications/resumes/', validators=[validate_resume],
                               verbose_name="Rezyume (CV)")
@@ -106,7 +106,7 @@ class Application(BaseModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.full_name} - {self.direction}"
+        return f"{self.full_name} - {self.position}"
 
     def clean(self):
         super().clean()

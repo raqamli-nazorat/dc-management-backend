@@ -10,7 +10,7 @@ from .middleware import get_current_request
 AUDITED_MODELS = [
     'User', 'Project', 'Task', 'TaskAttachment',
     'ExpenseCategory', 'ExpenseRequest', 'Payroll', 'Ledger',
-    'Meeting', 'MeetingAttendance', 'Application', 'Region', 'Direction',
+    'Meeting', 'MeetingAttendance', 'Application', 'Region', 'Position',
     'Todo', 'Notification', 'UserDevice'
 ]
 
@@ -70,11 +70,22 @@ def audit_post_save(sender, instance, created, **kwargs):
         if created:
             action = ActionType.CREATE
         else:
-            new_status = getattr(instance, 'status', None)
             old_values_dict = getattr(instance, '_old_values', {})
+            
+            new_is_active = getattr(instance, 'is_active', None)
+            old_is_active = old_values_dict.get('is_active')
+            
+            new_is_deleted = getattr(instance, 'is_deleted', None)
+            old_is_deleted = old_values_dict.get('is_deleted')
+
+            new_status = getattr(instance, 'status', None)
             old_status = old_values_dict.get('status')
 
-            if new_status == 'confirmed' and old_status != 'confirmed':
+            if old_is_active is True and new_is_active is False:
+                action = ActionType.DELETE
+            elif hasattr(instance, 'is_deleted') and old_is_deleted is True and new_is_deleted is False and new_is_active is True:
+                action = ActionType.RESTORE
+            elif new_status == 'confirmed' and old_status != 'confirmed':
                 action = ActionType.CONFIRM
             else:
                 action = ActionType.UPDATE

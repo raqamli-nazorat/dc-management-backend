@@ -12,6 +12,7 @@ from django.contrib.auth import get_user_model
 
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender
+from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
 
 from .filters import ExpenseRequestFilter, PayrollFilter
 from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
@@ -30,10 +31,11 @@ class ExpenseCategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @extend_schema(tags=['Expense'])
-class ExpenseRequestViewSet(viewsets.ModelViewSet):
+class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     queryset = ExpenseRequest.objects.filter(is_active=True)
     serializer_class = ExpenseRequestSerializer
     permission_classes = [IsAuthenticated]
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ExpenseRequestFilter
@@ -44,21 +46,17 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
 
     ordering_fields = ['created_at', 'amount', 'paid_at', 'user__username']
     ordering = ['-created_at']
-
-    def get_queryset(self):
-        user = self.request.user
-
-        if user.is_superuser or user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
-            return self.queryset
+    
+    def get_role_based_queryset(self, queryset, user):
 
         if user.has_role(Role.MANAGER):
-            return self.queryset.filter(
+            return queryset.filter(
                 Q(user=user) |
                 Q(user__employee_projects__manager=user) |
                 Q(user__tester_projects__manager=user)
             ).distinct()
 
-        return self.queryset.filter(user=user)
+        return queryset.filter(user=user)
 
     def perform_create(self, serializer):
         expense = serializer.save(user=self.request.user)
@@ -97,7 +95,7 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         if instance.status != Status.PENDING:
             raise PermissionDenied("Siz qayta ishlangan so'rovni o'chira olmaysiz.")
-        instance.delete()
+        super().perform_destroy(instance)
 
     @extend_schema(request=None)
     @decorators.action(detail=True, methods=['post'], url_path='pay')
@@ -155,9 +153,10 @@ class ExpenseRequestViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Payroll'])
-class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
+class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Payroll.objects.filter(is_active=True)
     permission_classes = [IsAuthenticated]
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PayrollFilter
@@ -170,13 +169,8 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
             return PayrollStatusUpdateSerializer
         return PayrollSerializer
 
-    def get_queryset(self):
-        user = self.request.user
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
-            return self.queryset
-
-        return self.queryset.filter(user=user)
+    def get_role_based_queryset(self, queryset, user):
+        return queryset.filter(user=user)
 
     @extend_schema(
         request=PayrollStatusUpdateSerializer,
@@ -249,10 +243,11 @@ class PayrollViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @extend_schema(tags=['Ledger'])
-class LedgerViewSet(viewsets.ReadOnlyModelViewSet):
+class LedgerViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Ledger.objects.filter(is_active=True)
     serializer_class = LedgerSerializer
     permission_classes = [IsAuthenticated]
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['transaction_type', 'user', 'expense', 'payroll']
@@ -260,10 +255,5 @@ class LedgerViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created_at', 'amount']
     ordering = ['-created_at']
 
-    def get_queryset(self):
-        user = self.request.user
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
-            return self.queryset
-
-        return self.queryset.filter(user=user)
+    def get_role_based_queryset(self, queryset, user):
+        return queryset.filter(user=user)

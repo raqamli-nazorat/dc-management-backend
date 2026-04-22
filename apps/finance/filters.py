@@ -9,7 +9,7 @@ class ExpenseRequestFilter(filters.FilterSet):
     class Meta:
         model = ExpenseRequest
         fields = {
-            'user__direction': ['exact'],
+            'user__position': ['exact'],
             'status': ['exact'],
             'type': ['exact'],
             'project': ['exact'],
@@ -38,7 +38,7 @@ class PayrollFilter(filters.FilterSet):
         model = Payroll
         fields = {
             'is_confirmed': ['exact'],
-            'user__direction': ['exact'],
+            'user__position': ['exact'],
             'month': ['exact', 'gte', 'lte'],
             'total_amount': ['exact', 'gte', 'lte'],
         }

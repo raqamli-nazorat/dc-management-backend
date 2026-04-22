@@ -7,7 +7,7 @@ class UserFilter(filters.FilterSet):
 
     class Meta:
         model = User
-        fields = ['region', 'direction']
+        fields = ['region', 'position']
 
     def filter_by_roles(self, queryset, name, value):
         if not value:

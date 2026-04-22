@@ -5,10 +5,11 @@ from rest_framework import viewsets, permissions, filters
 from .serializers import TodoSerializer
 from .models import Todo
 
+from apps.common.mixins import SoftDeleteMixin
 
 @extend_schema(tags=['Todo'])
-class TodoViewSet(viewsets.ModelViewSet):
-    queryset = Todo.objects.all()
+class TodoViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+    queryset = Todo.objects.filter(is_active=True)
     serializer_class = TodoSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -18,7 +19,7 @@ class TodoViewSet(viewsets.ModelViewSet):
     ordering_fields = ['created_at']
 
     def get_queryset(self):
-        queryset = self.queryset
+        queryset = super().get_queryset()
         return queryset.filter(user=self.request.user).select_related('user')
 
     def perform_create(self, serializer):

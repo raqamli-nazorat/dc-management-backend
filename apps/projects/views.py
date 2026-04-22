@@ -8,11 +8,14 @@ from rest_framework import viewsets, filters, permissions, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
+from rest_framework import status
 
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender, notify_meeting_end
+
+from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
 
 from .filters import TaskFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance
@@ -21,31 +24,24 @@ from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSeriali
                           MeetingAttendanceReasonSerializer)
 
 
-@extend_schema(tags=['Projects'])
-class ProjectShortViewSet(viewsets.ReadOnlyModelViewSet):
+@extend_schema(tags=['Project Shorts'])
+class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
+    queryset = Project.objects.filter(is_deleted=False, is_active=True).select_related('manager').prefetch_related('employees', 'testers')
     serializer_class = ProjectShortSerializer
     permission_classes = [permissions.IsAuthenticated]
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
-    def get_queryset(self):
-        user = self.request.user
-        queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
-
-        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
-            return Project.objects.none()
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
-            return queryset.all()
-
+    def get_role_based_queryset(self, queryset, user):
         return queryset.filter(
             Q(manager=user) |
             Q(testers=user) |
             Q(employees=user),
-            is_active=True
         ).exclude(status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]).distinct()
 
 
 @extend_schema(tags=['Projects'])
-class ProjectViewSet(viewsets.ModelViewSet):
+class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+    queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
     serializer_class = ProjectSerializer
     filter_backends = [
         DjangoFilterBackend,
@@ -57,34 +53,92 @@ class ProjectViewSet(viewsets.ModelViewSet):
     search_fields = ['title', 'description']
     ordering_fields = ['status', 'deadline', 'created_at']
     ordering = ['-created_at']
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'restore', 'hard_delete']:
             return [IsAdmin()]
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
+        queryset = super().get_queryset()
+        if getattr(self, 'action', None) in ['trash', 'restore', 'hard_delete']:
+            return queryset.filter(is_deleted=True)
+        return queryset.filter(is_deleted=False, is_active=True)
 
-        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
-            return Project.objects.none()
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
-            return queryset.all()
-
+    def get_role_based_queryset(self, queryset, user):
         return queryset.filter(
             Q(manager=user) |
             Q(testers=user) |
             Q(employees=user),
-            is_active=True
         ).distinct()
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    def perform_destroy(self, instance):
+        if instance.status != ProjectStatus.PLANNING:
+            raise ValidationError({
+                "detail": f"Loyihani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Rejalashtirilmoqda' holatidagilarni o'chirish mumkin."
+            })
+        
+        instance.is_active = False
+        instance.is_deleted = True
+        instance.save()
+
+    @action(detail=False, methods=['get'])
+    def trash(self, request):
+        queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+        
+        if not instance:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(self.request, instance)
+        
+        if not instance.is_deleted:
+            return Response({"detail": "Loyiha korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        instance.is_active = True
+        instance.is_deleted = False
+        instance.save()
+        
+        return Response({"detail": "Loyiha muvaffaqiyatli tiklandi."})
+
+    @action(detail=True, methods=['delete'])
+    def hard_delete(self, request, pk=None):
+        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+        
+        if not instance:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(self.request, instance)
+        
+        if not instance.is_deleted:
+            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        instance.is_deleted = False
+        instance.is_active = False
+        instance.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(tags=['Tasks'])
-class TaskViewSet(viewsets.ModelViewSet):
+class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+    queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     filter_backends = [
         DjangoFilterBackend,
@@ -100,9 +154,6 @@ class TaskViewSet(viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['update', 'partial_update']:
             user = self.request.user
-
-            if getattr(self, 'swagger_fake_view', False):
-                return TaskSerializer
 
             if not hasattr(self, "_cached_task"):
                 try:
@@ -121,27 +172,82 @@ class TaskViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update']:
             return [(IsAdmin | IsManager | IsEmployee)()]
 
-        if self.action == 'destroy':
+        if self.action in ['destroy', 'restore', 'hard_delete']:
             return [(IsAdmin | IsManager)()]
 
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        user = self.request.user
-        queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
+        queryset = super().get_queryset()
+        if getattr(self, 'action', None) in ['trash', 'restore', 'hard_delete']:
+            return queryset.filter(is_deleted=True)
+        return queryset.filter(is_deleted=False, is_active=True)
 
-        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
-            return Task.objects.none()
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
-            return queryset.all()
-
+    def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
-            return queryset.filter(project__manager=user, is_active=True)
+            return queryset.filter(project__manager=user)
 
         return queryset.filter(
-            Q(assignee=user) | Q(project__testers=user, is_active=True)
+            Q(assignee=user) | Q(project__testers=user)
         ).distinct()
+
+    def perform_destroy(self, instance):
+        if instance.status != TaskStatus.TODO:
+            raise ValidationError({
+                "detail": f"Vazifani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
+            })
+        
+        instance.is_active = False
+        instance.is_deleted = True
+        instance.save()
+
+    @extend_schema(request=None)
+    @action(detail=False, methods=['get'])
+    def trash(self, request):
+        queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
+        page = self.paginate_queryset(queryset)
+        
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @extend_schema(request=None)
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+
+        if not instance:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(self.request, instance)
+        
+        if not instance.is_deleted:
+            return Response({"detail": "Vazifa korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        instance.is_active = True
+        instance.is_deleted = False
+        instance.save()
+        
+        return Response({"detail": "Vazifa muvaffaqiyatli tiklandi."})
+
+    @action(detail=True, methods=['delete'])
+    def hard_delete(self, request, pk=None):
+        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+        
+        if not instance:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        self.check_object_permissions(self.request, instance)
+        
+        if not instance.is_deleted:
+            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        instance.is_deleted = False
+        instance.is_active = False
+        instance.save()
+        
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     def _send_task_notification(self, task, title, message):
         if task.assignee:
@@ -220,30 +326,21 @@ class TaskViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Task Attachments'])
-class TaskAttachmentViewSet(viewsets.ModelViewSet):
-    queryset = TaskAttachment.objects.all()
+class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+    queryset = TaskAttachment.objects.filter(is_active=True).select_related('task__project', 'task__assignee')
     serializer_class = TaskAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     http_method_names = ['get', 'post', 'delete']
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
-    def get_queryset(self):
-        user = self.request.user
-        queryset = TaskAttachment.objects.select_related('task__project', 'task__assignee')
-
-        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
-            return TaskAttachment.objects.none()
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
-            return queryset.all()
-
+    def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
-            return queryset.filter(task__project__manager=user, is_active=True)
+            return queryset.filter(task__project__manager=user)
 
         return queryset.filter(
             Q(task__assignee=user) |
-            Q(task__project__testers=user),
-            is_active=True
+            Q(task__project__testers=user)
         ).distinct()
 
     def perform_create(self, serializer):
@@ -264,9 +361,12 @@ class TaskAttachmentViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meetings'])
-class MeetingViewSet(viewsets.ModelViewSet):
+class MeetingViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = Meeting.objects.filter(is_active=True)
     serializer_class = MeetingSerializer
+
+    def get_queryset(self):
+        return super().get_queryset()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -387,11 +487,14 @@ class MeetingViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meeting Attendance'])
-class MeetingAttendanceViewSet(viewsets.ModelViewSet):
-    queryset = MeetingAttendance.objects.all()
+class MeetingAttendanceViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+    queryset = MeetingAttendance.objects.filter(is_active=True)
     serializer_class = MeetingAttendanceSerializer
     filter_backends = [filters.OrderingFilter]
     ordering_filter = ['meeting']
+
+    def get_queryset(self):
+        return super().get_queryset()
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update']:
@@ -418,6 +521,7 @@ class MeetingAttendanceViewSet(viewsets.ModelViewSet):
 
 @extend_schema(tags=['Meeting Attendance'])
 class MeetingAttendanceReasonViewSet(viewsets.ModelViewSet):
+    queryset = MeetingAttendance.objects.all()
     serializer_class = MeetingAttendanceReasonSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['patch']

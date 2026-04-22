@@ -15,7 +15,7 @@ User = get_user_model()
 
 @extend_schema(tags=['Users'], summary="Admin")
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]

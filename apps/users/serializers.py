@@ -21,7 +21,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'phone_number', 'region', 'district', 'direction',
+            'id', 'username', 'phone_number', 'region', 'district', 'position',
             'passport_series', 'passport_image', 'roles',
             'password', 'confirm_password',
             'fixed_salary', 'balance',
@@ -89,14 +89,14 @@ class UserSerializer(serializers.ModelSerializer):
 class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'region', 'district', 'direction', 'roles', 'date_joined',
+        fields = ('id', 'avatar', 'username', 'phone_number', 'region', 'district', 'position', 'roles', 'date_joined',
                   'is_active')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'direction', 'roles',
+        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'position', 'roles',
                   'fixed_salary', 'balance', 'date_joined', 'change_password', 'is_active')
 
 

@@ -14,7 +14,7 @@ User = get_user_model()
 class ExpenseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseCategory
-        fields = ('id', 'title', 'is_active', 'created_at', 'updated_at')
+        fields = ('id', 'title', 'created_at', 'updated_at')
 
 
 class ExpenseRequestSerializer(serializers.ModelSerializer):

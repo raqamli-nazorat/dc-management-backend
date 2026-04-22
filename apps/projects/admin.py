@@ -38,7 +38,7 @@ class ProjectAdmin(ModelAdmin):
             'fields': ('project_price',)
         }),
         ('Jamoa', {
-            'fields': ('manager', 'employees', 'testers')
+            'fields': ('created_by', 'manager', 'employees', 'testers')
         }),
         ('Vaqt jadvali', {
             'fields': ('deadline',)

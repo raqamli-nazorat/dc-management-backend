@@ -5,11 +5,12 @@ from rest_framework.filters import SearchFilter
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateAPIView
 from rest_framework.permissions import AllowAny
 
-from apps.applications.models import Region, District, Direction, Application
-from apps.applications.serializers import (RegionSerializer, DistrictSerializer, DirectionSerializer,
+from apps.applications.models import Region, District, Position, Application
+from apps.applications.serializers import (RegionSerializer, DistrictSerializer, PositionSerializer,
                                            ApplicationSerializer, ApplicationStatusUpdateSerializer)
 from apps.users.permissions import IsAdmin, IsManager, IsSuperAdmin
 from apps.users.models import Role
+from apps.common.mixins import SoftDeleteMixin
 
 
 class ActiveObjectsMixin:
@@ -22,28 +23,31 @@ class ActiveObjectsMixin:
 
     def get_queryset(self):
         user = self.request.user
+        queryset = super().get_queryset()
+
         if user.is_authenticated and user.has_role(*self.admin_roles):
-            return super().get_queryset()
-        return super().get_queryset().filter(is_application=True, is_active=True)
+            return queryset
+        return queryset.filter(is_application=True)
 
 
-class RegionViewSet(ActiveObjectsMixin, viewsets.ModelViewSet):
-    queryset = Region.objects.all()
+@extend_schema(tags=['Region'])
+class RegionViewSet(SoftDeleteMixin, ActiveObjectsMixin, viewsets.ModelViewSet):
+    queryset = Region.objects.filter(is_active=True)
     serializer_class = RegionSerializer
 
 
 @extend_schema(tags=['District'])
-class DistrictViewSet(ActiveObjectsMixin, viewsets.ModelViewSet):
-    queryset = District.objects.select_related('region').all()
+class DistrictViewSet(SoftDeleteMixin, ActiveObjectsMixin, viewsets.ModelViewSet):
+    queryset = District.objects.filter(is_active=True).select_related('region').all()
     serializer_class = DistrictSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['region']
 
 
-@extend_schema(tags=['Direction'])
-class DirectionViewSet(ActiveObjectsMixin, viewsets.ModelViewSet):
-    queryset = Direction.objects.all()
-    serializer_class = DirectionSerializer
+@extend_schema(tags=['Position'])
+class PositionViewSet(SoftDeleteMixin, ActiveObjectsMixin, viewsets.ModelViewSet):
+    queryset = Position.objects.filter(is_active=True)
+    serializer_class = PositionSerializer
 
 
 @extend_schema(tags=['Application'])
@@ -61,16 +65,16 @@ class ApplicationView(ListCreateAPIView):
         return [(IsAdmin | IsManager)()]
 
     def get_queryset(self):
-        return Application.objects.select_related(
-            'region', 'district', 'direction', 'reviewed_by'
-        ).all()
+        return Application.objects.filter(is_active=True).select_related(
+            'region', 'district', 'position', 'reviewed_by'
+        )
 
 
 @extend_schema(tags=['Application'])
 class ApplicationDetailView(RetrieveUpdateAPIView):
-    queryset = Application.objects.select_related(
-        'region', 'district', 'direction', 'reviewed_by'
-    ).all()
+    queryset = Application.objects.filter(is_active=True).select_related(
+        'region', 'district', 'position', 'reviewed_by'
+    )
     permission_classes = (IsAdmin | IsManager,)
     http_method_names = ('get', 'patch',)
 

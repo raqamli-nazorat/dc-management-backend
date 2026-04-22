@@ -54,7 +54,7 @@ class CustomUserAdmin(ModelAdmin):
             )
         }),
         ('Lavozim va Moliya', {
-            'fields': ('direction', 'roles', 'fixed_salary', 'balance')
+            'fields': ('position', 'roles', 'fixed_salary', 'balance')
         }),
         ('Huquqlar va Status', {
             'fields': ('is_active', 'is_staff', 'is_superuser'),
@@ -65,7 +65,7 @@ class CustomUserAdmin(ModelAdmin):
     add_fieldsets = (
         ('Yangi xodim', {
             'classes': ('wide',),
-            'fields': ('username', 'phone_number', 'region', 'district', 'direction',
+            'fields': ('username', 'phone_number', 'region', 'district', 'position',
                        'passport_series', 'passport_image', 'roles',
                        'fixed_salary', 'password'),
         }),
