@@ -11,7 +11,7 @@ from .models import AuditLog
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.select_related('user').all()
     serializer_class = AuditLogSerializer
-    permission_classes = [IsAdmin, IsAuditor]
+    permission_classes = [IsAdmin | IsAuditor]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['action', 'table_name', 'user', 'record_id']

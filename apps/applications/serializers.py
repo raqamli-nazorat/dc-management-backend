@@ -1,30 +1,37 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from apps.applications.models import Region, Direction, Application, ApplicationStatus
+from apps.applications.models import Region, District, Position, Application, ApplicationStatus
 
 
 class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
-        fields = ('id', 'title', 'is_active')
-        read_only_fields = ('id', 'title')
+        fields = ('id', 'name', 'is_application')
+        read_only_fields = ('id',)
 
 
-class DirectionSerializer(serializers.ModelSerializer):
+class DistrictSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Direction
-        fields = ('id', 'title', 'is_active')
-        read_only_fields = ('id', 'title')
+        model = District
+        fields = ('id', 'region', 'name', 'is_application')
+        read_only_fields = ('id',)
+
+
+class PositionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Position
+        fields = ('id', 'name', 'is_application')
+        read_only_fields = ('id',)
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
-        fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region',
-                  'phone', 'telegram', 'direction', 'resume', 'extra_info', 'portfolio', 'status', 'is_active'
+        fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region', 'district',
+                  'phone', 'telegram', 'position', 'resume', 'extra_info', 'portfolio', 'status'
                   )
-        read_only_fields = ('id', 'status', 'is_active')
+        read_only_fields = ('id', 'status')
 
     def validate(self, attrs):
         if attrs.get('is_student') and not attrs.get('university'):

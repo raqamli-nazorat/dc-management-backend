@@ -10,21 +10,30 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 import os
-from dotenv import load_dotenv
+import environ
 from celery.schedules import crontab
 from datetime import timedelta
 from pathlib import Path
 
-load_dotenv()
+import firebase_admin
+from firebase_admin import credentials
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+env = environ.Env(DEBUG=(bool, False))
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY')
+SECRET_KEY = env('SECRET_KEY')
+
+# SECURITY WARNING: keep the secret key used in production secret!
+cred_path = os.path.join(BASE_DIR, 'firebase-key.json')
+cred = credentials.Certificate(cred_path)
+firebase_admin.initialize_app(cred)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -34,9 +43,14 @@ ALLOWED_HOSTS = ['*']
 # CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = []
 
+# CORS
+CORS_ALLOW_ALL_ORIGINS = True
+
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
+
     'unfold',
     'unfold.contrib.filters',
     'unfold.contrib.forms',
@@ -53,6 +67,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.postgres',
+
+    'storages',
 
     'rest_framework',
     'rest_framework_simplejwt',
@@ -66,6 +83,8 @@ INSTALLED_APPS = [
     'apps.finance.apps.FinanceConfig',
     'apps.projects.apps.ProjectsConfig',
     'apps.applications.apps.ApplicationsConfig',
+    'apps.notifications.apps.NotificationsConfig',
+    'apps.todos.apps.TodosConfig',
     'apps.audit.apps.AuditConfig',
 ]
 
@@ -99,6 +118,17 @@ TEMPLATES = [
     },
 ]
 
+# Channel Layers
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": ["redis://127.0.0.1:6379/1"],
+        },
+    }
+}
+
+ASGI_APPLICATION = 'config.asgi.application'
 WSGI_APPLICATION = 'config.wsgi.application'
 
 # Redis
@@ -124,6 +154,11 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.projects.tasks.send_morning_reminders',
         'schedule': crontab(hour=9, minute=0),
     },
+
+    'calculate-monthly-salaries-on-1st': {
+        'task': 'apps.finance.tasks.calculate_monthly_salaries',
+        'schedule': crontab(day_of_month=1, hour=0, minute=1),
+    },
 }
 
 # Database
@@ -132,16 +167,28 @@ CELERY_BEAT_SCHEDULE = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
         'OPTIONS': {
             'client_encoding': 'UTF8',
         }
     }
 }
+
+# Cache
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    }
+}
+
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
@@ -199,14 +246,25 @@ REST_FRAMEWORK = {
 
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,
+    'PAGE_SIZE': 20,
+
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'apps.common.throttles.CustomScopedRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '60/minute',
+        'user': '60/minute',
+        'login': '3/3m',
+    }
 }
 
 # Simple JWT
 # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': True,
 }
@@ -215,9 +273,39 @@ SIMPLE_JWT = {
 # https://drf-spectacular.readthedocs.io/en/latest/readme.html
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'API',
+    'TITLE': 'Raqamli Nazorat API',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
 }
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# S3 storage settings
+
+USE_S3 = env.bool('USE_S3', True)
+
+if USE_S3:
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3.S3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+AWS_ACCESS_KEY_ID = env.str('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = env.str('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = env.str('AWS_STORAGE_BUCKET_NAME')
+AWS_S3_ENDPOINT_URL = env.str('AWS_S3_ENDPOINT_URL')
+AWS_S3_REGION_NAME = env.str('AWS_S3_REGION_NAME', default='us-east-1')
+AWS_S3_ADDRESSING_STYLE = env.str('AWS_S3_ADDRESSING_STYLE', default='path')

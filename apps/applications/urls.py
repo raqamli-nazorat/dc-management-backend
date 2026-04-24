@@ -2,11 +2,12 @@ from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
 from .views import (ApplicationView, ApplicationDetailView,
-                    RegionViewSet, DirectionViewSet)
+                    RegionViewSet, DistrictViewSet, PositionViewSet)
 
 router = SimpleRouter()
 router.register('regions', RegionViewSet)
-router.register('directions', DirectionViewSet)
+router.register('districts', DistrictViewSet)
+router.register('positions', PositionViewSet)
 
 urlpatterns = [
     path('applications/', include(router.urls)),

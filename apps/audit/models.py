@@ -11,6 +11,7 @@ class ActionType(models.TextChoices):
     UPDATE = 'update', 'Update'
     DELETE = 'delete', "Delete"
     CONFIRM = 'confirm', 'Confirm'
+    RESTORE = 'restore', 'Restore'
 
 
 class AuditLog(BaseModel):

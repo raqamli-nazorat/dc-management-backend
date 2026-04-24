@@ -1,35 +1,52 @@
-from django.contrib.auth import get_user_model
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.conf import settings
 
 from apps.common.models import BaseModel
 from .validators import (phone_validator, telegram_validator,
                          portfolio_validator, validate_resume)
 
-User = get_user_model()
+User = settings.AUTH_USER_MODEL
 
 
 class Region(BaseModel):
-    title = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    name = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
 
     class Meta:
         verbose_name = "Viloyat"
         verbose_name_plural = "Viloyatlar"
-        ordering = ['title']
+        ordering = ['name']
 
     def __str__(self):
-        return self.title
+        return self.name
 
 
-class Direction(BaseModel):
-    title = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+class District(BaseModel):
+    region = models.ForeignKey(Region, on_delete=models.CASCADE, related_name='districts', verbose_name="Viloyat")
+    name = models.CharField(max_length=255, verbose_name="Nomi")
+    is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
 
     class Meta:
-        verbose_name = "Yo'nalish"
-        verbose_name_plural = "Yo'nalishlar"
-        ordering = ['title']
+        verbose_name = "Tuman"
+        verbose_name_plural = "Tumanlar"
+        ordering = ['name']
 
     def __str__(self):
-        return self.title
+        return f"{self.name} ({self.region.name})"
+
+
+class Position(BaseModel):
+    name = models.CharField(max_length=255, unique=True, verbose_name="Nomi")
+    is_application = models.BooleanField(default=False, verbose_name="Ariza uchun ham ishlatilsinmi?")
+
+    class Meta:
+        verbose_name = "Lavozim"
+        verbose_name_plural = "Lavozimlar"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class ApplicationStatus(models.TextChoices):
@@ -48,13 +65,15 @@ class Application(BaseModel):
 
     region = models.ForeignKey(Region, on_delete=models.PROTECT,
                                related_name='applications', verbose_name="Viloyat")
+    district = models.ForeignKey(District, on_delete=models.PROTECT, null=True, blank=True,
+                                 related_name='applications', verbose_name="Tuman")
 
     phone = models.CharField(max_length=20, validators=[phone_validator], verbose_name="Telefon raqami")
     telegram = models.CharField(max_length=255, null=True, blank=True, validators=[telegram_validator],
                                 verbose_name="Telegram profil havolasi")
 
-    direction = models.ForeignKey(Direction, on_delete=models.PROTECT,
-                                  related_name='applications', verbose_name="Yo'nalish")
+    position = models.ForeignKey(Position, on_delete=models.PROTECT,
+                                  related_name='applications', verbose_name="Lavozim")
 
     resume = models.FileField(upload_to='applications/resumes/', validators=[validate_resume],
                               verbose_name="Rezyume (CV)")
@@ -87,4 +106,16 @@ class Application(BaseModel):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.full_name} - {self.direction}"
+        return f"{self.full_name} - {self.position}"
+
+    def clean(self):
+        super().clean()
+        if self.district and self.region:
+            if self.district.region_id != self.region_id:
+                raise ValidationError({
+                    'district': "Tanlangan tuman ushbu viloyatga tegishli emas!"
+                })
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
