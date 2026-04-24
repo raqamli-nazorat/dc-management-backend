@@ -157,7 +157,7 @@ CELERY_BEAT_SCHEDULE = {
 
     'calculate-monthly-salaries-on-1st': {
         'task': 'apps.finance.tasks.calculate_monthly_salaries',
-        'schedule': crontab(day_of_month=1, hour=0, minute=1),
+        'schedule': crontab(day_of_month=4, hour=0, minute=1),
     },
 }
 
