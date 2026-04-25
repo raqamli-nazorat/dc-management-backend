@@ -174,11 +174,8 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         return TaskSerializer
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update']:
+        if self.action in ['create', 'update', 'partial_update', 'destroy', 'restore', 'hard_delete']:
             return [(IsAdmin | IsManager | IsEmployee)()]
-
-        if self.action in ['destroy', 'restore', 'hard_delete']:
-            return [(IsAdmin | IsManager)()]
 
         return [permissions.IsAuthenticated()]
 
@@ -199,6 +196,10 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         ).distinct()
 
     def perform_destroy(self, instance):
+        user = self.request.user
+        if instance.created_by != user:
+            raise PermissionDenied("Sizda bu vazifani o'chirish huquqi yo'q. Faqat vazifa yaratuvchisi uni o'chira oladi.")
+
         if instance.status != TaskStatus.TODO:
             raise ValidationError({
                 "detail": f"Vazifani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
