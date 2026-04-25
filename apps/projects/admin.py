@@ -81,7 +81,7 @@ class TaskAdmin(ModelAdmin):
             'fields': ('status', 'priority', 'type')
         }),
         ('Topshiriq & narxlar', {
-            'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
+            'fields': ('created_by', 'assignee', 'position', 'task_price', 'penalty_percentage')
         }),
         ('Vaqtni kuzatish & Sifat', {
             'fields': ('deadline', 'estimated_minutes', 'actual_minutes', 'reopened_count')

@@ -193,7 +193,9 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             return queryset.filter(project__manager=user)
 
         return queryset.filter(
-            Q(assignee=user) | Q(project__testers=user)
+            Q(assignee=user) | 
+            Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) | 
+            Q(project__employees=user, assignee__isnull=True)
         ).distinct()
 
     def perform_destroy(self, instance):
@@ -320,8 +322,8 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             if new_status and current_status != new_status:
                 employee_transitions = {
                     TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
-                    TaskStatus.IN_PROGRESS: [TaskStatus.TODO, TaskStatus.DONE],
-                    TaskStatus.DONE: [TaskStatus.TODO, TaskStatus.PRODUCTION],
+                    TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
+                    TaskStatus.DONE: [TaskStatus.PRODUCTION],
                     TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
                 }
                 if new_status not in employee_transitions.get(current_status, []):
@@ -330,7 +332,16 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             serializer.save()
             return
 
-        is_tester = user in task.project.testers.all()
+        if task.assignee is None and task.project.employees.filter(id=user.id).exists():
+            if new_status == TaskStatus.IN_PROGRESS:
+                serializer.save(
+                    assignee=user,
+                    position=getattr(user, 'position', None)
+                )
+                return
+            raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazishingiz kerak.")
+
+        is_tester = task.project.testers.filter(id=user.id).exists()
         if is_tester:
             if new_status and current_status != new_status:
                 if current_status != TaskStatus.PRODUCTION:
@@ -354,6 +365,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         task = serializer.save(created_by=self.request.user)
+
         if task.assignee:
             deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
 

@@ -86,6 +86,8 @@ class TaskSerializer(serializers.ModelSerializer):
             'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
             'created_by_info', 'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
 
+            'sprint', 'position',
+
             'estimated_minutes', 'actual_minutes',
 
             'estimated_input_hours', 'estimated_input_minutes',
@@ -179,6 +181,12 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         new_status = validated_data.get('status')
         reason = validated_data.get('rejection_reason')
+        
+        if 'assignee' in validated_data:
+            instance.assignee = validated_data['assignee']
+        if 'position' in validated_data:
+            instance.position = validated_data['position']
+            
         now = timezone.now()
 
         if new_status == TaskStatus.IN_PROGRESS and instance.status != TaskStatus.IN_PROGRESS:

@@ -6,6 +6,7 @@ from django.db import models
 from apps.common.utils import generate_unique_id
 from apps.common.models import BaseModel
 from apps.users.models import Role
+from apps.applications.models import Position
 
 User = get_user_model()
 
@@ -146,6 +147,10 @@ class Task(BaseModel):
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
 
+    sprint = models.CharField(max_length=50, null=True, blank=True, verbose_name='Sprint')
+    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
+                                 verbose_name='Lavozim')
+
     is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
 
     estimated_minutes = models.PositiveIntegerField(default=0, verbose_name='Taxminiy vaqt (daqiqa)')
@@ -183,6 +188,9 @@ class Task(BaseModel):
                 })
 
     def save(self, *args, **kwargs):
+        if not self.position and self.assignee:
+            self.position = self.assignee.position
+
         self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('T', Task)

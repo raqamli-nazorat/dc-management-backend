@@ -18,6 +18,8 @@ class TaskFilter(filters.FilterSet):
     status = CharInFilter(field_name='status', lookup_expr='in', label="Holatlar")
     priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajalar")
     type = CharInFilter(field_name='type', lookup_expr='in', label="Turlar")
+    position = NumberInFilter(field_name='position_id', lookup_expr='in', label="Lavozimlar")
+    sprint = filters.CharFilter(field_name='sprint', lookup_expr='icontains', label="Sprint")
 
     created_from = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte', label="Yaratilgan (Dan)")
     created_to = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte', label="Yaratilgan (Gacha)")
@@ -30,7 +32,7 @@ class TaskFilter(filters.FilterSet):
 
     class Meta:
         model = Task
-        fields = ['status', 'priority', 'type', 'project', 'created_by']
+        fields = ['status', 'priority', 'type', 'project', 'created_by', 'position', 'sprint']
 
     def filter_my_tasks(self, queryset, name, value):
         if value and getattr(self, 'request', None) and self.request.user.is_authenticated:
