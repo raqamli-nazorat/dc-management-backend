@@ -2,6 +2,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
+from applications.models import Position
 from apps.users.serializers import UserShortSerializer
 from apps.users.models import Role
 
@@ -80,13 +81,16 @@ class TaskSerializer(serializers.ModelSerializer):
     estimated_input_hours = serializers.IntegerField(write_only=True, required=False, min_value=0)
     estimated_input_minutes = serializers.IntegerField(write_only=True, required=False, min_value=0, max_value=59)
 
+    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
+    position_info = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = Task
         fields = (
             'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
             'created_by_info', 'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
 
-            'sprint', 'position',
+            'sprint', 'position', 'position_info',
 
             'estimated_minutes', 'actual_minutes',
 
