@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="" />
+    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/apps/common/exceptions.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/common/exceptions.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -174,7 +176,7 @@
       <workItem from="1776948759568" duration="594000" />
       <workItem from="1777034860314" duration="446000" />
       <workItem from="1777036778457" duration="1291000" />
-      <workItem from="1777124240626" duration="4358000" />
+      <workItem from="1777124240626" duration="4681000" />
     </task>
     <servers />
   </component>
