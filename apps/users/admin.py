@@ -65,8 +65,8 @@ class CustomUserAdmin(ModelAdmin):
     add_fieldsets = (
         ('Yangi xodim', {
             'classes': ('wide',),
-            'fields': ('username', 'phone_number', 'region', 'district', 'position',
-                       'passport_series', 'passport_image', 'roles',
+            'fields': ('avatar', 'username', 'phone_number', 'region', 'district', 'position',
+                       'passport_series', 'passport_image', 'social_links', 'roles',
                        'fixed_salary', 'password'),
         }),
     )

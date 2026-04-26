@@ -21,10 +21,10 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'phone_number', 'region', 'district', 'position',
-            'passport_series', 'passport_image', 'roles',
+            'id', 'avatar', 'username', 'phone_number', 'region', 'district', 'position',
+            'passport_series', 'passport_image', 'social_links', 'roles',
             'password', 'confirm_password',
-            'fixed_salary', 'balance', 'social_links', 'is_active'
+            'fixed_salary', 'balance', 'is_active'
         )
         read_only_fields = ('id', 'balance')
 
