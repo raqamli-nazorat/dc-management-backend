@@ -37,16 +37,14 @@ class UserSerializer(serializers.ModelSerializer):
         confirm_password = attrs.get('confirm_password')
 
         if current_user.has_role(Role.ADMIN) and not current_user.has_role(Role.SUPERADMIN):
-            restricted_roles = {Role.SUPERADMIN, Role.ADMIN}
-
-            if set(input_roles) & restricted_roles:
+            if Role.SUPERADMIN in input_roles:
                 raise serializers.ValidationError({
-                    "roles": "Siz ushbu darajadagi foydalanuvchilarni yarata yoki boshqara olmaysiz."
+                    "roles": "Siz Super Admin yarata olmaysiz."
                 })
 
-            if self.instance and self.instance.has_role(Role.SUPERADMIN, Role.ADMIN):
+            if self.instance and self.instance.has_role(Role.SUPERADMIN):
                 raise serializers.ValidationError({
-                    "detail": "Ushbu foydalanuvchi ma'lumotlarini o'zgartirish huquqi sizda yo'q."
+                    "detail": "Super Admin ma'lumotlarini o'zgartirish huquqi sizda yo'q."
                 })
 
         if password is not None:
