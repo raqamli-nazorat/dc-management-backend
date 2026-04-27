@@ -19,7 +19,7 @@ class TaskFilter(filters.FilterSet):
     priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajalar")
     type = CharInFilter(field_name='type', lookup_expr='in', label="Turlar")
     position = NumberInFilter(field_name='position_id', lookup_expr='in', label="Lavozimlar")
-    sprint = filters.CharFilter(field_name='sprint', lookup_expr='icontains', label="Sprint")
+    sprint = NumberInFilter(field_name='sprint', lookup_expr='in', label="Sprint")
 
     created_from = filters.DateTimeFilter(field_name='created_at', lookup_expr='gte', label="Yaratilgan (Dan)")
     created_to = filters.DateTimeFilter(field_name='created_at', lookup_expr='lte', label="Yaratilgan (Gacha)")

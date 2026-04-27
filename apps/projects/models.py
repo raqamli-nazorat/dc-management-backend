@@ -148,7 +148,7 @@ class Task(BaseModel):
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
 
-    sprint = models.CharField(max_length=50, null=True, blank=True, verbose_name='Sprint')
+    sprint = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)], verbose_name='Sprint')
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
                                  verbose_name='Lavozim')
 
