@@ -44,7 +44,8 @@ class Type(models.TextChoices):
 
 
 class Project(BaseModel):
-    uid = models.CharField(max_length=10, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
+    uid = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
+    prefix = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="Prefiksi")
     title = models.CharField(max_length=255, verbose_name="Nomi")
     description = models.TextField(verbose_name="Tavsifi")
     deadline = models.DateTimeField(verbose_name="Muddati")
@@ -120,7 +121,7 @@ class Project(BaseModel):
 
 
 class Task(BaseModel):
-    uid = models.CharField(max_length=7, unique=True, editable=False, verbose_name="UID")
+    uid = models.CharField(max_length=20, unique=True, editable=False, verbose_name="UID")
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='tasks', verbose_name='Loyiha')
     title = models.CharField(max_length=255, verbose_name='Nomi')
     description = models.TextField(verbose_name='Tavsifi')
@@ -195,7 +196,7 @@ class Task(BaseModel):
 
         self.full_clean()
         if not self.uid:
-            self.uid = generate_unique_id('T', Task)
+            self.uid = generate_unique_id(self.project.prefix, Task)
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -229,7 +230,7 @@ class TaskRejectionFile(BaseModel):
 
 
 class Meeting(BaseModel):
-    uid = models.CharField(max_length=7, unique=True, editable=False, verbose_name="UID")
+    uid = models.CharField(max_length=20, unique=True, editable=False, verbose_name="UID")
     project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='meetings',
                                 verbose_name='Loyiha')
     organizer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='organized_meetings',
@@ -257,7 +258,7 @@ class Meeting(BaseModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         if not self.uid:
-            self.uid = generate_unique_id('M', Meeting)
+            self.uid = generate_unique_id(self.project.prefix, Meeting)
         super().save(*args, **kwargs)
 
     def __str__(self):

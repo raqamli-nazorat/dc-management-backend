@@ -37,7 +37,7 @@ class ProjectAdmin(ModelAdmin):
 
     fieldsets = (
         ('Loyiha haqida ma\'lumot', {
-            'fields': ('title', 'description', 'status', 'is_active')
+            'fields': ('prefix', 'title', 'description', 'status', 'is_active')
         }),
         ('Narxlar', {
             'fields': ('project_price',)
