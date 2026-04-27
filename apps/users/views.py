@@ -18,7 +18,7 @@ User = get_user_model()
 
 @extend_schema(tags=['Users'], summary="Admin")
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(is_active=True)
+    queryset = User.objects.all()
     serializer_class = UserSerializer
     
     parser_classes = [MultiPartParser, FormParser]
