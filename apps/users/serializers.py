@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'avatar', 'username', 'phone_number', 'region', 'district', 'position',
             'passport_series', 'passport_image', 'social_links', 'roles',
             'password', 'confirm_password',
-            'fixed_salary', 'balance', 'is_active'
+            'fixed_salary', 'balance'
         )
         read_only_fields = ('id', 'balance')
 

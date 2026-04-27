@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.common.throttles import CustomScopedRateThrottle
+from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
 from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
@@ -17,8 +18,8 @@ User = get_user_model()
 
 
 @extend_schema(tags=['Users'], summary="Admin")
-class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+    queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     
     parser_classes = [MultiPartParser, FormParser]
