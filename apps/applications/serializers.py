@@ -8,22 +8,22 @@ from apps.users.serializers import UserShortSerializer
 class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
-        fields = ('id', 'name', 'is_application')
-        read_only_fields = ('id',)
+        fields = ('id', 'name', 'is_application', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class DistrictSerializer(serializers.ModelSerializer):
     class Meta:
         model = District
-        fields = ('id', 'region', 'name')
-        read_only_fields = ('id',)
+        fields = ('id', 'region', 'name', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class PositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Position
-        fields = ('id', 'name', 'is_application')
-        read_only_fields = ('id',)
+        fields = ('id', 'name', 'is_application', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class ApplicationSerializer(serializers.ModelSerializer):
