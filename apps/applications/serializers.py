@@ -35,9 +35,10 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region', 'region_info',
-                  'phone', 'telegram', 'position', 'position_info', 'resume', 'extra_info', 'portfolio', 'status'
+                  'phone', 'telegram', 'position', 'position_info', 'resume', 'extra_info', 'portfolio', 
+                  'status', 'created_at'
                   )
-        read_only_fields = ('id', 'status')
+        read_only_fields = ('id', 'status', 'created_at')
 
     def validate(self, attrs):
         if attrs.get('is_student') and not attrs.get('university'):
