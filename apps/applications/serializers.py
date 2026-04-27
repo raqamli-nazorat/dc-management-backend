@@ -2,6 +2,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.applications.models import Region, District, Position, Application, ApplicationStatus
+from apps.users.serializers import UserSerializer
 
 
 class RegionSerializer(serializers.ModelSerializer):
@@ -28,6 +29,7 @@ class PositionSerializer(serializers.ModelSerializer):
 class ApplicationSerializer(serializers.ModelSerializer):
     region_info = RegionSerializer(source='region', read_only=True)
     position_info = PositionSerializer(source='position', read_only=True)
+    reviewed_by = UserSerializer(read_only=True)
 
     region = serializers.PrimaryKeyRelatedField(queryset=Region.objects.all(), write_only=True)
     position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
@@ -36,9 +38,9 @@ class ApplicationSerializer(serializers.ModelSerializer):
         model = Application
         fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region', 'region_info',
                   'phone', 'telegram', 'position', 'position_info', 'resume', 'extra_info', 'portfolio', 
-                  'status', 'created_at'
+                  'status', 'reviewed_by', 'conclusion', 'reviewed_at','created_at'
                   )
-        read_only_fields = ('id', 'status', 'created_at')
+        read_only_fields = ('id', 'status', 'reviewed_by', 'conclusion', 'reviewed_at', 'created_at')
 
     def validate(self, attrs):
         if attrs.get('is_student') and not attrs.get('university'):
