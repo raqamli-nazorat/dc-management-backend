@@ -1,6 +1,7 @@
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from django.contrib.auth import get_user_model
+from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, permissions, generics, filters, status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
@@ -10,6 +11,7 @@ from apps.common.throttles import CustomScopedRateThrottle
 from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
+from .models import Role
 from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
 from .serializers import (UserSerializer, ProfileSerializer, SocialLinksSerializer, ChangePasswordSerializer,
                           MyTokenRefreshSerializer, MyTokenObtainPairSerializer, UserStatsSerializer)
@@ -32,6 +34,14 @@ class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             return [(IsAdmin | IsAuditor)()]
         return [IsAdmin()]
+
+    def perform_destroy(self, instance):
+        if instance.is_superuser or instance.has_role(Role.SUPERADMIN):
+            raise ValidationError({
+                "detail": "Superadminni o'chirish mumkin emas!"
+            })
+        
+        super().perform_destroy(instance)
 
 
 @extend_schema(tags=['Profile'])
