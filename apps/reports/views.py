@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
@@ -12,6 +13,7 @@ from .filters import UserReportFilter, ProjectReportFilter
 User = get_user_model()
 
 
+@extend_schema(tags=['User Reports'])
 class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserComprehensiveReportSerializer
@@ -40,6 +42,7 @@ class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         return queryset.filter(id=user.id)
 
 
+@extend_schema(tags=['Project Reports'])
 class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Project.objects.filter(is_active=True, is_deleted=False)
     serializer_class = ProjectComprehensiveReportSerializer
