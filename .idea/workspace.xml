@@ -3,7 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/reports/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/reports/serializers.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -184,7 +183,7 @@
       <workItem from="1777335307314" duration="1099000" />
       <workItem from="1777348924675" duration="322000" />
       <workItem from="1777356204857" duration="10021000" />
-      <workItem from="1777375967426" duration="617000" />
+      <workItem from="1777375967426" duration="1216000" />
     </task>
     <servers />
   </component>

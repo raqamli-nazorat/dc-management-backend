@@ -70,7 +70,7 @@ class Application(BaseModel):
                                 verbose_name="Telegram profil havolasi")
 
     position = models.ForeignKey(Position, on_delete=models.PROTECT,
-                                  related_name='applications', verbose_name="Lavozim")
+                                 related_name='applications', verbose_name="Lavozim")
 
     resume = models.FileField(upload_to='applications/resumes/', validators=[validate_resume],
                               verbose_name="Rezyume (CV)")
@@ -107,6 +107,20 @@ class Application(BaseModel):
 
     def clean(self):
         super().clean()
+
+        errors = {}
+
+        if self.region_id and not self.region.is_application:
+            errors['region'] = "Ushbu viloyat uchun arizalar qabul qilinmaydi."
+
+        if self.position_id and not self.position.is_application:
+            errors['position'] = "Ushbu lavozim uchun arizalar qabul qilinmaydi."
+
+        if self.is_student and not self.university:
+            errors['university'] = "Talaba bo'lsangiz, o'qish joyingizni kiritishingiz shart."
+
+        if errors:
+            raise ValidationError(errors)
 
     def save(self, *args, **kwargs):
         self.full_clean()
