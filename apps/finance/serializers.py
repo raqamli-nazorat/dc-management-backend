@@ -109,6 +109,8 @@ class PayrollStatusUpdateSerializer(serializers.Serializer):
 
 
 class LedgerSerializer(serializers.ModelSerializer):
+    user_info = ProfileSerializer(source='user', read_only=True)
+
     class Meta:
         model = Ledger
-        fields = '__all__'
+        fields = ('id', 'user_info', 'amount', 'transaction_type', 'description', 'created_at',)
