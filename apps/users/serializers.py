@@ -138,115 +138,6 @@ class SocialLinksSerializer(serializers.ModelSerializer):
         fields = ('social_links',)
 
 
-class UserStatsSerializer(serializers.Serializer):
-    one_month = serializers.SerializerMethodField()
-    three_months = serializers.SerializerMethodField()
-
-    def get_one_month(self, obj):
-        return self._get_stats(obj, days=30)
-
-    def get_three_months(self, obj):
-        return self._get_stats(obj, days=90)
-
-    def _get_stats(self, obj, days):
-        now = timezone.now()
-        start_date = now - timedelta(days=days)
-
-        active_task_statuses = [
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.REJECTED,
-            TaskStatus.OVERDUE
-        ]
-
-        task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
-        filtered_tasks = obj.tasks.filter(task_filter)
-
-        t_stats = filtered_tasks.aggregate(
-            total=Count('id'),
-            todo=Count('id', filter=Q(status=TaskStatus.TODO)),
-            in_progress=Count('id', filter=Q(status=TaskStatus.IN_PROGRESS)),
-            overdue=Count('id', filter=Q(status=TaskStatus.OVERDUE)),
-            done=Count('id', filter=Q(status=TaskStatus.DONE)),
-            checked=Count('id', filter=Q(status=TaskStatus.CHECKED)),
-            production=Count('id', filter=Q(status=TaskStatus.PRODUCTION))
-        )
-
-        t_total = t_stats['total'] or 0
-        t_completed = (t_stats['done'] or 0) + (t_stats['checked'] or 0) + (t_stats['production'] or 0)
-        t_rate = round((t_completed / t_total * 100), 1) if t_total > 0 else 100.0
-
-        tasks_data = {
-            "total": t_total,
-            "todo": t_stats['todo'] or 0,
-            "in_progress": t_stats['in_progress'] or 0,
-            "overdue": t_stats['overdue'] or 0,
-            "done": t_stats['done'] or 0,
-            "checked": t_stats['checked'] or 0,
-            "production": t_stats['production'] or 0,
-            "overall_completed": t_completed,
-            "completion_rate": t_rate
-        }
-
-        all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
-
-        active_project_statuses = [ProjectStatus.PLANNING, ProjectStatus.ACTIVE]
-        project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-        filtered_projects = all_projects.filter(project_filter)
-
-        p_stats = filtered_projects.aggregate(
-            total=Count('id'),
-            planning=Count('id', filter=Q(status=ProjectStatus.PLANNING)),
-            active=Count('id', filter=Q(status=ProjectStatus.ACTIVE)),
-            completed=Count('id', filter=Q(status=ProjectStatus.COMPLETED)),
-            cancelled=Count('id', filter=Q(status=ProjectStatus.CANCELLED)),
-        )
-
-        p_total = p_stats['total'] or 0
-        p_completed = p_stats['completed'] or 0
-        p_rate = round((p_completed / p_total * 100), 1) if p_total > 0 else 100.0
-
-        projects_data = {
-            "total": p_total,
-            "planning": p_stats['planning'] or 0,
-            "active": p_stats['active'] or 0,
-            "completed": p_completed,
-            "cancelled": p_stats['cancelled'] or 0,
-            "current_work": (p_stats['planning'] or 0) + (p_stats['active'] or 0),
-            "completion_rate": p_rate
-        }
-
-        filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
-
-        m_stats = filtered_meetings.aggregate(
-            total=Count('id'),
-            attended=Count('id', filter=Q(is_attended=True)),
-            missed=Count('id', filter=Q(is_attended=False)),
-            with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(
-                absence_reason__isnull=False)),
-        )
-
-        m_total = m_stats['total'] or 0
-        m_attended = m_stats['attended'] or 0
-        m_missed = m_stats['missed'] or 0
-        m_with_reason = m_stats['with_reason'] or 0
-
-        meetings_data = {
-            "total": m_total,
-            "attended": m_attended,
-            "missed": m_missed,
-            "with_reason": m_with_reason,
-            "unexcused": m_missed - m_with_reason,
-            "attendance_rate": round((m_attended / m_total * 100), 1) if m_total > 0 else 100.0
-        }
-
-        return {
-            "projects": projects_data,
-            "tasks": tasks_data,
-            "meetings": meetings_data
-        }
-
-
 class ChangePasswordSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(
@@ -301,9 +192,9 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         data["user"] = {
             "id": user.id,
+            "avatar": user.avatar.url if user.avatar else None,
             "username": user.username,
             "phone_number": user.phone_number,
-            "avatar": user.avatar.url if user.avatar else None,
             "region": user.region.name if user.region else None,
             "district": user.district.name if user.district else None,
             "position": user.position.name if user.position else None,
@@ -326,9 +217,9 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
             user = User.objects.get(id=user_id)
             data["user"] = {
                 "id": user.id,
+                "avatar": user.avatar.url if user.avatar else None,
                 "username": user.username,
                 "phone_number": user.phone_number,
-                "avatar": user.avatar.url if user.avatar else None,
                 "region": user.region.name if user.region else None,
                 "district": user.district.name if user.district else None,
                 "position": user.position.name if user.position else None,

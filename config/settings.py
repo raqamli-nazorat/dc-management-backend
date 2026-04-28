@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'apps.projects.apps.ProjectsConfig',
     'apps.applications.apps.ApplicationsConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.reports.apps.ReportsConfig',
     'apps.todos.apps.TodosConfig',
     'apps.audit.apps.AuditConfig',
 ]

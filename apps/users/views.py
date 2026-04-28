@@ -14,7 +14,7 @@ from .filters import UserFilter
 from .models import Role
 from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
 from .serializers import (UserSerializer, ProfileSerializer, SocialLinksSerializer, ChangePasswordSerializer,
-                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer, UserStatsSerializer)
+                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer)
 
 User = get_user_model()
 
@@ -73,15 +73,6 @@ class SocialLinksView(generics.UpdateAPIView):
 class ProfileView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user
-
-
-@extend_schema(tags=['Profile'])
-class UserStatsView(generics.RetrieveAPIView):
-    serializer_class = UserStatsSerializer
-    permission_classes = [IsEmployee | IsManager]
 
     def get_object(self):
         return self.request.user
