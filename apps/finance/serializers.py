@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.projects.models import Project, ProjectStatus
 from apps.projects.serializers import ProjectShortSerializer
 from apps.users.models import Role
-from apps.users.serializers import UserShortSerializer
+from apps.users.serializers import UserShortSerializer, ProfileSerializer
 from .models import ExpenseRequest, Ledger, Payroll, ExpenseCategory
 
 User = get_user_model()
@@ -83,7 +83,7 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
 class PayrollSerializer(serializers.ModelSerializer):
     month_display = serializers.SerializerMethodField()
     user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
-    user_info = UserShortSerializer(source='user', read_only=True)
+    user_info = ProfileSerializer(source='user', read_only=True)
 
     class Meta:
         model = Payroll

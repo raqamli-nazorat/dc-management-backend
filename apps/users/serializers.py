@@ -26,7 +26,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     region = serializers.PrimaryKeyRelatedField(queryset=Region.objects.all(), write_only=True)
     district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True)
-    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
+    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False, write_only=True)
 
     class Meta:
         model = User
@@ -127,8 +127,9 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'region', 'district', 'position',
-                  'roles', 'fixed_salary', 'balance', 'date_joined', 'change_password', 'social_links')
+        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'passport_image', 'region',
+            'district', 'position', 'roles', 'fixed_salary', 'balance', 'social_links', 'date_joined',
+            'change_password')
 
 
 class SocialLinksSerializer(serializers.ModelSerializer):

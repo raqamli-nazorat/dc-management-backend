@@ -117,8 +117,8 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     def pay_expense(self, request, pk=None):
         expense = self.get_object()
 
-        if not request.user.has_role(Role.ACCOUNTANT, Role.SUPERADMIN):
-            raise PermissionDenied({'detail': "To'lovlarni amalga oshirish uchun faqat buxgalterlar vakolatli."})
+        if not request.user.has_role(Role.ACCOUNTANT):
+            raise PermissionDenied({'detail': "To'lovlarni amalga oshirish uchun faqat hisobchilar vakolatli."})
 
         if expense.status != Status.PENDING:
             raise ValidationError({'status': "Faqat \"Kutilayotgan\" so'rovlarni \"To'langan\" deb belgilash mumkin."})
