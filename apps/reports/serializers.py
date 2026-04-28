@@ -10,10 +10,14 @@ User = get_user_model()
 class UserComprehensiveReportSerializer(serializers.ModelSerializer):
     report = serializers.SerializerMethodField()
 
+    region = serializers.CharField(source='region.name', read_only=True)
+    district = serializers.CharField(source='district.name', read_only=True)
+    position = serializers.CharField(source='position.name', read_only=True)
+
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'phone_number', 'passport_series',
+            'id', 'username', 'phone_number',
             'region', 'district', 'position', 'roles',
             'fixed_salary', 'balance', 'report'
         )
