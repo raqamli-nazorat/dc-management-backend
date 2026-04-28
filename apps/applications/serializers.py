@@ -2,7 +2,6 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from apps.applications.models import Region, District, Position, Application, ApplicationStatus
-from apps.users.serializers import UserShortSerializer
 
 
 class RegionSerializer(serializers.ModelSerializer):
@@ -29,7 +28,6 @@ class PositionSerializer(serializers.ModelSerializer):
 class ApplicationSerializer(serializers.ModelSerializer):
     region_info = RegionSerializer(source='region', read_only=True)
     position_info = PositionSerializer(source='position', read_only=True)
-    reviewed_by = UserShortSerializer(read_only=True)
 
     region = serializers.PrimaryKeyRelatedField(queryset=Region.objects.all(), write_only=True)
     position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
@@ -41,6 +39,11 @@ class ApplicationSerializer(serializers.ModelSerializer):
                   'status', 'reviewed_by', 'conclusion', 'reviewed_at','created_at'
                   )
         read_only_fields = ('id', 'status', 'reviewed_by', 'conclusion', 'reviewed_at', 'created_at')
+
+    def __init__(self, *args, **kwargs):
+        super(ApplicationSerializer, self).__init__(*args, **kwargs)
+        from apps.users.serializers import UserShortSerializer
+        self.fields['reviewed_by'] = UserShortSerializer(read_only=True)
 
     def validate(self, attrs):
         if attrs.get('is_student') and not attrs.get('university'):

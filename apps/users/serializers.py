@@ -8,6 +8,8 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.applications.models import Region, District, Position
+from apps.applications.serializers import RegionSerializer, DistrictSerializer, PositionSerializer
 from apps.projects.models import TaskStatus, ProjectStatus
 from apps.users.models import Role
 
@@ -18,15 +20,38 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     confirm_password = serializers.CharField(write_only=True, required=False)
 
+    region_info = RegionSerializer(source='region', read_only=True)
+    district_info = DistrictSerializer(source='district', read_only=True)
+    position_info = PositionSerializer(source='position', read_only=True)
+
+    region = serializers.PrimaryKeyRelatedField(queryset=Region.objects.all(), write_only=True)
+    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True)
+    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
+
     class Meta:
         model = User
         fields = (
-            'id', 'avatar', 'username', 'phone_number', 'region', 'district', 'position',
+            'id', 'avatar', 'username', 'phone_number', 'region', 'region_info', 'district',
+            'district_info', 'position', 'position_info',
             'passport_series', 'passport_image', 'social_links', 'roles',
             'password', 'confirm_password',
             'fixed_salary', 'balance'
         )
         read_only_fields = ('id', 'balance')
+        extra_kwargs = {
+            'username': {'validators': []}
+        }
+
+    def validate_username(self, value):
+        instance = self.instance
+
+        if instance and instance.username == value:
+            return value
+
+        if User.objects.filter(username=value).exists():
+            raise serializers.ValidationError("Bu username allaqachon band. Iltimos, boshqasini tanlang.")
+
+        return value
 
     def validate(self, attrs):
         request = self.context.get('request')
@@ -110,7 +135,7 @@ class SocialLinksSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('social_links',)
-    
+
 
 class UserStatsSerializer(serializers.Serializer):
     one_month = serializers.SerializerMethodField()
