@@ -155,26 +155,13 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     ordering_fields = ['deadline', 'priority', 'status', 'created_at']
 
     def get_serializer_class(self):
-        if self.action in ['update', 'partial_update']:
-            user = self.request.user
-
-            if not hasattr(self, "_cached_task"):
-                try:
-                    self._cached_task = self.get_object()
-                except:
-                    return TaskStatusUpdateSerializer
-
-            task = self._cached_task
-            if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
-                return TaskSerializer
-
+        if self.action == 'change_status':
             return TaskStatusUpdateSerializer
         return TaskSerializer
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'restore', 'hard_delete']:
             return [(IsAdmin | IsManager | IsEmployee)()]
-
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
@@ -188,15 +175,16 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             return queryset.filter(project__manager=user)
 
         return queryset.filter(
-            Q(assignee=user) | 
-            Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) | 
+            Q(assignee=user) |
+            Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) |
             Q(project__employees=user, assignee__isnull=True)
         ).distinct()
 
     def perform_destroy(self, instance):
         user = self.request.user
         if instance.created_by != user:
-            raise PermissionDenied("Sizda bu vazifani o'chirish huquqi yo'q. Faqat vazifa yaratuvchisi uni o'chira oladi.")
+            raise PermissionDenied(
+                "Sizda bu vazifani o'chirish huquqi yo'q. Faqat vazifa yaratuvchisi uni o'chira oladi.")
 
         if instance.status != TaskStatus.TODO:
             raise ValidationError({
@@ -232,11 +220,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         image = serializer.validated_data['rejection_image']
 
-        TaskRejectionFile.objects.create(
-            task=task,
-            file=image
-        )
-
+        TaskRejectionFile.objects.create(task=task, file=image)
         return Response({"message": "Rad etish rasmi muvaffaqiyatli yuklandi."})
 
     @extend_schema(request=None)
@@ -301,35 +285,53 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         user = self.request.user
         task = self.get_object()
-        new_status = serializer.validated_data.get('status')
+
+        if not (user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user):
+            raise PermissionDenied("Sizda vazifaning umumiy ma'lumotlarini tahrirlash huquqi yo'q.")
+
+        serializer.save()
+
+    @extend_schema(
+        tags=['Tasks'],
+        request=TaskStatusUpdateSerializer,
+        responses={200: TaskSerializer}
+    )
+    @action(detail=True, methods=['patch'], url_path='change-status')
+    def change_status(self, request, pk=None):
+        user = request.user
+        task = self.get_object()
         current_status = task.status
+
+        serializer = self.get_serializer(task, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        new_status = serializer.validated_data.get('status')
+
+        if not new_status or current_status == new_status:
+            return Response(TaskSerializer(task).data)
 
         if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
             serializer.save()
-
-            if new_status and current_status != new_status:
-                if new_status == TaskStatus.REJECTED:
-                    self._send_task_notification(task, "Vazifangiz rad etildi",
-                                                 f"'{task.title}' vazifasi rad etildi. Sababi: {serializer.instance.rejection_reason or 'Izohsiz'}")
-
-                elif new_status == TaskStatus.CHECKED:
-                    self._send_task_notification(task, "Vazifangiz tasdiqlandi",
-                                                 f"'{task.title}' vazifasi menejer tomonidan muvaffaqiyatli tekshirildi.")
-            return
+            if new_status == TaskStatus.REJECTED:
+                self._send_task_notification(task, "Vazifangiz rad etildi",
+                                             f"'{task.title}' vazifasi rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
+            elif new_status == TaskStatus.CHECKED:
+                self._send_task_notification(task, "Vazifangiz tasdiqlandi",
+                                             f"'{task.title}' vazifasi menejer tomonidan muvaffaqiyatli tekshirildi.")
+            return Response(TaskSerializer(task).data)
 
         if task.assignee == user:
-            if new_status and current_status != new_status:
-                employee_transitions = {
-                    TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
-                    TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
-                    TaskStatus.DONE: [TaskStatus.PRODUCTION],
-                    TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
-                }
-                if new_status not in employee_transitions.get(current_status, []):
-                    raise PermissionDenied(f"'{current_status}' dan '{new_status}' ga o'tib bo'lmaydi.")
+            employee_transitions = {
+                TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
+                TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
+                TaskStatus.DONE: [TaskStatus.PRODUCTION],
+                TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
+            }
+            if new_status not in employee_transitions.get(current_status, []):
+                raise PermissionDenied(f"'{current_status}' dan '{new_status}' ga o'tib bo'lmaydi.")
 
             serializer.save()
-            return
+            return Response(TaskSerializer(task).data)
 
         if task.assignee is None and task.project.employees.filter(id=user.id).exists():
             if new_status == TaskStatus.IN_PROGRESS:
@@ -337,30 +339,28 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
                     assignee=user,
                     position=getattr(user, 'position', None)
                 )
-                return
+                return Response(TaskSerializer(task).data)
             raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazishingiz kerak.")
 
         is_tester = task.project.testers.filter(id=user.id).exists()
         if is_tester:
-            if new_status and current_status != new_status:
-                if current_status != TaskStatus.PRODUCTION:
-                    raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshira olasiz.")
+            if current_status != TaskStatus.PRODUCTION:
+                raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshira olasiz.")
 
-                if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-                    raise PermissionDenied("Faqat 'Checked' yoki 'Rejected' qila olasiz.")
+            if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
+                raise PermissionDenied("Faqat 'Checked' yoki 'Rejected' qila olasiz.")
 
             serializer.save()
 
             if new_status == TaskStatus.REJECTED:
                 self._send_task_notification(task, "Vazifangiz rad etildi",
-                                             f"'{task.title}' vazifasi tester tomonidan rad etildi. Sababi: {serializer.instance.rejection_reason or 'Izohsiz'}")
-
+                                             f"'{task.title}' vazifasi tester tomonidan rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
             elif new_status == TaskStatus.CHECKED:
                 self._send_task_notification(task, "Vazifangiz tasdiqlandi",
                                              f"'{task.title}' vazifasi tester tomonidan muvaffaqiyatli tekshirildi.")
-            return
+            return Response(TaskSerializer(task).data)
 
-        raise PermissionDenied("Sizda tahrirlash huquqi yo'q.")
+        raise PermissionDenied("Sizda vazifa holatini o'zgartirish huquqi yo'q.")
 
     def perform_create(self, serializer):
         task = serializer.save(created_by=self.request.user)
