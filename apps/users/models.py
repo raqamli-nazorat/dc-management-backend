@@ -27,6 +27,7 @@ class User(AbstractUser):
                                  verbose_name="Tumani")
     phone_number = models.CharField(validators=[phone_validator], max_length=13, blank=True,
                                     verbose_name="Telefon raqami")
+    card_number = models.CharField(max_length=16, blank=True, null=True, verbose_name="Karta raqami")
     passport_series = models.CharField(max_length=9, blank=True, null=True, verbose_name="Passport seriyasi va raqami")
 
     passport_image = models.ImageField(upload_to=passport_path, null=True, blank=True, verbose_name="Passport rasmi")

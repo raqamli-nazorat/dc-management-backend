@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from .views import (UserViewSet, ProfileView, SocialLinksView, ChangePasswordView,
+from .views import (UserViewSet, ProfileView, SocialLinksView, CardNumberView, ChangePasswordView,
                     MyTokenObtainPairView, MyTokenRefreshView)
 
 router = SimpleRouter()
@@ -10,6 +10,7 @@ router.register('users', UserViewSet)
 urlpatterns = [
     path('users/me/', ProfileView.as_view(), name='profile'),
     path('users/me/social-links/', SocialLinksView.as_view(), name='social-links'),
+    path('users/me/card-number/', CardNumberView.as_view(), name='card-number'),
     path('users/me/change-password/', ChangePasswordView.as_view(), name='change-password'),
 
     path('', include(router.urls)),

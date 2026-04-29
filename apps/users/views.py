@@ -12,9 +12,9 @@ from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
 from .models import Role
-from .permissions import IsAdmin, IsAuditor, IsEmployee, IsManager
+from .permissions import IsAdmin, IsAuditor
 from .serializers import (UserSerializer, ProfileSerializer, SocialLinksSerializer, ChangePasswordSerializer,
-                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer)
+                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer)
 
 User = get_user_model()
 
@@ -23,7 +23,7 @@ User = get_user_model()
 class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
-    
+
     parser_classes = [MultiPartParser, FormParser]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = UserFilter
@@ -40,7 +40,7 @@ class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
             raise ValidationError({
                 "detail": "Superadminni o'chirish mumkin emas!"
             })
-        
+
         super().perform_destroy(instance)
 
 
@@ -64,6 +64,31 @@ class SocialLinksView(generics.UpdateAPIView):
             serializer.save()
             return Response({
                 "message": "Ijtimoiy tarmoqlar muvaffaqiyatli yangilandi."
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(tags=['Profile'])
+class CardNumberView(generics.UpdateAPIView):
+    serializer_class = CardNumberSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['put']
+
+    def get_object(self):
+        return self.request.user
+
+    def put(self, request, *args, **kwargs):
+        serializer = CardNumberSerializer(
+            data=request.data,
+            instance=self.get_object(),
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                "message": "Karta raqam muvaffaqiyatli yangilandi."
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

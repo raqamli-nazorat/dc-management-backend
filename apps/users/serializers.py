@@ -25,7 +25,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'avatar', 'username', 'phone_number', 'region', 'region_info', 'district',
+            'id', 'avatar', 'username', 'phone_number', 'card_number', 'region', 'region_info', 'district',
             'district_info', 'position', 'position_info',
             'passport_series', 'passport_image', 'social_links', 'roles',
             'password', 'confirm_password',
@@ -110,7 +110,7 @@ class UserShortSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number',
+        fields = ('id', 'avatar', 'username', 'phone_number', 'card_number',
                   'region', 'district', 'position', 'roles', 'date_joined')
 
 
@@ -121,15 +121,22 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ('id', 'avatar', 'username', 'phone_number', 'passport_series', 'passport_image', 'region',
-            'district', 'position', 'roles', 'fixed_salary', 'balance', 'social_links', 'date_joined',
-            'change_password')
+        fields = ('id', 'avatar', 'username', 'phone_number', 'card_number',
+                  'passport_series', 'passport_image', 'region', 'district',
+                  'position', 'roles', 'fixed_salary', 'balance', 'social_links',
+                  'date_joined', 'change_password')
 
 
 class SocialLinksSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('social_links',)
+
+
+class CardNumberSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('card_number',)
 
 
 class ChangePasswordSerializer(serializers.Serializer):

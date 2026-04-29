@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F
 from django.utils import timezone
+from decimal import Decimal
 
 from apps.common.models import BaseModel
 from apps.users.models import Role
@@ -67,7 +68,7 @@ class ExpenseRequest(BaseModel):
                                          verbose_name='Xarajat kategoriyasi'
                                          )
 
-    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Miqdori')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('1.00'))], verbose_name='Miqdori')
     reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
     cancel_reason = models.TextField(null=True, blank=True, verbose_name='Bekor qilish sababi')
 
