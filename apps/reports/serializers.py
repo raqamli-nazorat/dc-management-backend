@@ -209,3 +209,66 @@ class ProjectComprehensiveReportSerializer(serializers.ModelSerializer):
             t_check=get_task_subquery(status='checked'),
             t_rej=get_task_subquery(rejected=True)
         )
+
+
+class ExpenseRequestReportSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)
+    accountant = serializers.CharField(source='accountant.username', read_only=True)
+    project = serializers.CharField(source='project.title', read_only=True)
+    expense_category = serializers.CharField(source='expense_category.title', read_only=True)
+
+    class Meta:
+        model = ExpenseRequest
+        fields = (
+            'id', 'user', 'accountant', 'project',
+            'type', 'expense_category', 'amount',
+            'reason', 'cancel_reason', 'payment_method',
+            'card_number', 'status',
+            'created_at', 'paid_at', 'confirmed_at', 'cancelled_at'
+        )
+
+    @staticmethod
+    def setup_eager_loading(queryset):
+        return queryset.select_related('user', 'accountant', 'project', 'expense_category')
+
+
+class PayrollReportSerializer(serializers.ModelSerializer):
+    user = serializers.CharField(source='user.username', read_only=True)
+    accountant = serializers.CharField(source='accountant.username', read_only=True)
+    status = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Payroll
+        fields = (
+            'id', 'user', 'accountant', 'month',
+            'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
+            'status', 'created_at', 'confirmed_at'
+        )
+
+    def get_status(self, obj):
+        return "Hisoblangan" if obj.is_confirmed else "Hisoblanmagan"
+
+    @staticmethod
+    def setup_eager_loading(queryset):
+        return queryset.select_related('user', 'accountant')
+
+
+class TaskReportSerializer(serializers.ModelSerializer):
+    project = serializers.CharField(source='project.title', read_only=True)
+    prefix = serializers.CharField(source='project.prefix', read_only=True)
+    assignee = serializers.CharField(source='assignee.username', read_only=True)
+    created_by = serializers.CharField(source='created_by.username', read_only=True)
+    position = serializers.CharField(source='position.name', read_only=True)
+
+    class Meta:
+        model = Task
+        fields = (
+            'id', 'uid', 'project', 'prefix', 'sprint', 'title',
+            'assignee', 'priority', 'status', 'type', 'task_price',
+            'penalty_percentage', 'deadline', 'created_at',
+            'created_by', 'position', 'reopened_count', 'rejection_reason'
+        )
+
+    @staticmethod
+    def setup_eager_loading(queryset):
+        return queryset.select_related('project', 'assignee', 'created_by', 'position')

@@ -82,7 +82,6 @@ class TaskSerializer(serializers.ModelSerializer):
     project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all(), write_only=True)
     project_info = serializers.SerializerMethodField(read_only=True)
 
-
     estimated_input_hours = serializers.IntegerField(write_only=True, required=False, min_value=0)
     estimated_input_minutes = serializers.IntegerField(write_only=True, required=False, min_value=0, max_value=59)
 
@@ -180,20 +179,21 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
                     "rejection_reason": "Vazifani rad etish uchun sabab ko'rsatish shart!"
                 })
         else:
-            attrs['rejection_reason'] = None
+            attrs.pop('rejection_reason', None)
 
         return attrs
 
     def update(self, instance, validated_data):
         new_status = validated_data.get('status')
         reason = validated_data.get('rejection_reason')
-        
+
         if 'assignee' in validated_data:
             instance.assignee = validated_data['assignee']
         if 'position' in validated_data:
             instance.position = validated_data['position']
-            
+
         now = timezone.now()
+        local_now = timezone.localtime(now)
 
         if new_status == TaskStatus.IN_PROGRESS and instance.status != TaskStatus.IN_PROGRESS:
             instance.started_at = now
@@ -207,13 +207,18 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
             if instance.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
                 instance.reopened_count += 1
 
+            timestamp = local_now.strftime("%d.%m.%Y %H:%M")
+            new_reason_entry = f"[{timestamp}] {reason}"
+
+            if instance.rejection_reason:
+                instance.rejection_reason = f"{instance.rejection_reason}\n\n{new_reason_entry}"
+            else:
+                instance.rejection_reason = new_reason_entry
+
             instance.status = TaskStatus.IN_PROGRESS
-            instance.rejection_reason = reason
             instance.started_at = now
         else:
             instance.status = new_status
-            if new_status in [TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]:
-                instance.rejection_reason = None
 
         instance.save()
         return instance

@@ -22,17 +22,17 @@ class ExpenseRequestAdmin(ModelAdmin):
     list_filter = ('status', 'type', 'payment_method', 'created_at')
     search_fields = ('user__username', 'reason', 'card_number')
 
-    readonly_fields = ('paid_at', 'confirmed_at', 'created_at', 'updated_at')
+    readonly_fields = ('paid_at', 'confirmed_at', 'created_at', 'updated_at', 'cancelled_at')
 
     fieldsets = (
         ('Asosiy ma\'lumotlar', {
-            'fields': ('user', 'type', 'project', 'expense_category', 'amount', 'reason')
+            'fields': ('user', 'type', 'project', 'expense_category', 'amount', 'reason', 'cancel_reason')
         }),
         ('To\'lov tafsilotlari', {
             'fields': ('payment_method', 'card_number', 'accountant')
         }),
         ('Holat va vaqtlar', {
-            'fields': ('status', 'paid_at', 'confirmed_at')
+            'fields': ('status', 'paid_at', 'confirmed_at', 'cancelled_at')
         }),
         ('Tizim haqida ma\'lumot', {
             'fields': ('created_at', 'updated_at'),
@@ -85,22 +85,25 @@ class LedgerAdmin(ModelAdmin):
 
 @admin.register(Payroll)
 class PayrollAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at')
+    list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at', 'is_confirmed')
     list_display_links = ('id', 'user')
     list_filter = ('month', 'created_at')
     search_fields = ('user__username',)
 
-    readonly_fields = ('total_amount', 'created_at', 'updated_at')
+    readonly_fields = ('is_confirmed', 'accountant', 'confirmed_at', 'total_amount', 'created_at', 'updated_at')
 
     fieldsets = (
         ('Xodim haqida ma\'lumot', {
             'fields': ('user', 'month')
         }),
         ('Ish haqi taqsimoti', {
-            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount', 'is_confirmed')
+            'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount')
         }),
         ('Ishlash ko\'rsatkichlari', {
             'fields': ('tasks_completed', 'deadline_missed', 'bug_count')
+        }),
+        ('Tasdiqlash ma\'lumotlari', {
+            'fields': ('accountant', 'confirmed_at', 'is_confirmed'),
         }),
         ('Tizim haqida ma\'lumot', {
             'fields': ('created_at', 'updated_at'),

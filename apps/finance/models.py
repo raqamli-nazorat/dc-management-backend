@@ -68,7 +68,8 @@ class ExpenseRequest(BaseModel):
                                          )
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Miqdori')
-    reason = models.TextField(verbose_name='Sababi')
+    reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
+    cancel_reason = models.TextField(null=True, blank=True, verbose_name='Bekor qilish sababi')
 
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CARD,
                                       verbose_name='To\'lov turi')
@@ -82,6 +83,7 @@ class ExpenseRequest(BaseModel):
 
     paid_at = models.DateTimeField(null=True, blank=True, verbose_name='To\'langan vaqti')
     confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tasdiqlangan vaqti')
+    cancelled_at = models.DateTimeField(null=True, blank=True, verbose_name='Bekor qilingan vaqti')
 
     class Meta:
         verbose_name = "Xarajat so'rovi "
@@ -202,7 +204,13 @@ class Payroll(BaseModel):
     deadline_missed = models.PositiveIntegerField(default=0, verbose_name='Muddatdan o\'tkazib yuborilganlar')
     bug_count = models.PositiveIntegerField(default=0, verbose_name='Xatolar')
 
+    accountant = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='confirmed_payrolls',
+                                   limit_choices_to={'roles__contains': [Role.ACCOUNTANT]},
+                                   verbose_name='Hisobchi')
+
     is_confirmed = models.BooleanField(default=False, verbose_name='Tasdiqlandimi?')
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tasdiqlangan vaqti')
 
     class Meta:
         verbose_name = "Ish haqi "

@@ -17,7 +17,7 @@ from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
 from .filters import ExpenseRequestFilter, PayrollFilter, LedgerFilter
 from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
 from .serializers import ExpenseRequestSerializer, PayrollSerializer, LedgerSerializer, ExpenseCategorySerializer, \
-    PayrollStatusUpdateSerializer
+    PayrollStatusUpdateSerializer, ExpenseCancelSerializer
 
 User = get_user_model()
 
@@ -45,7 +45,7 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     ]
 
     ordering_fields = ['created_at', 'amount', 'paid_at', 'user__username']
-    
+
     def get_role_based_queryset(self, queryset, user):
 
         if user.has_role(Role.MANAGER):
@@ -96,21 +96,48 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
             raise PermissionDenied("Siz qayta ishlangan so'rovni o'chira olmaysiz.")
         super().perform_destroy(instance)
 
-    @extend_schema(request=None)
+    @extend_schema(request=ExpenseCancelSerializer)
     @decorators.action(detail=True, methods=['post'], url_path='cancel')
     def cancel_expense(self, request, pk=None):
         expense = self.get_object()
-        
-        if expense.user != request.user:
-            raise PermissionDenied("Faqat so'rov yuborgan foydalanuvchi uni bekor qila oladi.")
-        
+
+        is_owner = expense.user == request.user
+        is_accountant = request.user.has_role(Role.ACCOUNTANT)
+
+        if not (is_owner or is_accountant):
+            raise PermissionDenied("Sizda bu so'rovni bekor qilish huquqi yo'q.")
+
         if expense.status != Status.PENDING:
             raise ValidationError({'status': "Faqat 'Kutilmoqda' holatidagi so'rovni bekor qilish mumkin."})
-        
+
+        serializer = ExpenseCancelSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
         expense.status = Status.CANCELLED
+        expense.cancel_reason = serializer.validated_data['cancel_reason']
+        expense.cancelled_at = timezone.now()
+
+        if is_accountant:
+            expense.accountant = request.user
+
         expense.save()
-        
-        return Response({"message": "Xarajat so'rovi bekor qilindi."}, status=status.HTTP_200_OK)
+
+        if not is_owner:
+            Notification.objects.create(
+                user=expense.user,
+                title="Xarajat so'rovi rad etildi",
+                message=(
+                    f"Sizning {expense.amount:,.0f} so'm miqdoridagi so'rovingiz "
+                    f"hisobchi tomonidan rad etildi."
+                ),
+                type=NotificationType.FINANCE,
+                extra_data={'expense_id': expense.id, 'action': "open_expense"}
+            )
+
+        return Response(
+            {"message": "Xarajat so'rovi muvaffaqiyatli bekor qilindi."},
+            status=status.HTTP_200_OK
+        )
 
     @extend_schema(request=None)
     @decorators.action(detail=True, methods=['post'], url_path='pay')
@@ -127,6 +154,20 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
         expense.accountant = request.user
         expense.paid_at = timezone.now()
         expense.save()
+
+        Notification.objects.create(
+            user=expense.user,
+            title="Xarajat so'rovi to'landi",
+            message=(
+                f"Sizning {expense.amount:,.0f} so'm miqdoridagi xarajat so'rovingiz bo'yicha "
+                f"to'lov amalga oshirildi. Iltimos, mablag'ni olganingizni tasdiqlang."
+            ),
+            type=NotificationType.FINANCE,
+            extra_data={
+                'expense_id': expense.id,
+                'action': 'pay_receipt'
+            }
+        )
 
         return Response({"message": "To'lov muvaffaqiyatli amalga oshirildi. Xodimning tasdiqlanishi kutilmoqda."},
                         status=status.HTTP_200_OK)
@@ -187,7 +228,7 @@ class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     def confirm_payroll(self, request):
         user = request.user
 
-        if not user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT):
+        if not user.has_role(Role.ACCOUNTANT):
             raise PermissionDenied("Sizda oyliklarni tasdiqlash huquqi yo'q.")
 
         serializer = PayrollStatusUpdateSerializer(data=request.data)
@@ -207,6 +248,9 @@ class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
             with transaction.atomic():
                 for payroll in payrolls:
                     payroll.is_confirmed = True
+                    payroll.confirmed_at = timezone.now()
+                    payroll.accountant = request.user
+
                     payroll.save()
 
                     months = {
@@ -247,6 +291,7 @@ class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
         return Response({
             "message": f"{payrolls.count()} ta oylik muvaffaqiyatli tasdiqlandi va balansga o'tkazildi."
         }, status=status.HTTP_200_OK)
+
 
 @extend_schema(tags=['Ledger'])
 class LedgerViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):

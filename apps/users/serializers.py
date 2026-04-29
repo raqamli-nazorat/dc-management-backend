@@ -1,16 +1,10 @@
-from datetime import timedelta
-
 from django.contrib.auth import get_user_model
-from django.db.models import Q, Count
-from django.utils import timezone
-
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.applications.models import Region, District, Position
 from apps.applications.serializers import RegionSerializer, DistrictSerializer, PositionSerializer
-from apps.projects.models import TaskStatus, ProjectStatus
 from apps.users.models import Role
 
 User = get_user_model()

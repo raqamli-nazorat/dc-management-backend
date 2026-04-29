@@ -17,6 +17,14 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
         fields = ('id', 'title', 'created_at', 'updated_at')
 
 
+class ExpenseCancelSerializer(serializers.Serializer):
+    cancel_reason = serializers.CharField(
+        required=True,
+        min_length=5,
+        error_messages={'required': "Bekor qilish sababini yozish shart!"}
+    )
+
+
 class ExpenseRequestSerializer(serializers.ModelSerializer):
     user_info = UserShortSerializer(source='user', read_only=True)
     accountant_info = UserShortSerializer(source='accountant', read_only=True)
@@ -32,11 +40,11 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
         model = ExpenseRequest
         fields = (
             'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
-            'reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
-            'confirmed_at', 'created_at', 'updated_at'
+            'reason', 'cancel_reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
+            'confirmed_at', 'cancelled_at', 'created_at', 'updated_at'
         )
         read_only_fields = (
-            'id', 'status', 'paid_at', 'confirmed_at', 'created_at', 'updated_at'
+            'id', 'status', 'paid_at', 'confirmed_at', 'cancelled_at', 'created_at', 'updated_at'
         )
 
     def __init__(self, *args, **kwargs):
@@ -82,19 +90,16 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
 
 class PayrollSerializer(serializers.ModelSerializer):
     month_display = serializers.SerializerMethodField()
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
     user_info = ProfileSerializer(source='user', read_only=True)
+    accountant_info = UserShortSerializer(source='accountant', read_only=True)
 
     class Meta:
         model = Payroll
         fields = (
-            'id', 'user', 'user_info', 'month', 'month_display',
+            'id', 'user_info', 'accountant_info', 'month', 'month_display',
             'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
             'tasks_completed', 'deadline_missed', 'bug_count',
-            'created_at', 'is_confirmed'
-        )
-        read_only_fields = (
-            'id', 'user', 'total_amount', 'created_at', 'is_confirmed'
+            'is_confirmed', 'confirmed_at', 'created_at'
         )
 
     def get_month_display(self, obj):
