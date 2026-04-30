@@ -111,6 +111,12 @@ class PayrollAdmin(ModelAdmin):
         }),
     )
 
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
     @admin.display(description='Jami miqdori', ordering='total_amount')
     def total_amount_formatted(self, obj):
         return f"{obj.total_amount:,.2f}"
