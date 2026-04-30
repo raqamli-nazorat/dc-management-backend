@@ -1,5 +1,6 @@
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.types import OpenApiTypes
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 from rest_framework import viewsets, permissions, generics, filters, status
@@ -12,8 +13,10 @@ from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
 from .models import Role
-from .permissions import IsAdmin, IsAuditor
-from .serializers import (UserSerializer, ProfileSerializer, SocialLinksSerializer, ChangePasswordSerializer,
+from .permissions import IsAuditor, IsAdmin, IsManager, IsEmployee
+from .serializers import (UserSerializer, UserPeriodStatsSerializer, UserEfficiencySerializer, ProfileSerializer,
+                          SocialLinksSerializer,
+                          ChangePasswordSerializer,
                           MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer)
 
 User = get_user_model()
@@ -98,6 +101,48 @@ class CardNumberView(generics.UpdateAPIView):
 class ProfileView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):
+        return self.request.user
+
+
+@extend_schema(
+    tags=['Statistics'],
+    parameters=[
+        OpenApiParameter(
+            name='months',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Oylarda davrni kiriting (masalan, 1, 3, 5). Default 1.',
+            required=False,
+            default=1,
+        )
+    ]
+)
+class UserPeriodStatsView(generics.RetrieveAPIView):
+    serializer_class = UserPeriodStatsSerializer
+    permission_classes = [IsEmployee | IsManager]
+
+    def get_object(self):
+        return self.request.user
+
+
+@extend_schema(
+    tags=['Statistics'],
+    parameters=[
+        OpenApiParameter(
+            name='months',
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.QUERY,
+            description='Oylarda davrni kiriting (masalan, 1, 3, 5). Default 1.',
+            required=False,
+            default=1,
+        )
+    ]
+)
+class UserEfficiencyView(generics.RetrieveAPIView):
+    serializer_class = UserEfficiencySerializer
+    permission_classes = [IsEmployee | IsManager]
 
     def get_object(self):
         return self.request.user

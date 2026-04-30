@@ -167,6 +167,12 @@ class Task(BaseModel):
     def clean(self):
         super().clean()
 
+        if not self.pk and self.project_id:
+            if self.project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+                raise ValidationError({
+                    'project': f"Loyiha '{self.project.get_status_display()}' holatida bo'lgani uchun unga yangi vazifa qo'shib bo'lmaydi!"
+                })
+
         if self.pk:
             old_task = Task.objects.get(pk=self.pk)
             locked_statuses = [

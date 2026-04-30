@@ -1,10 +1,15 @@
+from datetime import timedelta
+
 from django.contrib.auth import get_user_model
+from django.db.models import Count, Q, Sum
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.applications.models import Region, District, Position
 from apps.applications.serializers import RegionSerializer, DistrictSerializer, PositionSerializer
+from apps.projects.models import TaskStatus, ProjectStatus
 from apps.users.models import Role
 
 User = get_user_model()
@@ -101,6 +106,262 @@ class UserSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+
+
+class UserPeriodStatsSerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        months = 1
+        if request and request.query_params:
+            try:
+                months = int(request.query_params.get('months', 1))
+                if months <= 0:
+                    months = 1
+            except (ValueError, TypeError):
+                months = 1
+                
+        days = months * 30
+        return self._get_stats(instance, days)
+
+    def _get_stats(self, obj, days):
+        now = timezone.now()
+        start_date = now - timedelta(days=days)
+
+        active_task_statuses = [
+            TaskStatus.TODO,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.OVERDUE
+        ]
+
+        task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
+        filtered_tasks = obj.tasks.filter(task_filter)
+
+        t_stats = filtered_tasks.aggregate(
+            total=Count('id'),
+            todo=Count('id', filter=Q(status=TaskStatus.TODO)),
+            in_progress=Count('id', filter=Q(status=TaskStatus.IN_PROGRESS)),
+            overdue=Count('id', filter=Q(status=TaskStatus.OVERDUE)),
+            done=Count('id', filter=Q(status=TaskStatus.DONE)),
+            checked=Count('id', filter=Q(status=TaskStatus.CHECKED)),
+            production=Count('id', filter=Q(status=TaskStatus.PRODUCTION)),
+            rejected=Count('id', filter=Q(reopened_count__gt=0)),
+            total_rejections=Sum('reopened_count')
+        )
+
+        t_total = t_stats['total'] or 0
+        t_completed = (t_stats['done'] or 0) + (t_stats['checked'] or 0) + (t_stats['production'] or 0)
+        t_rate = round((t_completed / t_total * 100), 1) if t_total > 0 else 100.0
+
+        tasks_data = {
+            "total": t_total,
+            "todo": t_stats['todo'] or 0,
+            "in_progress": t_stats['in_progress'] or 0,
+            "overdue": t_stats['overdue'] or 0,
+            "done": t_stats['done'] or 0,
+            "checked": t_stats['checked'] or 0,
+            "production": t_stats['production'] or 0,
+            "rejected_tasks": t_stats['rejected'] or 0,
+            "total_rejections": t_stats['total_rejections'] or 0,
+            "overall_completed": t_completed,
+            "completion_rate": t_rate
+        }
+
+        all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
+
+        active_project_statuses = [
+            ProjectStatus.PLANNING, 
+            ProjectStatus.ACTIVE,
+            ProjectStatus.OVERDUE
+        ]
+        project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+        filtered_projects = all_projects.filter(project_filter)
+
+        p_stats = filtered_projects.aggregate(
+            total=Count('id'),
+            planning=Count('id', filter=Q(status=ProjectStatus.PLANNING)),
+            active=Count('id', filter=Q(status=ProjectStatus.ACTIVE)),
+            overdue=Count('id', filter=Q(status=ProjectStatus.OVERDUE)),
+            completed=Count('id', filter=Q(status=ProjectStatus.COMPLETED)),
+            cancelled=Count('id', filter=Q(status=ProjectStatus.CANCELLED)),
+        )
+
+        p_total = p_stats['total'] or 0
+        p_completed = p_stats['completed'] or 0
+        p_rate = round((p_completed / p_total * 100), 1) if p_total > 0 else 100.0
+
+        projects_data = {
+            "total": p_total,
+            "planning": p_stats['planning'] or 0,
+            "active": p_stats['active'] or 0,
+            "overdue": p_stats['overdue'] or 0,
+            "completed": p_completed,
+            "cancelled": p_stats['cancelled'] or 0,
+            "current_work": (p_stats['planning'] or 0) + (p_stats['active'] or 0) + (p_stats['overdue'] or 0),
+            "completion_rate": p_rate
+        }
+
+        filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
+
+        m_stats = filtered_meetings.aggregate(
+            total=Count('id'),
+            attended=Count('id', filter=Q(is_attended=True)),
+            missed=Count('id', filter=Q(is_attended=False)),
+            with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(
+                absence_reason__isnull=False)),
+        )
+
+        m_total = m_stats['total'] or 0
+        m_attended = m_stats['attended'] or 0
+        m_missed = m_stats['missed'] or 0
+        m_with_reason = m_stats['with_reason'] or 0
+
+        meetings_data = {
+            "total": m_total,
+            "attended": m_attended,
+            "missed": m_missed,
+            "with_reason": m_with_reason,
+            "unexcused": m_missed - m_with_reason,
+            "attendance_rate": round((m_attended / m_total * 100), 1) if m_total > 0 else 100.0
+        }
+
+        return {
+            "projects": projects_data,
+            "tasks": tasks_data,
+            "meetings": meetings_data
+        }
+
+
+class UserEfficiencySerializer(serializers.Serializer):
+    def to_representation(self, instance):
+        request = self.context.get('request')
+        months = 1
+        if request and request.query_params:
+            try:
+                months = int(request.query_params.get('months', 1))
+                if months <= 0:
+                    months = 1
+            except (ValueError, TypeError):
+                months = 1
+                
+        days = months * 30
+        return self._calculate_efficiency(instance, days)
+
+    def _calculate_efficiency(self, obj, days):
+        now = timezone.now()
+        start_date = now - timedelta(days=days)
+
+        active_task_statuses = [
+            TaskStatus.TODO,
+            TaskStatus.IN_PROGRESS,
+            TaskStatus.OVERDUE
+        ]
+
+        task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
+        filtered_tasks = obj.tasks.filter(task_filter)
+
+        t_stats = filtered_tasks.aggregate(
+            total=Count('id'),
+            overdue=Count('id', filter=Q(status=TaskStatus.OVERDUE)),
+            rejected=Count('id', filter=Q(reopened_count__gt=0)),
+        )
+
+        total_tasks = t_stats['total'] or 0
+        overdue_tasks = t_stats['overdue'] or 0
+        rejected_tasks = t_stats['rejected'] or 0
+
+        if total_tasks > 0:
+            task_timeliness = 100.0 * (total_tasks - overdue_tasks) / total_tasks
+            task_quality = 100.0 * (total_tasks - rejected_tasks) / total_tasks
+            task_score = (task_timeliness + task_quality) / 2.0
+        else:
+            task_score = 0.0
+
+        filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
+
+        m_stats = filtered_meetings.aggregate(
+            total=Count('id'),
+            missed=Count('id', filter=Q(is_attended=False)),
+            with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(absence_reason__isnull=False)),
+        )
+
+        total_meetings = m_stats['total'] or 0
+        missed = m_stats['missed'] or 0
+        with_reason = m_stats['with_reason'] or 0
+        unexcused_meetings = missed - with_reason
+
+        if total_meetings > 0:
+            meeting_score = 100.0 * (total_meetings - unexcused_meetings) / total_meetings
+        else:
+            meeting_score = 0.0
+
+        active_project_statuses = [
+            ProjectStatus.PLANNING, 
+            ProjectStatus.ACTIVE,
+            ProjectStatus.OVERDUE
+        ]
+        project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+        managed_projects = obj.manager_projects.filter(project_filter)
+
+        p_stats = managed_projects.aggregate(
+            total=Count('id'),
+            overdue=Count('id', filter=Q(status=ProjectStatus.OVERDUE))
+        )
+
+        total_projects = p_stats['total'] or 0
+        overdue_projects = p_stats['overdue'] or 0
+
+        if total_projects > 0:
+            project_score = 100.0 * (total_projects - overdue_projects) / total_projects
+        else:
+            project_score = 0.0
+
+        w_task = 0.0
+        w_project = 0.0
+        w_meeting = 0.0
+
+        if total_projects > 0:
+            w_task = 0.4
+            w_project = 0.4
+            w_meeting = 0.2
+        else:
+            w_task = 0.8
+            w_meeting = 0.2
+
+        total_weight = 0.0
+        earned_score = 0.0
+
+        if total_tasks > 0:
+            earned_score += task_score * w_task
+            total_weight += w_task
+
+        if total_projects > 0:
+            earned_score += project_score * w_project
+            total_weight += w_project
+
+        if total_meetings > 0:
+            earned_score += meeting_score * w_meeting
+            total_weight += w_meeting
+
+        if total_weight == 0.0:
+            overall_efficiency = 100.0
+        else:
+            overall_efficiency = earned_score / total_weight
+
+        return {
+            "overall_efficiency": round(overall_efficiency, 1),
+            "task_score": round(task_score, 1),
+            "project_score": round(project_score, 1),
+            "meeting_score": round(meeting_score, 1),
+            "metrics": {
+                "total_tasks": total_tasks,
+                "overdue_tasks": overdue_tasks,
+                "rejected_tasks": rejected_tasks,
+                "total_projects": total_projects,
+                "overdue_projects": overdue_projects,
+                "total_meetings": total_meetings,
+                "unexcused_meetings": unexcused_meetings
+            }
+        }
 
 
 class UserShortSerializer(serializers.ModelSerializer):
