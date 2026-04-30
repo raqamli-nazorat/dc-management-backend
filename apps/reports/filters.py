@@ -17,6 +17,9 @@ class UserReportFilter(filters.FilterSet):
     position = NumberInFilter(field_name='position_id', lookup_expr='in', label="Lavozim")
     roles = filters.CharFilter(method='filter_roles', label="Rollar")
 
+    joined_min = filters.DateTimeFilter(field_name='date_joined', lookup_expr='gte', label="Qo'shilgan vaqt (dan)")
+    joined_max = filters.DateTimeFilter(field_name='date_joined', lookup_expr='lte', label="Qo'shilgan vaqt (gacha)")
+
     balance_min = filters.NumberFilter(field_name='balance', lookup_expr='gte', label="Balans (min)")
     balance_max = filters.NumberFilter(field_name='balance', lookup_expr='lte', label="Balans (max)")
 

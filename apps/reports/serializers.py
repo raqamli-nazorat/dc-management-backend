@@ -19,7 +19,7 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'username', 'phone_number',
             'region', 'district', 'position', 'roles',
-            'fixed_salary', 'balance', 'report'
+            'fixed_salary', 'balance', 'report', 'date_joined'
         )
 
     @staticmethod
