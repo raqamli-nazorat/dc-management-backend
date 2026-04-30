@@ -47,13 +47,11 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     ordering_fields = ['created_at', 'amount', 'paid_at', 'user__username']
 
     def get_role_based_queryset(self, queryset, user):
-
         if user.has_role(Role.MANAGER):
             return queryset.filter(
-                Q(user=user) |
                 Q(user__employee_projects__manager=user) |
                 Q(user__tester_projects__manager=user)
-            ).distinct()
+            ).exclude(user=user).distinct()
 
         return queryset.filter(user=user)
 
@@ -218,6 +216,12 @@ class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
         return PayrollSerializer
 
     def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(
+                Q(user__employee_projects__manager=user) |
+                Q(user__tester_projects__manager=user)
+            ).exclude(user=user).distinct()
+
         return queryset.filter(user=user)
 
     @extend_schema(
@@ -306,4 +310,10 @@ class LedgerViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created_at', 'amount']
 
     def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(
+                Q(user__employee_projects__manager=user) |
+                Q(user__tester_projects__manager=user)
+            ).exclude(user=user).distinct()
+
         return queryset.filter(user=user)

@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -17,7 +18,8 @@ from .permissions import IsAuditor, IsAdmin, IsManager, IsEmployee
 from .serializers import (UserSerializer, UserPeriodStatsSerializer, UserEfficiencySerializer, ProfileSerializer,
                           SocialLinksSerializer,
                           ChangePasswordSerializer,
-                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer)
+                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer,
+                          ChangeActiveRoleSerializer)
 
 User = get_user_model()
 
@@ -38,8 +40,15 @@ class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
             return [(IsAdmin | IsAuditor)()]
         return [IsAdmin()]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        return queryset.exclude(
+            Q(roles__contains=[Role.SUPERADMIN]) | Q(is_superuser=True)
+        )
+
     def perform_destroy(self, instance):
-        if instance.is_superuser or instance.has_role(Role.SUPERADMIN):
+        if instance.is_superuser or instance.has_any_role(Role.SUPERADMIN):
             raise ValidationError({
                 "detail": "Superadminni o'chirish mumkin emas!"
             })
@@ -92,6 +101,34 @@ class CardNumberView(generics.UpdateAPIView):
             serializer.save()
             return Response({
                 "message": "Karta raqam muvaffaqiyatli yangilandi."
+            }, status=status.HTTP_200_OK)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@extend_schema(tags=['Profile'])
+class ChangeActiveRoleView(generics.UpdateAPIView):
+    serializer_class = ChangeActiveRoleSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['put']
+
+    def get_object(self):
+        return self.request.user
+
+    def put(self, request, *args, **kwargs):
+        serializer = self.get_serializer(
+            instance=self.get_object(),
+            data=request.data,
+            partial=True,
+        )
+
+        if serializer.is_valid():
+            serializer.save()
+
+            active_role_display = self.request.user.get_active_role_display()
+
+            return Response({
+                "message": f"Aktiv rol '{active_role_display}'ga muvaffaqiyatli o'zgartirildi.",
             }, status=status.HTTP_200_OK)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

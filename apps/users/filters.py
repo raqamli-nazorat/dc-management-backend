@@ -10,7 +10,7 @@ class UserFilter(filters.FilterSet):
             'region': ['exact'],
             'district': ['exact'],
             'position': ['exact'],
-            'date_joined': ['date', 'date__gte', 'date__lte'],
+            'date_joined': ['exact', 'gte', 'lte'],
         }
 
     def filter_by_roles(self, queryset, name, value):

@@ -211,12 +211,12 @@ def _process_user(user: User, month_start, month_end):
         missed_deadlines = 0
         bugs_count = 0
 
-        if user.has_role(Role.MANAGER):
+        if user.has_any_role(Role.MANAGER):
             mgr_kpi, proj_penalty = _calc_manager_kpi(user, month_start, month_end)
             kpi_bonus += mgr_kpi
             total_penalty += proj_penalty
 
-        if user.has_role(Role.EMPLOYEE):
+        if user.has_any_role(Role.EMPLOYEE):
             meeting_penalty = _calc_meeting_penalty(user, month_start, month_end)
             total_penalty += meeting_penalty
 

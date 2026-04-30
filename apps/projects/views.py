@@ -35,11 +35,16 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(manager=user).exclude(
+                status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
+            ).distinct()
+
         return queryset.filter(
-            Q(manager=user) |
-            Q(testers=user) |
-            Q(employees=user),
-        ).exclude(status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]).distinct()
+            Q(testers=user) | Q(employees=user)
+        ).exclude(
+            status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
+        ).distinct()
 
 
 @extend_schema(tags=['Projects'])
@@ -69,10 +74,11 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         return queryset.filter(is_deleted=False, is_active=True)
 
     def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(manager=user)
+
         return queryset.filter(
-            Q(manager=user) |
-            Q(testers=user) |
-            Q(employees=user),
+            Q(testers=user) | Q(employees=user)
         ).distinct()
 
     def perform_create(self, serializer):
@@ -172,7 +178,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
     def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
-            return queryset.filter(project__manager=user)
+            return queryset.filter(project__manager=user).exclude(assignee=user)
 
         return queryset.filter(
             Q(assignee=user) |
@@ -410,16 +416,22 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
 
 
 @extend_schema(tags=['Meetings'])
-class MeetingViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     queryset = Meeting.objects.filter(is_active=True)
     serializer_class = MeetingSerializer
+
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = MeetingFilter
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'created_at']
 
-    def get_queryset(self):
-        return super().get_queryset()
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+
+    def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(project__manager=user).distinct()
+
+        return queryset.filter(participants=user).distinct()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -540,14 +552,19 @@ class MeetingViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meeting Attendance'])
-class MeetingAttendanceViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
+class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     queryset = MeetingAttendance.objects.filter(is_active=True)
     serializer_class = MeetingAttendanceSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['meeting', 'user', 'is_attended']
 
-    def get_queryset(self):
-        return super().get_queryset()
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+
+    def get_role_based_queryset(self, queryset, user):
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(meeting__project__manager=user).exclude(user=user)
+
+        return queryset.filter(user=user)
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update']:

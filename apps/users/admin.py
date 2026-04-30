@@ -54,7 +54,7 @@ class CustomUserAdmin(ModelAdmin):
             )
         }),
         ('Lavozim va Moliya', {
-            'fields': ('position', 'roles', 'fixed_salary', 'balance')
+            'fields': ('position', 'roles', 'active_role', 'fixed_salary', 'balance')
         }),
         ('Huquqlar va Status', {
             'fields': ('is_active', 'is_staff', 'is_superuser'),
@@ -82,27 +82,28 @@ class CustomUserAdmin(ModelAdmin):
                 obj.must_change_password = True
         super().save_model(request, obj, form, change)
 
-    @admin.display(description='Roli')
+    @admin.display(description='Aktiv Roli')
     def role_colored(self, obj):
-        if not obj.roles or len(obj.roles) == 0:
-            return mark_safe('<span style="color: gray; font-style: italic;">Qo\'shilmadi</span>')
+        if not obj.active_role:
+            return mark_safe('<span style="color: gray; font-style: italic;">Tanlanmagan</span>')
 
-        try:
-            first_role = obj.roles[0]
-            colors = {
-                Role.SUPERADMIN: 'red',
-                Role.ADMIN: '#d35400',
-                Role.MANAGER: '#2980b9',
-                Role.EMPLOYEE: '#27ae60',
-                Role.AUDITOR: '#8e44ad',
-                Role.ACCOUNTANT: '#f39c12',
-            }
-            display_text = dict(Role.choices).get(first_role, first_role)
-            color = colors.get(first_role, 'black')
+        colors = {
+            Role.SUPERADMIN: 'red',
+            Role.ADMIN: '#d35400',
+            Role.MANAGER: '#2980b9',
+            Role.EMPLOYEE: '#27ae60',
+            Role.AUDITOR: '#8e44ad',
+            Role.ACCOUNTANT: '#f39c12',
+        }
 
-            return format_html('<span style="color: {}; font-weight: bold;">{}</span>', color, display_text)
-        except Exception:
-            return "-"
+        display_text = obj.get_active_role_display()
+        color = colors.get(obj.active_role, 'black')
+
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            display_text
+        )
 
     @admin.display(description='Oylik maosh', ordering='fixed_salary')
     def fixed_salary_formatted(self, obj):

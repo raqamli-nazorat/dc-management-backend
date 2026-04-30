@@ -45,9 +45,29 @@ class UserReportFilter(filters.FilterSet):
 
     expenses_amount_min = filters.NumberFilter(method='filter_expenses_amount', label="Xarajatlar (min)")
     expenses_amount_max = filters.NumberFilter(method='filter_expenses_amount', label="Xarajatlar (max)")
+    expense_status = filters.ChoiceFilter(
+        choices=[
+            ('all', 'Jami'),
+            ('pending', 'Kutilmoqda'),
+            ('confirmed', 'To\'langan'),
+            ('paid_unconfirmed', 'To\'langan (tasdiqlanmagan)'),
+            ('cancelled', 'Bekor qilingan'),
+        ],
+        method='filter_dummy',
+        label="Xarajat holati"
+    )
 
     payrolls_amount_min = filters.NumberFilter(method='filter_payrolls_amount', label="Ish haqi (min)")
     payrolls_amount_max = filters.NumberFilter(method='filter_payrolls_amount', label="Ish haqi (max)")
+    payroll_type = filters.ChoiceFilter(
+        choices=[
+            ('total', 'Jami maosh'),
+            ('kpi', 'KPI Bonus'),
+            ('penalty', 'Jarima miqdori'),
+        ],
+        method='filter_dummy',
+        label="Ish haqi turi"
+    )
 
     class Meta:
         model = User
@@ -103,7 +123,7 @@ class UserReportFilter(filters.FilterSet):
         return queryset.filter(total_tasks__lte=value)
 
     def filter_meetings_count(self, queryset, name, value):
-        status = self.data.get('attendance_status')
+        status = self.data.get('meetings_status')
 
         filters_q = Q(user=OuterRef('pk'), is_active=True)
 
@@ -129,26 +149,60 @@ class UserReportFilter(filters.FilterSet):
         return queryset.filter(total_meetings__lte=value)
 
     def filter_expenses_amount(self, queryset, name, value):
-        subquery = ExpenseRequest.objects.filter(user=OuterRef('pk'), is_active=True).values('user').annotate(
+        e_status = self.data.get('expense_status', 'all')
+
+        filters_q = Q(user=OuterRef('pk'), is_active=True)
+
+        if e_status == 'pending':
+            filters_q &= Q(status=ExpenseStatus.PENDING)
+        elif e_status == 'confirmed':
+            filters_q &= Q(status=ExpenseStatus.CONFIRMED)
+        elif e_status == 'paid_unconfirmed':
+            filters_q &= Q(status=ExpenseStatus.PAID)
+        elif e_status == 'cancelled':
+            filters_q &= Q(status=ExpenseStatus.CANCELLED)
+
+        subquery = ExpenseRequest.objects.filter(filters_q).values('user').annotate(
             total=Sum('amount')).values('total')
 
-        queryset = queryset.annotate(total_expenses=Coalesce(Subquery(subquery, output_field=DecimalField()),
-                                                             Value(0, output_field=DecimalField())))
+        queryset = queryset.annotate(
+            total_expenses=Coalesce(
+                Subquery(subquery, output_field=DecimalField()),
+                Value(0, output_field=DecimalField())
+            )
+        )
 
         if name == 'expenses_amount_min':
             return queryset.filter(total_expenses__gte=value)
         return queryset.filter(total_expenses__lte=value)
 
     def filter_payrolls_amount(self, queryset, name, value):
-        subquery = Payroll.objects.filter(user=OuterRef('pk'), is_active=True).values('user').annotate(
-            total=Sum('total_amount')).values('total')
+        p_type = self.data.get('payroll_type', 'total')
 
-        queryset = queryset.annotate(total_payroll=Coalesce(Subquery(subquery, output_field=DecimalField()),
-                                                            Value(0, output_field=DecimalField())))
+        sum_field = 'total_amount'
+        if p_type == 'kpi':
+            sum_field = 'kpi_bonus'
+        elif p_type == 'penalty':
+            sum_field = 'penalty_amount'
+
+        subquery = Payroll.objects.filter(
+            user=OuterRef('pk'),
+            is_active=True,
+            is_confirmed=True
+        ).values('user').annotate(
+            total=Sum(sum_field)
+        ).values('total')
+
+        queryset = queryset.annotate(
+            selected_payroll_amount=Coalesce(
+                Subquery(subquery, output_field=DecimalField()),
+                Value(0, output_field=DecimalField())
+            )
+        )
 
         if name == 'payrolls_amount_min':
-            return queryset.filter(total_payroll__gte=value)
-        return queryset.filter(total_payroll__lte=value)
+            return queryset.filter(selected_payroll_amount__gte=value)
+        return queryset.filter(selected_payroll_amount__lte=value)
 
 
 class ProjectReportFilter(filters.FilterSet):

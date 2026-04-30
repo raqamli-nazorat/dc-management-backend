@@ -187,7 +187,7 @@ class Task(BaseModel):
             if old_task.status in locked_statuses:
                 if old_task.assignee_id != self.assignee_id:
                     raise ValidationError({
-                        'assignee': f"Vazifa '{old_task.get_status_display()}' holatida bo'lgani uchun ijrochini o'zgartirib bo'lmaydi!"
+                        'assignee': f"Vazifa '{old_task.get_status_display()}' holatida bo'lgani uchun topshiruvchini o'zgartirib bo'lmaydi!"
                     })
 
         if self.assignee and self.project:

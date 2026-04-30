@@ -24,17 +24,23 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
 
     @staticmethod
     def setup_eager_loading(queryset):
-        def get_project_subquery(status):
+        def get_project_subquery(status=None):
+            filters = Q(
+                Q(created_by=OuterRef('pk')) |
+                Q(manager=OuterRef('pk')) |
+                Q(employees=OuterRef('pk')) |
+                Q(testers=OuterRef('pk')),
+                is_active=True,
+                is_deleted=False
+            )
+
+            if status:
+                filters &= Q(status=status)
+
             return Subquery(
-                Project.objects.filter(
-                    Q(created_by=OuterRef('pk')) |
-                    Q(manager=OuterRef('pk')) |
-                    Q(employees=OuterRef('pk')) |
-                    Q(testers=OuterRef('pk')),
-                    status=status,
-                    is_active=True,
-                    is_deleted=False
-                ).values('status').annotate(cnt=Count('pk', distinct=True)).values('cnt'),
+                Project.objects.filter(filters)
+                .annotate(cnt=Count('pk', distinct=True))
+                .values('cnt')[:1],
                 output_field=IntegerField()
             )
 
@@ -82,6 +88,7 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
             )
 
         return queryset.select_related('region', 'district', 'position').annotate(
+            p_total=get_project_subquery(),
             p_comp=get_project_subquery('completed'),
             p_active=get_project_subquery('active'),
             p_canc=get_project_subquery('cancelled'),
@@ -116,6 +123,7 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
     def get_report(self, obj):
         return {
             "projects": {
+                "total": getattr(obj, 'p_total', 0) or 0,
                 "completed": getattr(obj, 'p_comp', 0) or 0,
                 "in_progress": getattr(obj, 'p_active', 0) or 0,
                 "cancelled": getattr(obj, 'p_canc', 0) or 0,

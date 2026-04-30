@@ -11,8 +11,6 @@ class CharInFilter(filters.BaseInFilter, filters.CharFilter):
 
 
 class TaskFilter(filters.FilterSet):
-    my_tasks = filters.BooleanFilter(method='filter_my_tasks', label="Mening vazifalarim")
-
     project = NumberInFilter(field_name='project_id', lookup_expr='in', label="Loyihalar")
     created_by = NumberInFilter(field_name='created_by_id', lookup_expr='in', label="Yaratuvchilar")
     status = CharInFilter(field_name='status', lookup_expr='in', label="Holatlar")
@@ -34,12 +32,7 @@ class TaskFilter(filters.FilterSet):
         model = Task
         fields = ['status', 'priority', 'type', 'project', 'created_by', 'position', 'sprint']
 
-    def filter_my_tasks(self, queryset, name, value):
-        if value and getattr(self, 'request', None) and self.request.user.is_authenticated:
-            return queryset.filter(assignee=self.request.user)
-        return queryset
 
-    
 class ProjectFilter(filters.FilterSet):
     class Meta:
         model = Project
@@ -47,8 +40,8 @@ class ProjectFilter(filters.FilterSet):
             'status': ['exact'],
             'manager': ['exact'],
             'is_active': ['exact'],
-            'deadline': ['date', 'date__gte', 'date__lte'],
-            'created_at': ['date', 'date__gte', 'date__lte'],
+            'deadline': ['exact', 'gte', 'lte'],
+            'created_at': ['exact', 'gte', 'lte'],
         }
 
 
@@ -59,5 +52,5 @@ class MeetingFilter(filters.FilterSet):
             'project': ['exact'],
             'organizer': ['exact'],
             'is_completed': ['exact'],
-            'start_time': ['date', 'date__gte', 'date__lte'],
+            'start_time': ['exact', 'gte', 'lte'],
         }

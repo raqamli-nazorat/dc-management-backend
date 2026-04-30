@@ -32,7 +32,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'avatar', 'username', 'phone_number', 'card_number', 'region', 'region_info', 'district',
             'district_info', 'position', 'position_info',
-            'passport_series', 'passport_image', 'social_links', 'roles',
+            'passport_series', 'passport_image', 'social_links', 'roles', 'active_role',
             'password', 'confirm_password',
             'fixed_salary', 'balance'
         )
@@ -119,7 +119,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                     months = 1
             except (ValueError, TypeError):
                 months = 1
-                
+
         days = months * 30
         return self._get_stats(instance, days)
 
@@ -169,7 +169,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
 
         active_project_statuses = [
-            ProjectStatus.PLANNING, 
+            ProjectStatus.PLANNING,
             ProjectStatus.ACTIVE,
             ProjectStatus.OVERDUE
         ]
@@ -242,7 +242,7 @@ class UserEfficiencySerializer(serializers.Serializer):
                     months = 1
             except (ValueError, TypeError):
                 months = 1
-                
+
         days = months * 30
         return self._calculate_efficiency(instance, days)
 
@@ -281,7 +281,8 @@ class UserEfficiencySerializer(serializers.Serializer):
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
             missed=Count('id', filter=Q(is_attended=False)),
-            with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(absence_reason__isnull=False)),
+            with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(
+                absence_reason__isnull=False)),
         )
 
         total_meetings = m_stats['total'] or 0
@@ -295,7 +296,7 @@ class UserEfficiencySerializer(serializers.Serializer):
             meeting_score = 0.0
 
         active_project_statuses = [
-            ProjectStatus.PLANNING, 
+            ProjectStatus.PLANNING,
             ProjectStatus.ACTIVE,
             ProjectStatus.OVERDUE
         ]
@@ -372,7 +373,7 @@ class UserShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'avatar', 'username', 'phone_number', 'card_number',
-                  'region', 'district', 'position', 'roles', 'date_joined')
+                  'region', 'district', 'position', 'roles', 'active_role', 'date_joined')
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -384,7 +385,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ('id', 'avatar', 'username', 'phone_number', 'card_number',
                   'passport_series', 'passport_image', 'region', 'district',
-                  'position', 'roles', 'fixed_salary', 'balance', 'social_links',
+                  'position', 'roles', 'active_role', 'fixed_salary', 'balance', 'social_links',
                   'date_joined', 'change_password')
 
 
@@ -398,6 +399,12 @@ class CardNumberSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('card_number',)
+
+
+class ChangeActiveRoleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('active_role',)
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -461,6 +468,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "district": user.district.name if user.district else None,
             "position": user.position.name if user.position else None,
             "roles": user.roles,
+            "active_role": user.active_role,
             "date_joined": user.date_joined,
             "change_password": user.change_password,
         }
@@ -486,6 +494,7 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
                 "district": user.district.name if user.district else None,
                 "position": user.position.name if user.position else None,
                 "roles": user.roles,
+                "active_role": user.active_role,
                 "date_joined": user.date_joined,
                 "change_password": user.change_password,
             }
