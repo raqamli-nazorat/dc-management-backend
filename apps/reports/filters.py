@@ -33,7 +33,7 @@ class UserReportFilter(filters.FilterSet):
 
     meetings_min = filters.NumberFilter(method='filter_meetings_count', label="Yig'ilishlar soni (min)")
     meetings_max = filters.NumberFilter(method='filter_meetings_count', label="Yig'ilishlar soni (max)")
-    attendance_status = filters.ChoiceFilter(
+    meetings_status = filters.ChoiceFilter(
         choices=[
             ('attended', 'Qatnashgan'),
             ('absent_reason', 'Sababli qatnashmagan'),
