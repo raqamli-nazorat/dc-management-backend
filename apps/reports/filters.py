@@ -268,6 +268,8 @@ class PayrollReportFilter(filters.FilterSet):
     accountant = NumberInFilter(field_name='accountant_id', lookup_expr='in', label="Hisobchi")
     is_confirmed = filters.BooleanFilter(field_name='is_confirmed', label="Tasdiqlanganmi?")
 
+    month_year = filters.CharFilter(method='filter_by_month_year', label="Oy va yil (YYYY-MM)")
+
     total_amount_min = filters.NumberFilter(field_name='total_amount', lookup_expr='gte', label="Jami miqdori (min)")
     total_amount_max = filters.NumberFilter(field_name='total_amount', lookup_expr='lte', label="Jami miqdori (max)")
 
@@ -292,6 +294,15 @@ class PayrollReportFilter(filters.FilterSet):
     class Meta:
         model = Payroll
         fields = []
+
+    def filter_by_month_year(self, queryset, name, value):
+        if not value:
+            return queryset
+        try:
+            year, month = value.split('-')
+            return queryset.filter(month__year=year, month__month=month)
+        except (ValueError, TypeError):
+            return queryset
 
 
 class TaskReportFilter(filters.FilterSet):
