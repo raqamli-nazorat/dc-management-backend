@@ -40,11 +40,14 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
                 status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
             ).distinct()
 
-        return queryset.filter(
-            Q(testers=user) | Q(employees=user)
-        ).exclude(
-            status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
-        ).distinct()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(
+                Q(testers=user) | Q(employees=user)
+            ).exclude(
+                status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
+            ).distinct()
+
+        return queryset.none()
 
 
 @extend_schema(tags=['Projects'])
@@ -77,9 +80,12 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         if user.has_role(Role.MANAGER):
             return queryset.filter(manager=user)
 
-        return queryset.filter(
-            Q(testers=user) | Q(employees=user)
-        ).distinct()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(
+                Q(testers=user) | Q(employees=user)
+            ).distinct()
+
+        return queryset.none()
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
@@ -180,11 +186,14 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         if user.has_role(Role.MANAGER):
             return queryset.filter(project__manager=user).exclude(assignee=user)
 
-        return queryset.filter(
-            Q(assignee=user) |
-            Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) |
-            Q(project__employees=user, assignee__isnull=True)
-        ).distinct()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(
+                Q(assignee=user) |
+                Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) |
+                Q(project__employees=user, assignee__isnull=True)
+            ).distinct()
+
+        return queryset.none()
 
     def perform_destroy(self, instance):
         user = self.request.user
@@ -393,10 +402,13 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
         if user.has_role(Role.MANAGER):
             return queryset.filter(task__project__manager=user)
 
-        return queryset.filter(
-            Q(task__assignee=user) |
-            Q(task__project__testers=user)
-        ).distinct()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(
+                Q(task__assignee=user) |
+                Q(task__project__testers=user)
+            ).distinct()
+
+        return queryset.none()
 
     def perform_create(self, serializer):
         task = serializer.validated_data.get('task')
@@ -431,7 +443,10 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
         if user.has_role(Role.MANAGER):
             return queryset.filter(project__manager=user).distinct()
 
-        return queryset.filter(participants=user).distinct()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(participants=user).distinct()
+
+        return queryset.none()
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -564,7 +579,10 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
         if user.has_role(Role.MANAGER):
             return queryset.filter(meeting__project__manager=user).exclude(user=user)
 
-        return queryset.filter(user=user)
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(user=user)
+
+        return queryset.none()
 
     def get_permissions(self):
         if self.action in ['update', 'partial_update']:
