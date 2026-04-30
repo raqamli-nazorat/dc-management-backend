@@ -33,6 +33,15 @@ class UserReportFilter(filters.FilterSet):
 
     meetings_min = filters.NumberFilter(method='filter_meetings_count', label="Yig'ilishlar soni (min)")
     meetings_max = filters.NumberFilter(method='filter_meetings_count', label="Yig'ilishlar soni (max)")
+    attendance_status = filters.ChoiceFilter(
+        choices=[
+            ('attended', 'Qatnashgan'),
+            ('absent_reason', 'Sababli qatnashmagan'),
+            ('absent_no_reason', 'Sababsiz qatnashmagan'),
+        ],
+        method='filter_dummy',
+        label="Ishtirok holati"
+    )
 
     expenses_amount_min = filters.NumberFilter(method='filter_expenses_amount', label="Xarajatlar (min)")
     expenses_amount_max = filters.NumberFilter(method='filter_expenses_amount', label="Xarajatlar (max)")
@@ -77,7 +86,7 @@ class UserReportFilter(filters.FilterSet):
     def filter_tasks_count(self, queryset, name, value):
         t_status = self.data.get('task_status')
         filters_q = Q(assignee=OuterRef('pk'), is_active=True, is_deleted=False)
-        
+
         if t_status:
             if t_status == TaskStatus.REJECTED:
                 filters_q &= Q(reopened_count__gt=0)
@@ -94,10 +103,26 @@ class UserReportFilter(filters.FilterSet):
         return queryset.filter(total_tasks__lte=value)
 
     def filter_meetings_count(self, queryset, name, value):
-        subquery = MeetingAttendance.objects.filter(user=OuterRef('pk'), is_active=True).values('user').annotate(
+        status = self.data.get('attendance_status')
+
+        filters_q = Q(user=OuterRef('pk'), is_active=True)
+
+        if status:
+            if status == 'attended':
+                filters_q &= Q(is_attended=True)
+
+            elif status == 'absent_reason':
+                filters_q &= Q(is_attended=False) & ~Q(absence_reason__isnull=True) & ~Q(absence_reason='')
+
+            elif status == 'absent_no_reason':
+                filters_q &= Q(is_attended=False) & (Q(absence_reason__isnull=True) | Q(absence_reason=''))
+
+        subquery = MeetingAttendance.objects.filter(filters_q).values('user').annotate(
             cnt=Count('pk')).values('cnt')
 
-        queryset = queryset.annotate(total_meetings=Coalesce(Subquery(subquery, output_field=IntegerField()), Value(0)))
+        queryset = queryset.annotate(
+            total_meetings=Coalesce(Subquery(subquery, output_field=IntegerField()), Value(0))
+        )
 
         if name == 'meetings_min':
             return queryset.filter(total_meetings__gte=value)
