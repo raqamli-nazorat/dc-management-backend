@@ -35,6 +35,7 @@ class PayrollFilter(filters.FilterSet):
             'user__position': ['exact'],
             'month': ['exact', 'gte', 'lte'],
             'total_amount': ['exact', 'gte', 'lte'],
+            'penalty_amount': ['exact', 'gte', 'lte'],
         }
 
     def filter_by_user_roles(self, queryset, name, value):
