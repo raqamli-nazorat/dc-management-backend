@@ -7,7 +7,6 @@ from django.utils import timezone
 from rest_framework import viewsets, filters, permissions, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
-from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -24,7 +23,7 @@ from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Me
     TaskRejectionFile
 from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer, TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
-                          MeetingAttendanceReasonSerializer, TaskRejectionImageSerializer)
+                          TaskRejectionFileSerializer)
 
 
 @extend_schema(tags=['Project Shorts'])
@@ -211,34 +210,6 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         instance.is_deleted = True
         instance.save()
 
-    @extend_schema(
-        tags=['Tasks'],
-        request=TaskRejectionImageSerializer
-    )
-    @action(
-        detail=True,
-        methods=['post'],
-        url_path='upload-rejection-image',
-        parser_classes=[MultiPartParser, FormParser]
-    )
-    def upload_rejection_image(self, request, pk=None):
-        task = self.get_object()
-
-        if task.status != TaskStatus.REJECTED:
-            raise PermissionDenied("Faqat rad etilgan vazifalarga rasm yuklash mumkin.")
-
-        user = request.user
-        if not (user.has_role(Role.SUPERADMIN,
-                              Role.ADMIN) or user in task.project.testers.all() or task.project.manager == user):
-            raise PermissionDenied("Sizda bu vazifaga rasm yuklash huquqi yo'q.")
-
-        serializer = TaskRejectionImageSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        image = serializer.validated_data['rejection_image']
-
-        TaskRejectionFile.objects.create(task=task, file=image)
-        return Response({"message": "Rad etish rasmi muvaffaqiyatli yuklandi."})
-
     @extend_schema(request=None)
     @action(detail=False, methods=['get'])
     def trash(self, request):
@@ -262,7 +233,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         self.check_object_permissions(self.request, instance)
 
         if not instance.is_deleted:
-            return Response({"detail": "Vazifa korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Vazifa chiqindi qutisida emas."}, status=status.HTTP_400_BAD_REQUEST)
 
         instance.is_active = True
         instance.is_deleted = False
@@ -396,7 +367,10 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     serializer_class = TaskAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['task']
     http_method_names = ['get', 'post', 'delete']
+
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
@@ -424,6 +398,49 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
             raise ValidationError(
                 f"Vazifa '{task.get_status_display()}' holatida bo'lgani uchun unga fayl biriktira olmaysiz."
             )
+
+        serializer.save()
+
+
+@extend_schema(tags=['Task Rejections'])
+class TaskRejectionFileViewSet(viewsets.ModelViewSet):
+    queryset = TaskRejectionFile.objects.select_related('task__project')
+    serializer_class = TaskRejectionFileSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['task']
+    http_method_names = ['get', 'post', 'delete']
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
+            return self.queryset
+
+        if user.has_role(Role.MANAGER):
+            return self.queryset.filter(task__project__manager=user)
+
+        if user.has_role(Role.EMPLOYEE):
+            return self.queryset.filter(
+                Q(task__assignee=user) |
+                Q(task__project__testers=user)
+            ).distinct()
+
+        return self.queryset.none()
+
+    def perform_create(self, serializer):
+        task = serializer.validated_data.get('task')
+        user = self.request.user
+
+        if task.status != TaskStatus.REJECTED:
+            raise ValidationError("Faqat rad etilgan vazifalarga rasm yuklash mumkin.")
+
+        is_tester = user in task.project.testers.all()
+        is_manager = task.project.manager == user
+        is_admin = user.has_role(Role.SUPERADMIN, Role.ADMIN)
+
+        if not (is_admin or is_tester or is_manager):
+            raise PermissionDenied("Sizda bu vazifaga rasm yuklash huquqi yo'q.")
 
         serializer.save()
 
@@ -493,7 +510,7 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
 
             notifications_to_bulk = []
             broadcast_data = []
-            start_time_str = meeting.start_time.strftime('%d.%m %H:%M')
+            start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
 
             for member in to_add:
                 if member.id != self.request.user.id:
@@ -545,7 +562,12 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
                 user_id=attendance.user.id,
                 title="Yig'ilishda ishtirok etmadingiz.",
                 message=msg,
-                type=NotificationType.MEETING
+                type=NotificationType.MEETING,
+                extra_data={
+                    "meeting_id": meeting.id,
+                    "action": "open_meeting",
+                    "project_id": meeting.project_id
+                }
             ))
 
             broadcast_data.append({
@@ -569,54 +591,44 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
 
 @extend_schema(tags=['Meeting Attendance'])
 class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
-    queryset = MeetingAttendance.objects.filter(is_active=True)
+    queryset = MeetingAttendance.objects.filter(is_active=True).select_related('meeting__organizer', 'user')
     serializer_class = MeetingAttendanceSerializer
-    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filter_backends = [DjangoFilterBackend]
     filterset_fields = ['meeting', 'user', 'is_attended']
+
+    http_method_names = ['get', 'patch']
 
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
-            return queryset.filter(meeting__project__manager=user).exclude(user=user)
+            return queryset.filter(meeting__project__manager=user)
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(user=user)
 
         return queryset.none()
 
-    def get_permissions(self):
-        if self.action in ['update', 'partial_update']:
-            return [permissions.IsAuthenticated()]
-        return [permissions.IsAuthenticated()]
-
     def perform_update(self, serializer):
         user = self.request.user
         attendance = self.get_object()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.MANAGER):
+        is_privileged = user.has_role(Role.SUPERADMIN, Role.ADMIN) or \
+                        attendance.meeting.organizer == user or \
+                        attendance.meeting.project.manager == user
+
+        if is_privileged:
             serializer.save()
             return
 
         if attendance.user == user:
-            if 'is_attended' in self.request.data:
-                raise PermissionDenied("Siz o'zingizning ishtirok etish holatingizni o'zgartira olmaysiz.")
+            if attendance.is_attended:
+                raise PermissionDenied("Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi.")
+
+            if attendance.absence_reason and 'absence_reason' in self.request.data:
+                raise PermissionDenied("Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz.")
 
             serializer.save()
             return
 
-        raise PermissionDenied("Sizda bu yozuvni tahrirlash uchun ruxsat yo'q.")
-
-
-@extend_schema(tags=['Meeting Attendance'])
-class MeetingAttendanceReasonViewSet(viewsets.ModelViewSet):
-    queryset = MeetingAttendance.objects.all()
-    serializer_class = MeetingAttendanceReasonSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['patch']
-
-    def get_queryset(self):
-        return MeetingAttendance.objects.filter(
-            user=self.request.user,
-            is_attended=False
-        )
+        raise PermissionDenied("Sizda ushbu yozuvni tahrirlash uchun huquq yo'q.")

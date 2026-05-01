@@ -28,8 +28,10 @@ class ProjectSerializer(serializers.ModelSerializer):
     testers_info = UserShortSerializer(source='testers', many=True, read_only=True)
 
     manager = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, write_only=True)
-    testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True, write_only=True)
-    employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True, write_only=True)
+    testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True,
+                                                 write_only=True)
+    employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True,
+                                                   write_only=True)
 
     completion_percentage = serializers.SerializerMethodField()
 
@@ -80,14 +82,15 @@ class ProjectSerializer(serializers.ModelSerializer):
 class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskAttachment
-        fields = ('id', 'task', 'file', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'created_at', 'updated_at')
+        fields = ('id', 'task', 'file', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class TaskRejectionFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskRejectionFile
-        fields = ('id', 'file', 'created_at')
+        fields = ('id', 'task', 'file', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -177,10 +180,6 @@ class TaskSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"detail": e.messages})
 
         return attrs
-
-
-class TaskRejectionImageSerializer(serializers.Serializer):
-    rejection_image = serializers.ImageField(required=True)
 
 
 class TaskStatusUpdateSerializer(serializers.ModelSerializer):
@@ -285,28 +284,26 @@ class MeetingSerializer(serializers.ModelSerializer):
 
 class MeetingAttendanceSerializer(serializers.ModelSerializer):
     user_info = UserShortSerializer(source='user', read_only=True)
-
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
+    meeting_title = serializers.CharField(source='meeting.title', read_only=True)
 
     class Meta:
         model = MeetingAttendance
-        fields = ('id', 'user', 'user_info', 'meeting', 'is_attended', 'absence_reason')
-        read_only_fields = ('id', 'user', 'meeting')
+        fields = ('id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'absence_reason')
+        read_only_fields = ('id', 'user_info', 'meeting')
 
     def validate(self, attrs):
-        is_attended = attrs.get('is_attended')
-        absence_reason = attrs.get('absence_reason')
+        user = self.context['request'].user
+        instance = self.instance
 
-        if is_attended is True and absence_reason:
+        if instance and instance.user == user:
+            if 'is_attended' in attrs:
+                raise serializers.ValidationError(
+                    {"is_attended": "Siz o'z ishtirok holatingizni o'zgartira olmaysiz."}
+                )
+
+        new_is_attended = attrs.get('is_attended', instance.is_attended if instance else False)
+
+        if new_is_attended is True:
             attrs['absence_reason'] = None
 
         return attrs
-
-
-class MeetingAttendanceReasonSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = MeetingAttendance
-        fields = ('absence_reason',)
-        extra_kwargs = {
-            'absence_reason': {'required': True, 'allow_blank': False}
-        }

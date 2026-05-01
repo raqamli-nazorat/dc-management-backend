@@ -1,3 +1,4 @@
+from django.db.models import Q
 from django_filters import rest_framework as filters
 from .models import Task, Project, Meeting
 
@@ -34,23 +35,37 @@ class TaskFilter(filters.FilterSet):
 
 
 class ProjectFilter(filters.FilterSet):
+    employee = filters.NumberFilter(method='filter_by_employee', label="Xodim")
+    created_at_gte = filters.IsoDateTimeFilter(field_name="created_at", lookup_expr='gte',
+                                               label="Yaratilgan vaqti (dan)")
+    created_at_lte = filters.IsoDateTimeFilter(field_name="created_at", lookup_expr='lte',
+                                               label="Yaratilgan vaqti (gacha)")
+
+    deadline_gte = filters.IsoDateTimeFilter(field_name="deadline", lookup_expr='gte', label="Muddat (dan)")
+    deadline_lte = filters.IsoDateTimeFilter(field_name="deadline", lookup_expr='lte', label="Muddat (gacha)")
+
     class Meta:
         model = Project
         fields = {
             'status': ['exact'],
             'manager': ['exact'],
-            'is_active': ['exact'],
-            'deadline': ['exact', 'gte', 'lte'],
-            'created_at': ['exact', 'gte', 'lte'],
+            'is_deleted': ['exact'],
         }
+
+    def filter_by_employee(self, queryset, name, value):
+        return queryset.filter(
+            Q(employees__id=value) | Q(testers__id=value)
+        ).distinct()
 
 
 class MeetingFilter(filters.FilterSet):
+    start_date_gte = filters.DateFilter(field_name="start_time", lookup_expr='gte')
+    start_date_lte = filters.DateFilter(field_name="start_time", lookup_expr='lte')
+
     class Meta:
         model = Meeting
         fields = {
             'project': ['exact'],
             'organizer': ['exact'],
             'is_completed': ['exact'],
-            'start_time': ['exact', 'gte', 'lte'],
         }
