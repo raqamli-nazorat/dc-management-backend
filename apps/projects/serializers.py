@@ -260,7 +260,7 @@ class MeetingSerializer(serializers.ModelSerializer):
             'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
             'participants', 'participants_info',
         )
-        read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'penalty_percentage')
+        read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'penalty_percentage', 'is_completed')
 
     def validate(self, attrs):
         project = attrs.get('project')
