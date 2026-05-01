@@ -45,7 +45,7 @@ class Type(models.TextChoices):
 
 class Project(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
-    prefix = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="Prefiksi")
+    prefix = models.CharField(max_length=50, unique=True, verbose_name="Prefiksi")
     title = models.CharField(max_length=255, verbose_name="Nomi")
     description = models.TextField(verbose_name="Tavsifi")
     deadline = models.DateTimeField(verbose_name="Muddati")
@@ -69,9 +69,9 @@ class Project(BaseModel):
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
+        related_name='created_projects',
         null=True,
         blank=True,
-        related_name='created_projects',
         verbose_name="Yaratuvchi"
     )
 
@@ -79,6 +79,7 @@ class Project(BaseModel):
         User,
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='manager_projects',
         limit_choices_to={
             'roles__contains': [Role.MANAGER]
@@ -89,9 +90,11 @@ class Project(BaseModel):
 
     employees = models.ManyToManyField(User, related_name='employee_projects',
                                        limit_choices_to={'roles__contains': [Role.EMPLOYEE]},
+                                       blank=True,
                                        verbose_name="Xodimlar")
     testers = models.ManyToManyField(User, related_name='tester_projects',
                                      limit_choices_to={'roles__overlap': [Role.MANAGER, Role.EMPLOYEE]},
+                                     blank=True,
                                      verbose_name="Sinovchilar")
 
     class Meta:
@@ -103,11 +106,42 @@ class Project(BaseModel):
         super().clean()
 
         if self.pk:
-            old_project = Project.objects.get(pk=self.pk)
+            try:
+                old_project = Project.objects.get(pk=self.pk)
+            except Project.DoesNotExist:
+                return
+
             if old_project.status == ProjectStatus.ACTIVE:
                 if old_project.manager_id != self.manager_id:
                     raise ValidationError({
                         'manager': "Loyiha 'Faol' holatida menejerni o'zgartirib bo'lmaydi!"
+                    })
+
+            old_status = old_project.status
+            new_status = self.status
+
+            if old_status != new_status:
+                if old_status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+                    raise ValidationError({
+                        'status': f"Loyiha '{old_project.get_status_display()}' holatida. Uning statusini qayta o'zgartirib bo'lmaydi!"
+                    })
+
+                valid_transitions = {
+                    ProjectStatus.PLANNING: [ProjectStatus.ACTIVE, ProjectStatus.CANCELLED],
+                    ProjectStatus.ACTIVE: [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED],
+                    ProjectStatus.OVERDUE: [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED],
+                }
+
+                allowed_next_states = valid_transitions.get(old_status, [])
+                if new_status not in allowed_next_states:
+
+                    if new_status == ProjectStatus.OVERDUE:
+                        raise ValidationError({
+                            'status': "'Muddati o'tgan' holatini qo'lda belgilab bo'lmaydi! Bu tizim tomonidan avtomatik amalga oshiriladi."
+                        })
+
+                    raise ValidationError({
+                        'status': f"Statusni '{old_project.get_status_display()}'dan '{dict(ProjectStatus.choices).get(new_status)}'ga o'tkazish mantiqqa to'g'ri kelmaydi!"
                     })
 
     def save(self, *args, **kwargs):
@@ -149,7 +183,9 @@ class Task(BaseModel):
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
 
-    sprint = models.PositiveSmallIntegerField(null=True, blank=True, validators=[MinValueValidator(1), MaxValueValidator(10)], verbose_name='Sprint')
+    sprint = models.PositiveSmallIntegerField(null=True, blank=True,
+                                              validators=[MinValueValidator(1), MaxValueValidator(10)],
+                                              verbose_name='Sprint')
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
                                  verbose_name='Lavozim')
 

@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
 from apps.applications.models import Region, District, Position, Application, ApplicationStatus
@@ -35,8 +36,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Application
         fields = ('id', 'full_name', 'birth_date', 'is_student', 'university', 'region', 'region_info',
-                  'phone', 'telegram', 'position', 'position_info', 'resume', 'extra_info', 'portfolio', 
-                  'status', 'reviewed_by', 'conclusion', 'reviewed_at','created_at'
+                  'phone', 'telegram', 'position', 'position_info', 'resume', 'extra_info', 'portfolio',
+                  'status', 'reviewed_by', 'conclusion', 'reviewed_at', 'created_at'
                   )
         read_only_fields = ('id', 'status', 'reviewed_by', 'conclusion', 'reviewed_at', 'created_at')
 
@@ -46,10 +47,21 @@ class ApplicationSerializer(serializers.ModelSerializer):
         self.fields['reviewed_by'] = UserShortSerializer(read_only=True)
 
     def validate(self, attrs):
-        if attrs.get('is_student') and not attrs.get('university'):
-            raise serializers.ValidationError({
-                'university': "Talaba bo'lsangiz o'qish joyi va kursingizni kiritishingiz shart!"
-            })
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            instance = Application(**attrs)
+
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
         return attrs
 
 

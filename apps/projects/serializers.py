@@ -1,4 +1,5 @@
 from django.utils import timezone
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -26,9 +27,9 @@ class ProjectSerializer(serializers.ModelSerializer):
     employees_info = UserShortSerializer(source='employees', many=True, read_only=True)
     testers_info = UserShortSerializer(source='testers', many=True, read_only=True)
 
-    manager = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
-    testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
-    employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), many=True, write_only=True)
+    manager = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, write_only=True)
+    testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True, write_only=True)
+    employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True, write_only=True)
 
     completion_percentage = serializers.SerializerMethodField()
 
@@ -51,6 +52,29 @@ class ProjectSerializer(serializers.ModelSerializer):
         completed_tasks = obj.tasks.filter(status__in=completed_statuses).count()
 
         return round((completed_tasks / total_tasks) * 100, 1)
+
+    def validate(self, attrs):
+        data = super().validate(attrs)
+
+        m2m_fields = ['testers', 'employees']
+        model_data = {k: v for k, v in data.items() if k not in m2m_fields}
+
+        if self.instance:
+            for attr, value in model_data.items():
+                setattr(self.instance, attr, value)
+            instance = self.instance
+        else:
+            instance = Project(**model_data)
+
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        return data
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
@@ -123,27 +147,6 @@ class TaskSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, attrs):
-        assignee = attrs.get('assignee')
-        project = attrs.get('project')
-
-        if not project and self.instance:
-            project = self.instance.project
-        if not assignee and self.instance:
-            assignee = self.instance.assignee
-
-        if assignee and project:
-            if not project.employees.filter(id=assignee.id).exists():
-                raise serializers.ValidationError({
-                    'assignee': "Bu xodim ushbu loyiha jamoasiga tayinlanmagan!"
-                })
-
-        if not self.instance:
-            status = attrs.get('status')
-            if status and status != TaskStatus.TODO:
-                raise serializers.ValidationError({
-                    'status': f"Yangi vazifa faqat '{TaskStatus.TODO}' holatida yaratilishi mumkin."
-                })
-
         hours = attrs.pop('estimated_input_hours', None)
         minutes = attrs.pop('estimated_input_minutes', None)
 
@@ -151,6 +154,27 @@ class TaskSerializer(serializers.ModelSerializer):
             h = hours or 0
             m = minutes or 0
             attrs['estimated_minutes'] = (h * 60) + m
+
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            instance = Task(**attrs)
+
+            status = attrs.get('status')
+            if status and status != TaskStatus.TODO:
+                raise serializers.ValidationError({
+                    'status': f"Yangi vazifa faqat '{TaskStatus.TODO}' holatida yaratilishi mumkin."
+                })
+
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
 
         return attrs
 

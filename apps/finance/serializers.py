@@ -71,19 +71,35 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
+        user = getattr(request, 'user', None)
 
-        if not request or not request.user or not request.user.is_authenticated:
-            return attrs
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            model_attrs = attrs.copy()
+            if 'user' not in model_attrs and user:
+                model_attrs['user'] = user
+            instance = ExpenseRequest(**model_attrs)
 
-        user = request.user
-        instance = ExpenseRequest(**attrs, user=user)
-
+        from django.core.exceptions import ValidationError as DjangoValidationError
         try:
             instance.clean()
-        except Exception as e:
-            raise serializers.ValidationError(
-                e.message_dict if hasattr(e, 'message_dict') else str(e)
-            )
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        if 'project' in attrs or instance.project is None:
+            attrs['project'] = instance.project
+
+        if 'card_number' in attrs or instance.card_number is None:
+            attrs['card_number'] = instance.card_number
+
+        if 'expense_category' in attrs or instance.expense_category is None:
+            attrs['expense_category'] = instance.expense_category
 
         return attrs
 
@@ -104,6 +120,25 @@ class PayrollSerializer(serializers.ModelSerializer):
 
     def get_month_display(self, obj):
         return obj.month.strftime('%B, %Y')
+
+    def validate(self, attrs):
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            instance = Payroll(**attrs)
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        return attrs
 
 
 class PayrollStatusUpdateSerializer(serializers.Serializer):
