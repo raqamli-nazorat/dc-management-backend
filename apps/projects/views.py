@@ -91,6 +91,11 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     def perform_destroy(self, instance):
+        user = self.request.user
+        if instance.created_by != user:
+            raise PermissionDenied(
+                "Sizda bu loyihani o'chirish huquqi yo'q. Faqat loyihani yaratuvchisi uni o'chira oladi.")
+
         if instance.status != ProjectStatus.PLANNING:
             raise ValidationError({
                 "detail": f"Loyihani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Rejalashtirilmoqda' holatidagilarni o'chirish mumkin."
