@@ -11,12 +11,13 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework import status
 
-from apps.users.models import Role
+from apps.users.models import Role, User
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 from apps.notifications.models import Notification, NotificationType
 from apps.notifications.tasks import mass_notification_sender, notify_meeting_end
 
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
+from apps.users.serializers import UserShortSerializer
 
 from .filters import TaskFilter, ProjectFilter, MeetingFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, \

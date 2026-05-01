@@ -1,14 +1,17 @@
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from rest_framework.response import Response
 
 from apps.users.models import Role
 from apps.projects.models import Project, Task
 from apps.finance.models import ExpenseRequest, Payroll
+from apps.users.serializers import UserShortSerializer
 from .serializers import (
     UserComprehensiveReportSerializer,
     ProjectComprehensiveReportSerializer,
@@ -70,7 +73,8 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
         queryset = ProjectComprehensiveReportSerializer.setup_eager_loading(
-            Project.objects.filter(is_active=True, is_deleted=False))
+            Project.objects.filter(is_active=True, is_deleted=False)
+        )
 
         if not user or not user.is_authenticated:
             return queryset.none()
@@ -78,7 +82,24 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
-        return queryset.filter(Q(manager=user) | Q(employees=user) | Q(testers=user)).distinct()
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(manager=user)
+
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(Q(employees=user) | Q(testers=user)).distinct()
+
+        return queryset.none()
+
+    @action(detail=False, methods=['get'], url_path='all-testers')
+    def all_testers(self, request):
+        projects = self.filter_queryset(self.get_queryset())
+
+        testers = User.objects.filter(
+            tester_projects__in=projects
+        ).distinct().order_by('username')
+
+        serializer = UserShortSerializer(testers, many=True)
+        return Response(serializer.data)
 
 
 @extend_schema(tags=['Expense Reports'])
@@ -103,9 +124,9 @@ class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
             return queryset
 
         if user.has_role(Role.MANAGER):
-            managed_project_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
-                'id', flat=True)
-            return queryset.filter(Q(user=user) | Q(project_id__in=managed_project_ids)).distinct()
+            managed_employee_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
+                'employees', flat=True)
+            return queryset.filter(Q(user=user) | Q(user_id__in=managed_employee_ids)).distinct()
 
         return queryset.filter(user=user)
 
@@ -163,6 +184,11 @@ class TaskReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if user.has_role(Role.MANAGER):
             managed_project_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
                 'id', flat=True)
-            return queryset.filter(Q(project_id__in=managed_project_ids) | Q(created_by=user)).distinct()
 
-        return queryset.filter(Q(assignee=user) | Q(created_by=user)).distinct()
+            return queryset.filter(project_id__in=managed_project_ids)
+
+        return queryset.filter(
+            Q(assignee=user) |
+            Q(created_by=user) |
+            Q(project__testers=user)
+        ).distinct()

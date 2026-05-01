@@ -49,9 +49,10 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
             return queryset.filter(
+                Q(user=user) |
                 Q(user__employee_projects__manager=user) |
                 Q(user__tester_projects__manager=user)
-            ).exclude(user=user).distinct()
+            ).distinct()
 
         return queryset.filter(user=user)
 
@@ -218,9 +219,10 @@ class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
             return queryset.filter(
+                Q(user=user) |
                 Q(user__employee_projects__manager=user) |
                 Q(user__tester_projects__manager=user)
-            ).exclude(user=user).distinct()
+            ).distinct()
 
         return queryset.filter(user=user)
 
@@ -312,8 +314,9 @@ class LedgerViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     def get_role_based_queryset(self, queryset, user):
         if user.has_role(Role.MANAGER):
             return queryset.filter(
+                Q(user=user) |
                 Q(user__employee_projects__manager=user) |
                 Q(user__tester_projects__manager=user)
-            ).exclude(user=user).distinct()
+            ).distinct()
 
         return queryset.filter(user=user)

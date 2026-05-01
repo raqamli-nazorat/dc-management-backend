@@ -3,7 +3,7 @@ from django.db.models.functions import Coalesce
 from django_filters import rest_framework as filters
 from django.contrib.auth import get_user_model
 
-from apps.projects.filters import NumberInFilter
+from apps.projects.filters import NumberInFilter, CharInFilter
 from apps.projects.models import Project, Task, MeetingAttendance, ProjectStatus, TaskStatus, Priority, Type
 from apps.finance.models import ExpenseRequest, Payroll, ExpenseType, PaymentMethod, Status as ExpenseStatus
 
@@ -219,8 +219,10 @@ class ProjectReportFilter(filters.FilterSet):
     price_min = filters.NumberFilter(field_name='project_price', lookup_expr='gte', label="Boshqaruvchi bonusi (dan)")
     price_max = filters.NumberFilter(field_name='project_price', lookup_expr='lte', label="Boshqaruvchi bonusi (gacha)")
 
-    created_by = filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), label="Muallif")
-    manager = filters.ModelChoiceFilter(queryset=get_user_model().objects.all(), label="Boshqaruvchi")
+    created_by = NumberInFilter(field_name='created_by_id', lookup_expr='in', label="Mualliflar")
+    manager = NumberInFilter(field_name='manager_id', lookup_expr='in', label="Boshqaruvchilar")
+    employees = NumberInFilter(field_name='employees', lookup_expr='in', label="Xodimlar")
+    testers = NumberInFilter(field_name='testers', lookup_expr='in', label="Sinovchilar")
 
     class Meta:
         model = Project
@@ -238,9 +240,9 @@ class ExpenseReportFilter(filters.FilterSet):
     project = NumberInFilter(field_name='project_id', lookup_expr='in', label="Loyiha")
     expense_category = NumberInFilter(field_name='expense_category_id', lookup_expr='in', label="Kategoriya")
 
-    type = filters.MultipleChoiceFilter(choices=ExpenseType.choices, label="Xarajat turi")
-    payment_method = filters.MultipleChoiceFilter(choices=PaymentMethod.choices, label="To'lov turi")
-    status = filters.MultipleChoiceFilter(choices=ExpenseStatus.choices, label="Holati")
+    type = CharInFilter(field_name='type', lookup_expr='in', label="Xarajat turi")
+    payment_method = CharInFilter(field_name='payment_method', lookup_expr='in', label="To'lov turi")
+    status = CharInFilter(field_name='status', lookup_expr='in', label="Holati")
 
     amount_min = filters.NumberFilter(field_name='amount', lookup_expr='gte', label="Miqdori (min)")
     amount_max = filters.NumberFilter(field_name='amount', lookup_expr='lte', label="Miqdori (max)")
@@ -314,9 +316,9 @@ class TaskReportFilter(filters.FilterSet):
     created_by = NumberInFilter(field_name='created_by_id', lookup_expr='in', label="Yaratuvchi")
     position = NumberInFilter(field_name='position_id', lookup_expr='in', label="Lavozim")
 
-    priority = filters.MultipleChoiceFilter(choices=Priority.choices, label="Darajasi")
-    status = filters.MultipleChoiceFilter(choices=TaskStatus.choices, method='filter_status', label="Holati")
-    type = filters.MultipleChoiceFilter(choices=Type.choices, label="Turi")
+    priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajasi")
+    status = CharInFilter(method='filter_status', label="Holati")
+    type = CharInFilter(field_name='type', lookup_expr='in', label="Turi")
     sprint = NumberInFilter(field_name='sprint', lookup_expr='in', label="Sprint")
 
     penalty_min = filters.NumberFilter(field_name='penalty_percentage', lookup_expr='gte', label="Jarima foizi (min)")
