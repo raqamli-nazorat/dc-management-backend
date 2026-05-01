@@ -47,6 +47,15 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
             'id', 'status', 'paid_at', 'confirmed_at', 'cancelled_at', 'created_at', 'updated_at'
         )
 
+    def to_internal_value(self, data):
+        mutable_data = data.copy() if hasattr(data, 'copy') else dict(data)
+
+        category = mutable_data.get('expense_category')
+        if category in [0, '0', '']:
+            mutable_data['expense_category'] = None
+
+        return super().to_internal_value(mutable_data)
+
     def __init__(self, *args, **kwargs):
         super(ExpenseRequestSerializer, self).__init__(*args, **kwargs)
         request = self.context.get('request')
