@@ -5,8 +5,8 @@ from django.utils import timezone
 from django.db.models import Q
 
 from apps.notifications.models import NotificationType, Notification
-from apps.notifications.tasks import mass_notification_sender
-from .models import Project, ProjectStatus, Task, TaskStatus
+from apps.notifications.tasks import mass_notification_sender, send_single_notification_task
+from .models import Project, ProjectStatus, Task, TaskStatus, Meeting
 
 logger = logging.getLogger(__name__)
 
@@ -122,3 +122,44 @@ def send_morning_reminders():
         mass_notification_sender.delay(broadcast_data)
 
     return f"{len(user_tasks)} xodimga eslatmalar yuborildi."
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
+def notify_meeting_end(self, meeting_id):
+    try:
+        meeting = Meeting.objects.select_related('organizer').get(id=meeting_id)
+
+        if meeting.is_active and not meeting.is_completed:
+            title = "Yig'ilish tugadi"
+            message = f"Hurmatli {meeting.organizer.username}, '{meeting.title}' uchrashuvi uchun belgilangan vaqt tugadi. Iltimos, ishtirokchilar ishtirokini tekshirib, davomatni yakunlang."
+
+            Notification.objects.create(
+                user=meeting.organizer,
+                title=title,
+                message=message,
+                type=NotificationType.MEETING,
+                extra_data={
+                    "meeting_id": meeting.id,
+                    "action": "close_meeting"
+                }
+            )
+
+            data = {
+                "user_id": meeting.organizer.id,
+                "title": title,
+                "message": message,
+                "type": NotificationType.MEETING,
+                "extra_data": {
+                    "meeting_id": meeting.id,
+                    "action": "close_meeting",
+                    "project_id": meeting.project_id
+                }
+            }
+            send_single_notification_task.delay(data)
+
+        return f"Meeting {meeting_id} end notification sent."
+    except Meeting.DoesNotExist:
+        return f"Meeting {meeting_id} already deleted."
+    except Exception as exc:
+        logger.error(f"Yig'ilish yakuni haqida xabar yuborishda xatolik {meeting_id}: {exc}")
+        raise self.retry(exc=exc)
