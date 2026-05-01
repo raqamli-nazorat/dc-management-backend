@@ -32,6 +32,17 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
         'employees', 'testers')
     serializer_class = ProjectShortSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    filter_backends = [
+        DjangoFilterBackend,
+        filters.SearchFilter,
+        filters.OrderingFilter
+    ]
+
+    filterset_fields = ['prefix', 'status']
+    search_fields = ['title', 'description']
+    ordering_fields = ['status', 'deadline', 'created_at']
+
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
