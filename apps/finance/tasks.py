@@ -74,7 +74,7 @@ def _calc_manager_kpi(user, start, end):
 
     for project in completed_projects:
         processed_project_ids.append(project.id)
-        
+
         if project.updated_at > project.deadline:
             logger.debug(
                 "Manager %s | loyiha '%s' muddatidan kechikkan. KPI va jarima olinmaydi.",
@@ -101,7 +101,7 @@ def _calc_employee_kpi(user, start, end):
         Task.objects
         .filter(
             assignee=user,
-            status__in=[TaskStatus.CHECKED, TaskStatus.PRODUCTION],
+            status=TaskStatus.CHECKED,
             payroll_processed=False,
             is_active=True,
         )
@@ -122,14 +122,14 @@ def _calc_employee_kpi(user, start, end):
         processed_task_ids.append(task.id)
         gross = _round(task.task_price)
         bugs_count += task.reopened_count
-        
+
         penalty = Decimal("0.00")
         if task.penalty_percentage > 0 and task.reopened_count > 0:
             reopen_penalty = _round(
                 (gross * Decimal(str(task.penalty_percentage))) / 100
             ) * task.reopened_count
             penalty += reopen_penalty
-            
+
         total_penalty += penalty
 
         if task.updated_at > task.deadline:
