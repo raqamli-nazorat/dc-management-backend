@@ -147,7 +147,7 @@ class Project(BaseModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         if not self.uid:
-            self.uid = generate_unique_id('P', Project)
+            self.uid = generate_unique_id('PR', Project)
         return super().save(*args, **kwargs)
 
     def __str__(self):

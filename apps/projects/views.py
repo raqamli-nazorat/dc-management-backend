@@ -3,21 +3,17 @@ from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 
 from django.db.models import Q
-from django.utils import timezone
 from rest_framework import viewsets, filters, permissions, parsers
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
-from rest_framework import status
 
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
-from apps.notifications.models import Notification, NotificationType
-from apps.notifications.tasks import mass_notification_sender
 
-from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
+from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMixin
 
-from .tasks import notify_meeting_end
+from .services import TaskService, MeetingService
 from .filters import TaskFilter, ProjectFilter, MeetingFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, \
     TaskRejectionFile
@@ -62,7 +58,7 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
 
 
 @extend_schema(tags=['Projects'])
-class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Project.objects.select_related('manager').prefetch_related('employees', 'testers')
     serializer_class = ProjectSerializer
     filter_backends = [
@@ -116,57 +112,9 @@ class ProjectViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         instance.is_deleted = True
         instance.save()
 
-    @action(detail=False, methods=['get'])
-    def trash(self, request):
-        queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
-        page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @extend_schema(request=None)
-    @action(detail=True, methods=['post'])
-    def restore(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-
-        if not instance:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(self.request, instance)
-
-        if not instance.is_deleted:
-            return Response({"detail": "Loyiha korzinkada emas."}, status=status.HTTP_400_BAD_REQUEST)
-
-        instance.is_active = True
-        instance.is_deleted = False
-        instance.save()
-
-        return Response({"detail": "Loyiha muvaffaqiyatli tiklandi."})
-
-    @action(detail=True, methods=['delete'])
-    def hard_delete(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-
-        if not instance:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(self.request, instance)
-
-        if not instance.is_deleted:
-            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        instance.is_deleted = False
-        instance.is_active = False
-        instance.save()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
 
 @extend_schema(tags=['Tasks'])
-class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -211,6 +159,10 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
         return queryset.none()
 
+    def perform_create(self, serializer):
+        task = TaskService.create_task(self.request.user, serializer.validated_data)
+        serializer.instance = task
+
     def perform_destroy(self, instance):
         user = self.request.user
         if instance.created_by != user:
@@ -225,65 +177,6 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         instance.is_active = False
         instance.is_deleted = True
         instance.save()
-
-    @extend_schema(request=None)
-    @action(detail=False, methods=['get'])
-    def trash(self, request):
-        queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
-        page = self.paginate_queryset(queryset)
-
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
-
-    @extend_schema(request=None)
-    @action(detail=True, methods=['post'])
-    def restore(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-
-        if not instance:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(self.request, instance)
-
-        if not instance.is_deleted:
-            return Response({"detail": "Vazifa chiqindi qutisida emas."}, status=status.HTTP_400_BAD_REQUEST)
-
-        instance.is_active = True
-        instance.is_deleted = False
-        instance.save()
-
-        return Response({"detail": "Vazifa muvaffaqiyatli tiklandi."})
-
-    @action(detail=True, methods=['delete'])
-    def hard_delete(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
-
-        if not instance:
-            return Response(status=status.HTTP_404_NOT_FOUND)
-        self.check_object_permissions(self.request, instance)
-
-        if not instance.is_deleted:
-            return Response({"detail": "Faqat korzinkadagi narsalarni butunlay o'chirish mumkin."},
-                            status=status.HTTP_400_BAD_REQUEST)
-
-        instance.is_deleted = False
-        instance.is_active = False
-        instance.save()
-
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
-    def _send_task_notification(self, task, title, message):
-        if task.assignee:
-            Notification.objects.create(
-                user=task.assignee,
-                title=title,
-                message=message,
-                type=NotificationType.TASK,
-                extra_data={'task_id': task.id}
-            )
 
     def perform_update(self, serializer):
         user = self.request.user
@@ -301,80 +194,15 @@ class TaskViewSet(RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     )
     @action(detail=True, methods=['patch'], url_path='change-status')
     def change_status(self, request, pk=None):
-        user = request.user
         task = self.get_object()
-        current_status = task.status
 
         serializer = self.get_serializer(task, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data.get('status')
+        updated_task = TaskService.change_status(task, request.user, new_status)
 
-        if not new_status or current_status == new_status:
-            return Response(TaskSerializer(task).data)
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
-            serializer.save()
-            if new_status == TaskStatus.REJECTED:
-                self._send_task_notification(task, "Vazifangiz rad etildi",
-                                             f"'{task.title}' vazifasi rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
-            elif new_status == TaskStatus.CHECKED:
-                self._send_task_notification(task, "Vazifangiz tasdiqlandi",
-                                             f"'{task.title}' vazifasi menejer tomonidan muvaffaqiyatli tekshirildi.")
-            return Response(TaskSerializer(task).data)
-
-        if task.assignee == user:
-            employee_transitions = {
-                TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
-                TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
-                TaskStatus.DONE: [TaskStatus.PRODUCTION],
-                TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
-            }
-            if new_status not in employee_transitions.get(current_status, []):
-                raise PermissionDenied(f"'{current_status}' dan '{new_status}' ga o'tib bo'lmaydi.")
-
-            serializer.save()
-            return Response(TaskSerializer(task).data)
-
-        if task.assignee is None and task.project.employees.filter(id=user.id).exists():
-            if new_status == TaskStatus.IN_PROGRESS:
-                serializer.save(
-                    assignee=user,
-                    position=getattr(user, 'position', None)
-                )
-                return Response(TaskSerializer(task).data)
-            raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazishingiz kerak.")
-
-        is_tester = task.project.testers.filter(id=user.id).exists()
-        if is_tester:
-            if current_status != TaskStatus.PRODUCTION:
-                raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshira olasiz.")
-
-            if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-                raise PermissionDenied("Faqat 'Checked' yoki 'Rejected' qila olasiz.")
-
-            serializer.save()
-
-            if new_status == TaskStatus.REJECTED:
-                self._send_task_notification(task, "Vazifangiz rad etildi",
-                                             f"'{task.title}' vazifasi tester tomonidan rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
-            elif new_status == TaskStatus.CHECKED:
-                self._send_task_notification(task, "Vazifangiz tasdiqlandi",
-                                             f"'{task.title}' vazifasi tester tomonidan muvaffaqiyatli tekshirildi.")
-            return Response(TaskSerializer(task).data)
-
-        raise PermissionDenied("Sizda vazifa holatini o'zgartirish huquqi yo'q.")
-
-    def perform_create(self, serializer):
-        task = serializer.save(created_by=self.request.user)
-
-        if task.assignee:
-            deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
-
-            title = "Yangi vazifa biriktirildi"
-            message = f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Deadline: {deadline_str}"
-
-            self._send_task_notification(task, title, message)
+        return Response(TaskSerializer(updated_task).data)
 
 
 @extend_schema(tags=['Task Attachments'])
@@ -489,118 +317,24 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
 
     @transaction.atomic
     def perform_create(self, serializer):
-        participants = serializer.validated_data.pop('participants', [])
-        meeting = serializer.save(organizer=self.request.user)
-        self._handle_participants(meeting, participants)
-
-        if meeting.duration_minutes > 0:
-            transaction.on_commit(lambda: notify_meeting_end.apply_async(
-                args=[meeting.id],
-                eta=meeting.start_time + timezone.timedelta(minutes=meeting.duration_minutes)
-            ))
+        meeting = MeetingService.create_meeting(self.request.user, serializer.validated_data)
+        serializer.instance = meeting
 
     @transaction.atomic
     def perform_update(self, serializer):
         participants = serializer.validated_data.pop('participants', None)
         meeting = serializer.save()
-        self._handle_participants(meeting, participants)
 
-    def _handle_participants(self, meeting, participants):
-        if participants is None:
-            return
+        user = self.request.user
 
-        current_attendee_ids = set(MeetingAttendance.objects.filter(meeting=meeting).values_list('user_id', flat=True))
-        new_participant_ids = {p.id for p in participants}
-
-        MeetingAttendance.objects.filter(meeting=meeting).exclude(user_id__in=new_participant_ids).delete()
-
-        to_add_ids = new_participant_ids - current_attendee_ids
-        to_add = [p for p in participants if p.id in to_add_ids]
-
-        if to_add:
-            attendances = [
-                MeetingAttendance(user=user, meeting=meeting)
-                for user in to_add
-            ]
-            MeetingAttendance.objects.bulk_create(attendances)
-
-            notifications_to_bulk = []
-            broadcast_data = []
-            start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
-
-            for member in to_add:
-                if member.id != self.request.user.id:
-                    msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
-
-                    notifications_to_bulk.append(Notification(
-                        user=member,
-                        title="Yangi uchrashuv belgilandi",
-                        message=msg,
-                        type=NotificationType.MEETING
-                    ))
-
-                    broadcast_data.append({
-                        "user_id": member.id,
-                        "title": "Yangi uchrashuv belgilandi",
-                        "message": msg,
-                        "type": "meeting",
-                        "extra_data": {
-                            "meeting_id": meeting.id,
-                            "action": "open_meeting",
-                            "project_id": meeting.project_id
-                        }
-                    })
-
-            if notifications_to_bulk:
-                Notification.objects.bulk_create(notifications_to_bulk)
-                transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+        MeetingService.handle_participants(meeting, participants, user.id)
 
     @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='close')
     def close_meeting(self, request, pk=None):
         meeting = self.get_object()
 
-        if meeting.is_completed:
-            raise ValidationError({"detail": "Bu uchrashuv allaqachon tugagan."})
-
-        meeting.is_completed = True
-        meeting.save()
-
-        absent_attendances = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False).select_related('user')
-
-        notifications_to_bulk = []
-        broadcast_data = []
-
-        for attendance in absent_attendances:
-            msg = f"Siz '{meeting.title}' mavzusidagi uchrashuvda qatnashmadingiz. Sababini ko'rsatishingiz so'raladi."
-
-            notifications_to_bulk.append(Notification(
-                user_id=attendance.user.id,
-                title="Yig'ilishda ishtirok etmadingiz.",
-                message=msg,
-                type=NotificationType.MEETING,
-                extra_data={
-                    "meeting_id": meeting.id,
-                    "action": "open_meeting",
-                    "project_id": meeting.project_id
-                }
-            ))
-
-            broadcast_data.append({
-                "user_id": attendance.user.id,
-                "title": "Yig'ilishda ishtirok etmadingiz.",
-                "message": msg,
-                "type": NotificationType.MEETING,
-                "extra_data": {
-                    "meeting_id": meeting.id,
-                    "action": "open_meeting",
-                    "project_id": meeting.project_id
-                }
-            })
-
-        if notifications_to_bulk:
-            Notification.objects.bulk_create(notifications_to_bulk)
-            mass_notification_sender.delay(broadcast_data)
+        MeetingService.close_meeting(meeting)
 
         return Response({"message": "Uchrashuv yopildi va bildirishnomalar yuborildi."})
 

@@ -54,6 +54,10 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
         if category in [0, '0', '']:
             mutable_data['expense_category'] = None
 
+        project = mutable_data.get('project')
+        if project in [0, '0', '']:
+            mutable_data['project'] = None
+
         return super().to_internal_value(mutable_data)
 
     def __init__(self, *args, **kwargs):

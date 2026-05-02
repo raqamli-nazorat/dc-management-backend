@@ -101,7 +101,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
     rejection_files = TaskRejectionFileSerializer(many=True, read_only=True)
 
-    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), write_only=True)
+    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False, write_only=True)
 
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False, allow_null=True
