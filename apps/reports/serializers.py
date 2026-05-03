@@ -172,7 +172,7 @@ class ProjectComprehensiveReportSerializer(serializers.ModelSerializer):
         model = Project
         fields = (
             'id', 'prefix', 'title', 'description', 'deadline', 'status',
-            'project_price', 'created_by_name', 'manager_name',
+            'project_price', 'penalty_percentage', 'created_by_name', 'manager_name',
             'employees_names', 'testers_names', 'task_stats'
         )
 
