@@ -40,6 +40,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'uid', 'prefix', 'title', 'description', 'manager', 'manager_info',
             'created_by_info', 'testers', 'testers_info',
+            'project_price', 'penalty_percentage',
             'employees', 'employees_info', 'deadline', 'status',
             'created_at', 'updated_at', 'completion_percentage'
         )
@@ -210,20 +211,12 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
         new_status = validated_data.get('status')
         reason = validated_data.get('rejection_reason')
 
-        if 'assignee' in validated_data:
-            instance.assignee = validated_data['assignee']
-        if 'position' in validated_data:
-            instance.position = validated_data['position']
-
         now = timezone.now()
         local_now = timezone.localtime(now)
 
-        if new_status == TaskStatus.IN_PROGRESS and instance.status != TaskStatus.IN_PROGRESS:
-            instance.started_at = now
-
-        if new_status == TaskStatus.DONE and instance.started_at:
+        if instance.started_at:
             elapsed = int((now - instance.started_at).total_seconds() / 60)
-            instance.actual_minutes += elapsed
+            instance.actual_minutes += max(0, elapsed)
             instance.started_at = None
 
         if new_status == TaskStatus.REJECTED:
@@ -240,8 +233,12 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
 
             instance.status = TaskStatus.IN_PROGRESS
             instance.started_at = now
+
         else:
             instance.status = new_status
+
+            if new_status == TaskStatus.IN_PROGRESS:
+                instance.started_at = now
 
         instance.save()
         return instance

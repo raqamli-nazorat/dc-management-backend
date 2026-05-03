@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
 from apps.common.utils import generate_unique_id
 from apps.common.models import BaseModel
@@ -57,12 +58,14 @@ class Project(BaseModel):
         verbose_name="Holati"
     )
 
-    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
-
     project_price = models.DecimalField(
         max_digits=12, decimal_places=2, default=0.00,
         verbose_name="Menejer bonusi (Loyiha uchun)"
     )
+
+    penalty_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,
+                                             validators=[MinValueValidator(0), MaxValueValidator(100)],
+                                             verbose_name='Jarima foizi (%)')
 
     is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
 
@@ -97,10 +100,18 @@ class Project(BaseModel):
                                      blank=True,
                                      verbose_name="Sinovchilar")
 
+    completed_at = models.DateTimeField(null=True, blank=True)
+    payroll_processed = models.BooleanField(default=False)
+    was_overdue = models.BooleanField(default=False, editable=False)
+
     class Meta:
         verbose_name = "Loyiha "
         verbose_name_plural = "Loyihalar"
         ordering = ['-created_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._old_status = self.status
 
     def clean(self):
         super().clean()
@@ -148,6 +159,19 @@ class Project(BaseModel):
         self.full_clean()
         if not self.uid:
             self.uid = generate_unique_id('PR', Project)
+
+        if self.status == ProjectStatus.OVERDUE:
+            self.was_overdue = True
+
+        if self.status == ProjectStatus.OVERDUE and self.deadline > timezone.now():
+            self.status = ProjectStatus.ACTIVE
+
+        if self.pk and self.status != self._old_status:
+            if self.status == ProjectStatus.COMPLETED:
+                self.completed_at = timezone.now()
+            elif self._old_status == ProjectStatus.COMPLETED:
+                self.completed_at = None
+
         return super().save(*args, **kwargs)
 
     def __str__(self):
@@ -164,7 +188,6 @@ class Task(BaseModel):
 
     status = models.CharField(max_length=20, choices=TaskStatus.choices, default=TaskStatus.TODO, db_index=True,
                               verbose_name='Holati')
-    payroll_processed = models.BooleanField(default=False, verbose_name="Oylik to'landimi?")
     priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM, db_index=True,
                                 verbose_name='Darajasi')
     type = models.CharField(max_length=20, choices=Type.choices, default=Type.FEATURE, db_index=True,
@@ -195,10 +218,18 @@ class Task(BaseModel):
     actual_minutes = models.PositiveIntegerField(default=0, verbose_name="Haqiqiy ish vaqti (daqiqa)")
     reopened_count = models.PositiveIntegerField(default=0, verbose_name='Qaytishlar soni')
 
+    completed_at = models.DateTimeField(null=True, blank=True)
+    payroll_processed = models.BooleanField(default=False)
+    was_overdue = models.BooleanField(default=False, editable=False)
+
     class Meta:
         verbose_name = 'Vazifa '
         verbose_name_plural = 'Vazifalar'
         ordering = ['-created_at']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._old_status = self.status
 
     def clean(self):
         super().clean()
@@ -210,7 +241,11 @@ class Task(BaseModel):
                 })
 
         if self.pk:
-            old_task = Task.objects.get(pk=self.pk)
+            try:
+                old_task = Task.objects.get(pk=self.pk)
+            except Task.DoesNotExist:
+                return
+
             locked_statuses = [
                 TaskStatus.IN_PROGRESS,
                 TaskStatus.DONE,
@@ -233,12 +268,26 @@ class Task(BaseModel):
                 })
 
     def save(self, *args, **kwargs):
+        self.full_clean()
+
+        if not self.uid:
+            self.uid = generate_unique_id(self.project.prefix, Task)
+
         if not self.position and self.assignee:
             self.position = self.assignee.position
 
-        self.full_clean()
-        if not self.uid:
-            self.uid = generate_unique_id(self.project.prefix, Task)
+        if self.status == TaskStatus.OVERDUE:
+            self.was_overdue = True
+
+        if self.status == TaskStatus.OVERDUE and self.deadline > timezone.now():
+            self.status = TaskStatus.IN_PROGRESS
+
+        if self.pk and self.status != self._old_status:
+            if self.status == TaskStatus.CHECKED:
+                self.completed_at = timezone.now()
+            elif self._old_status == TaskStatus.CHECKED:
+                self.completed_at = None
+
         return super().save(*args, **kwargs)
 
     def __str__(self):
