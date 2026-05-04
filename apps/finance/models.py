@@ -218,7 +218,7 @@ class Payroll(BaseModel):
         verbose_name = "Ish haqi "
         verbose_name_plural = "Ish haqlari"
         unique_together = ('user', 'month')
-        ordering = ['-month']
+        ordering = ['-month', '-id']
 
     def __str__(self):
         return self.user.get_username()
