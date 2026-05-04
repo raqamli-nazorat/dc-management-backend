@@ -7,8 +7,16 @@ from apps.notifications.models import Notification, NotificationType
 from apps.users.models import Role
 
 
-
 class TaskService:
+    STATUS_ORDER = {
+        TaskStatus.TODO: 1,
+        TaskStatus.IN_PROGRESS: 2,
+        TaskStatus.DONE: 3,
+        TaskStatus.PRODUCTION: 4,
+        TaskStatus.CHECKED: 5,
+        TaskStatus.REJECTED: 5,
+    }
+
     @staticmethod
     def send_task_notification(task, title, message):
         if task.assignee:
@@ -36,13 +44,21 @@ class TaskService:
     @classmethod
     @transaction.atomic
     def change_status(cls, task, user, new_status):
-
         current_status = task.status
 
         if not new_status or current_status == new_status:
             return task
 
         if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
+            if new_status == TaskStatus.REJECTED:
+                if current_status != TaskStatus.PRODUCTION:
+                    raise PermissionDenied("Faqat 'Production' holatidagi vazifanigina rad etish mumkin.")
+
+            is_rework = (current_status == TaskStatus.REJECTED and new_status == TaskStatus.IN_PROGRESS)
+
+            if not is_rework and cls.STATUS_ORDER.get(new_status, 0) < cls.STATUS_ORDER.get(current_status, 0):
+                raise PermissionDenied("Statusni orqaga qaytara olmaysiz.")
+
             task.status = new_status
             task.save()
 
@@ -51,7 +67,7 @@ class TaskService:
                                            f"'{task.title}' vazifasi rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
             elif new_status == TaskStatus.CHECKED:
                 cls.send_task_notification(task, "Vazifangiz tasdiqlandi",
-                                           f"'{task.title}' vazifasi menejer tomonidan muvaffaqiyatli tekshirildi.")
+                                           f"'{task.title}' vazifasi muvaffaqiyatli tekshirildi.")
             return task
 
         if task.assignee == user:
@@ -62,7 +78,7 @@ class TaskService:
                 TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
             }
             if new_status not in employee_transitions.get(current_status, []):
-                raise PermissionDenied(f"'{current_status}' dan '{new_status}' ga o'tib bo'lmaydi.")
+                raise PermissionDenied("Statusni orqaga qaytara olmaysiz yoki bu o'tishga ruxsat yo'q.")
 
             task.status = new_status
             task.save()
@@ -74,7 +90,6 @@ class TaskService:
                 task.assignee = user
                 task.position = getattr(user, 'position', None)
                 task.save()
-
                 return task
             raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazishingiz kerak.")
 
@@ -91,10 +106,10 @@ class TaskService:
 
             if new_status == TaskStatus.REJECTED:
                 cls.send_task_notification(task, "Vazifangiz rad etildi",
-                                           f"'{task.title}' vazifasi tester tomonidan rad etildi. Sababi: {task.rejection_reason or 'Izohsiz'}")
+                                           f"'{task.title}' vazifasi tester tomonidan rad etildi.")
             elif new_status == TaskStatus.CHECKED:
                 cls.send_task_notification(task, "Vazifangiz tasdiqlandi",
-                                           f"'{task.title}' vazifasi tester tomonidan muvaffaqiyatli tekshirildi.")
+                                           f"'{task.title}' vazifasi tester tomonidan tasdiqlandi.")
             return task
 
         raise PermissionDenied("Sizda vazifa holatini o'zgartirish huquqi yo'q.")
