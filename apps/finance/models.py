@@ -68,7 +68,8 @@ class ExpenseRequest(BaseModel):
                                          verbose_name='Xarajat kategoriyasi'
                                          )
 
-    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('1.00'))], verbose_name='Miqdori')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('1.00'))],
+                                 verbose_name='Miqdori')
     reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
     cancel_reason = models.TextField(null=True, blank=True, verbose_name='Bekor qilish sababi')
 
@@ -244,40 +245,5 @@ class Payroll(BaseModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         self.total_amount = self.fixed_salary + self.kpi_bonus - self.penalty_amount
-
-        is_new = self.pk is None
-
-        if not is_new:
-            old_instance = Payroll.objects.get(pk=self.pk)
-
-            if not old_instance.is_confirmed and self.is_confirmed:
-                with transaction.atomic():
-                    if self.total_amount != 0:
-                        User.objects.filter(pk=self.user.pk).update(
-                            balance=F('balance') + self.total_amount
-                        )
-
-                    month_label = self.month.strftime("%Y-%m")
-                    ledger_entries = []
-
-                    if self.fixed_salary > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.fixed_salary,
-                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun asosiy maosh"
-                        ))
-                    if self.kpi_bonus > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.kpi_bonus,
-                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun KPI bonusi"
-                        ))
-                    if self.penalty_amount > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.penalty_amount,
-                            transaction_type=TransactionType.DEBIT,
-                            description=f"{month_label} oyi uchun jami jarimalar"
-                        ))
-
-                    if ledger_entries:
-                        Ledger.objects.bulk_create(ledger_entries)
 
         super().save(*args, **kwargs)

@@ -1,11 +1,12 @@
-from django.core.exceptions import PermissionDenied
-from django.db import transaction
 from django.utils import timezone
+from django.db import transaction
+from django.db.models import Case, When, F, DecimalField
 from rest_framework.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied
 from django.contrib.auth import get_user_model
 
 from apps.notifications.models import Notification, NotificationType
-from .models import ExpenseRequest, Payroll, Status, Role
+from .models import ExpenseRequest, Payroll, Ledger, Status, Role, TransactionType
 
 User = get_user_model()
 
@@ -148,15 +149,19 @@ class PayrollService:
     @transaction.atomic
     def confirm_payrolls(cls, payroll_ids, accountant_user):
         if not accountant_user.has_role(Role.ACCOUNTANT):
-            raise PermissionDenied("Sizda oyliklarni tasdiqlash huquqi yo'q.")
+            raise PermissionDenied("Sizda oyliklarki tasdiqlash huquqi yo'q.")
 
-        payrolls = Payroll.objects.filter(id__in=payroll_ids, is_confirmed=False)
+        payrolls = Payroll.objects.filter(id__in=payroll_ids, is_confirmed=False).select_related('user')
 
         if not payrolls.exists():
             raise ValidationError({"detail": "Hech qanday tasdiqlanishi kerak bo'lgan oylik topilmadi."})
 
         notifications_to_bulk = []
         broadcast_data = []
+        ledger_entries = []
+
+        user_updates = {}
+        user_ids = []
 
         months = {
             1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel",
@@ -168,32 +173,55 @@ class PayrollService:
             payroll.is_confirmed = True
             payroll.confirmed_at = timezone.now()
             payroll.accountant = accountant_user
+            payroll.total_amount = payroll.fixed_salary + payroll.kpi_bonus - payroll.penalty_amount
 
-            month_number = payroll.month.month
-            month_name = months.get(month_number, "Noma'lum")
+            if payroll.total_amount != 0:
+                uid = payroll.user.id
+                user_updates[uid] = user_updates.get(uid, 0) + payroll.total_amount
+                if uid not in user_ids:
+                    user_ids.append(uid)
 
+                month_label = payroll.month.strftime("%Y-%m")
+                if payroll.fixed_salary > 0:
+                    ledger_entries.append(Ledger(
+                        user=payroll.user, payroll=payroll, amount=payroll.fixed_salary,
+                        transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun asosiy maosh"
+                    ))
+                if payroll.kpi_bonus > 0:
+                    ledger_entries.append(Ledger(
+                        user=payroll.user, payroll=payroll, amount=payroll.kpi_bonus,
+                        transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun KPI bonusi"
+                    ))
+                if payroll.penalty_amount > 0:
+                    ledger_entries.append(Ledger(
+                        user=payroll.user, payroll=payroll, amount=payroll.penalty_amount,
+                        transaction_type=TransactionType.DEBIT, description=f"{month_label} oyi uchun jami jarimalar"
+                    ))
+
+            month_name = months.get(payroll.month.month, "Noma'lum")
             msg = f"{month_name} oyi uchun maoshingiz tasdiqlandi."
+            notifications_to_bulk.append(Notification(user=payroll.user, title="Oylik maosh tushdi!", message=msg,
+                                                      type=NotificationType.FINANCE))
+            broadcast_data.append(
+                {"user_id": payroll.user.id, "title": "Oylik maosh tushdi!", "message": msg, "type": "finance",
+                 "extra_data": {"payroll_id": payroll.id}})
 
-            notifications_to_bulk.append(Notification(
-                user=payroll.user,
-                title="Oylik maosh tushdi!",
-                message=msg,
-                type=NotificationType.FINANCE
-            ))
+        Payroll.objects.bulk_update(payrolls, fields=['is_confirmed', 'confirmed_at', 'accountant', 'total_amount'])
 
-            broadcast_data.append({
-                "user_id": payroll.user.id,
-                "title": "Oylik maosh tushdi!",
-                "message": msg,
-                "type": "finance",
-                "extra_data": {"payroll_id": payroll.id}
-            })
+        if user_ids:
+            User.objects.filter(id__in=user_ids).update(
+                balance=F('balance') + Case(
+                    *[When(id=uid, then=amt) for uid, amt in user_updates.items()],
+                    default=0,
+                    output_field=DecimalField() 
+                )
+            )
 
-        Payroll.objects.bulk_update(payrolls, fields=['is_confirmed', 'confirmed_at', 'accountant'])
+        if ledger_entries:
+            Ledger.objects.bulk_create(ledger_entries)
 
         if notifications_to_bulk:
             Notification.objects.bulk_create(notifications_to_bulk)
-
             from apps.notifications.tasks import mass_notification_sender
             transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
 
