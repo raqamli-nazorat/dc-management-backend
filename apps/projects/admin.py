@@ -22,7 +22,6 @@ class MeetingAttendanceInline(admin.TabularInline):
     model = MeetingAttendance
     extra = 0
     fields = ('user', 'is_attended', 'absence_reason')
-    readonly_fields = ('user',)
     can_delete = False
 
 
@@ -37,10 +36,10 @@ class ProjectAdmin(ModelAdmin):
 
     fieldsets = (
         ('Loyiha haqida ma\'lumot', {
-            'fields': ('title', 'description', 'status', 'is_active')
+            'fields': ('prefix', 'title', 'description', 'status', 'is_active', 'is_hidden')
         }),
         ('Narxlar', {
-            'fields': ('project_price',)
+            'fields': ('project_price', 'penalty_percentage')
         }),
         ('Jamoa', {
             'fields': ('created_by', 'manager', 'employees', 'testers')
@@ -78,7 +77,7 @@ class TaskAdmin(ModelAdmin):
             'fields': ('project', 'title', 'description', 'rejection_reason')
         }),
         ('Tasniflash', {
-            'fields': ('status', 'priority', 'type')
+            'fields': ('status', 'priority', 'type','position', 'sprint')
         }),
         ('Topshiriq & narxlar', {
             'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
@@ -111,18 +110,3 @@ class MeetingAdmin(ModelAdmin):
             'fields': ('start_time', 'duration_minutes', 'is_completed')
         }),
     )
-
-
-@admin.register(MeetingAttendance)
-class MeetingAttendanceAdmin(ModelAdmin):
-    list_display = ('id', 'meeting', 'user', 'is_attended', 'absence_reason_excerpt')
-    list_display_links = ('id', 'meeting')
-    list_filter = ('is_attended', 'meeting', 'user')
-    search_fields = ('meeting__title', 'user__username', 'absence_reason')
-    exclude = ('payroll_processed',)
-
-    @admin.display(description='Sababi')
-    def absence_reason_excerpt(self, obj):
-        if obj.absence_reason:
-            return obj.absence_reason[:30] + '...' if len(obj.absence_reason) > 30 else obj.absence_reason
-        return "-"

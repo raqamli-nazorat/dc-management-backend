@@ -2,15 +2,22 @@ from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
 from apps.users.serializers import UserShortSerializer
-from .models import Todo
+from .models import Todo, TodoItem
 
 User = get_user_model()
 
 
+class TodoItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TodoItem
+        fields = ('id', 'todo', 'title', 'is_done')
+
+
 class TodoSerializer(serializers.ModelSerializer):
     user_info = UserShortSerializer(source='user', read_only=True)
+    items = TodoItemSerializer(many=True, read_only=True)
 
     class Meta:
         model = Todo
-        fields = ('id', 'user', 'user_info', 'title', 'is_done', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'user', 'created_at', 'updated_at')
+        fields = ('id', 'user_info', 'title', 'color', 'deadline', 'is_done', 'items', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at')

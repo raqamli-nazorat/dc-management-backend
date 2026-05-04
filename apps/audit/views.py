@@ -17,4 +17,3 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     filterset_fields = ['action', 'table_name', 'user', 'record_id']
     search_fields = ['ip_address', 'table_name']
     ordering_fields = ['timestamp']
-    ordering = ['-timestamp']

@@ -9,12 +9,14 @@ from .models import Application, ApplicationStatus, Position, Region, District
 @admin.register(Region)
 class RegionAdmin(ModelAdmin):
     list_display = ('id', 'name', 'created_at')
+    list_display_links = ('id', 'name')
     search_fields = ('name',)
 
 
 @admin.register(District)
 class DistrictAdmin(ModelAdmin):
     list_display = ('id', 'name', 'region', 'created_at')
+    list_display_links = ('id', 'name')
     list_filter = ('region',)
     search_fields = ('name',)
 
@@ -22,17 +24,18 @@ class DistrictAdmin(ModelAdmin):
 @admin.register(Position)
 class PositionAdmin(ModelAdmin):
     list_display = ('id', 'name', 'created_at')
+    list_display_links = ('id', 'name')
     search_fields = ('name',)
 
 
 @admin.register(Application)
 class ApplicationAdmin(ModelAdmin):
     list_display = (
-        'id', 'full_name', 'phone', 'position', 'region', 'district',
+        'id', 'full_name', 'phone', 'position', 'region',
         'status_colored', 'created_at'
     )
     list_display_links = ('id', 'full_name')
-    list_filter = ('status', 'position', 'region', 'district', 'is_student')
+    list_filter = ('status', 'position', 'region', 'is_student')
     search_fields = ('full_name', 'phone', 'telegram')
     readonly_fields = ('reviewed_by', 'reviewed_at', 'created_at')
 
@@ -44,7 +47,7 @@ class ApplicationAdmin(ModelAdmin):
             'fields': ('is_student', 'university')
         }),
         ("Lavozim va mintaqa", {
-            'fields': ('position', 'region', 'district')
+            'fields': ('position', 'region')
         }),
         ("Qo'shimcha", {
             'fields': ('resume', 'portfolio', 'extra_info')

@@ -1,9 +1,10 @@
 from django.contrib.auth import get_user_model
-from django.contrib.auth.base_user import AbstractBaseUser
+from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.db.models import F
 from django.utils import timezone
+from decimal import Decimal
 
 from apps.common.models import BaseModel
 from apps.users.models import Role
@@ -67,8 +68,10 @@ class ExpenseRequest(BaseModel):
                                          verbose_name='Xarajat kategoriyasi'
                                          )
 
-    amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Miqdori')
-    reason = models.TextField(verbose_name='Sababi')
+    amount = models.DecimalField(max_digits=12, decimal_places=2, validators=[MinValueValidator(Decimal('1.00'))],
+                                 verbose_name='Miqdori')
+    reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
+    cancel_reason = models.TextField(null=True, blank=True, verbose_name='Bekor qilish sababi')
 
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CARD,
                                       verbose_name='To\'lov turi')
@@ -82,6 +85,7 @@ class ExpenseRequest(BaseModel):
 
     paid_at = models.DateTimeField(null=True, blank=True, verbose_name='To\'langan vaqti')
     confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tasdiqlangan vaqti')
+    cancelled_at = models.DateTimeField(null=True, blank=True, verbose_name='Bekor qilingan vaqti')
 
     class Meta:
         verbose_name = "Xarajat so'rovi "
@@ -202,13 +206,19 @@ class Payroll(BaseModel):
     deadline_missed = models.PositiveIntegerField(default=0, verbose_name='Muddatdan o\'tkazib yuborilganlar')
     bug_count = models.PositiveIntegerField(default=0, verbose_name='Xatolar')
 
+    accountant = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                   related_name='confirmed_payrolls',
+                                   limit_choices_to={'roles__contains': [Role.ACCOUNTANT]},
+                                   verbose_name='Hisobchi')
+
     is_confirmed = models.BooleanField(default=False, verbose_name='Tasdiqlandimi?')
+    confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tasdiqlangan vaqti')
 
     class Meta:
         verbose_name = "Ish haqi "
         verbose_name_plural = "Ish haqlari"
         unique_together = ('user', 'month')
-        ordering = ['-month']
+        ordering = ['-month', '-id']
 
     def __str__(self):
         return self.user.get_username()
@@ -235,40 +245,5 @@ class Payroll(BaseModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         self.total_amount = self.fixed_salary + self.kpi_bonus - self.penalty_amount
-
-        is_new = self.pk is None
-
-        if not is_new:
-            old_instance = Payroll.objects.get(pk=self.pk)
-
-            if not old_instance.is_confirmed and self.is_confirmed:
-                with transaction.atomic():
-                    if self.total_amount != 0:
-                        User.objects.filter(pk=self.user.pk).update(
-                            balance=F('balance') + self.total_amount
-                        )
-
-                    month_label = self.month.strftime("%Y-%m")
-                    ledger_entries = []
-
-                    if self.fixed_salary > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.fixed_salary,
-                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun asosiy maosh"
-                        ))
-                    if self.kpi_bonus > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.kpi_bonus,
-                            transaction_type=TransactionType.CREDIT, description=f"{month_label} oyi uchun KPI bonusi"
-                        ))
-                    if self.penalty_amount > 0:
-                        ledger_entries.append(Ledger(
-                            user=self.user, payroll=self, amount=self.penalty_amount,
-                            transaction_type=TransactionType.DEBIT,
-                            description=f"{month_label} oyi uchun jami jarimalar"
-                        ))
-
-                    if ledger_entries:
-                        Ledger.objects.bulk_create(ledger_entries)
 
         super().save(*args, **kwargs)

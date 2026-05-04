@@ -46,6 +46,9 @@ CSRF_TRUSTED_ORIGINS = []
 # CORS
 CORS_ALLOW_ALL_ORIGINS = True
 
+# Force HTTPS for absolute URLs
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Application definition
 
 INSTALLED_APPS = [
@@ -84,6 +87,7 @@ INSTALLED_APPS = [
     'apps.projects.apps.ProjectsConfig',
     'apps.applications.apps.ApplicationsConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.reports.apps.ReportsConfig',
     'apps.todos.apps.TodosConfig',
     'apps.audit.apps.AuditConfig',
 ]
@@ -136,7 +140,8 @@ CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
 CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
 
 # Celery
-CELERY_TIMEZONE = "Asia/Tashkent"
+CELERY_TIMEZONE = 'Asia/Tashkent'
+CELERY_ENABLE_UTC = False
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 
@@ -155,7 +160,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(hour=9, minute=0),
     },
 
-    'calculate-monthly-salaries-on-1st': {
+    'calculate-monthly-salaries-on-4th': {
         'task': 'apps.finance.tasks.calculate_monthly_salaries',
         'schedule': crontab(day_of_month=4, hour=0, minute=1),
     },
@@ -193,18 +198,18 @@ CACHES = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    # },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    # },
 ]
 
 # Internationalization

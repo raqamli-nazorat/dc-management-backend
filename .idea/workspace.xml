@@ -3,9 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -63,7 +60,7 @@
     &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;main&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Programming/my codes/python/bots/backup-database&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Programming/my codes/python/bots/raqamli-nazorat&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.completion.inline&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
@@ -107,8 +104,8 @@
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
-        <option value="bundled-js-predefined-d6986cc7102b-3bd3a6803838-JavaScript-PY-261.22158.340" />
-        <option value="bundled-python-sdk-b63d5a1f7c97-b61e75351b1f-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.22158.340" />
+        <option value="bundled-js-predefined-d6986cc7102b-31caf2ab9e3c-JavaScript-PY-261.23567.174" />
+        <option value="bundled-python-sdk-024ed6589d45-c2ffad84badb-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-261.23567.174" />
       </set>
     </attachedChunks>
   </component>
@@ -174,7 +171,44 @@
       <workItem from="1776872915840" duration="4704000" />
       <workItem from="1776879852178" duration="388000" />
       <workItem from="1776932740348" duration="47000" />
-      <workItem from="1776943530015" duration="593000" />
+      <workItem from="1776943530015" duration="709000" />
+      <workItem from="1776945233992" duration="1970000" />
+      <workItem from="1776948759568" duration="594000" />
+      <workItem from="1777034860314" duration="446000" />
+      <workItem from="1777036778457" duration="1291000" />
+      <workItem from="1777124240626" duration="5129000" />
+      <workItem from="1777132506277" duration="27000" />
+      <workItem from="1777218073718" duration="261000" />
+      <workItem from="1777282639742" duration="590000" />
+      <workItem from="1777335307314" duration="1099000" />
+      <workItem from="1777348924675" duration="322000" />
+      <workItem from="1777356204857" duration="10021000" />
+      <workItem from="1777375967426" duration="1216000" />
+      <workItem from="1777387057030" duration="2820000" />
+      <workItem from="1777392394760" duration="1041000" />
+      <workItem from="1777440057131" duration="6949000" />
+      <workItem from="1777469402848" duration="537000" />
+      <workItem from="1777475292519" duration="1074000" />
+      <workItem from="1777476516016" duration="16000" />
+      <workItem from="1777522736599" duration="4249000" />
+      <workItem from="1777543788337" duration="49000" />
+      <workItem from="1777547436482" duration="977000" />
+      <workItem from="1777550043335" duration="1298000" />
+      <workItem from="1777551468851" duration="642000" />
+      <workItem from="1777566812410" duration="7914000" />
+      <workItem from="1777613792654" duration="13015000" />
+      <workItem from="1777640049323" duration="3768000" />
+      <workItem from="1777648921882" duration="1478000" />
+      <workItem from="1777710530070" duration="8307000" />
+      <workItem from="1777737983578" duration="937000" />
+      <workItem from="1777782996546" duration="4461000" />
+      <workItem from="1777788533577" duration="745000" />
+      <workItem from="1777898008842" duration="48000" />
+      <workItem from="1777901748080" duration="73000" />
+      <workItem from="1777902499663" duration="1387000" />
+      <workItem from="1777904049852" duration="175000" />
+      <workItem from="1777907082048" duration="2892000" />
+      <workItem from="1777910240599" duration="324000" />
     </task>
     <servers />
   </component>

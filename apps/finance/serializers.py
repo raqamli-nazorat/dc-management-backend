@@ -5,7 +5,7 @@ from rest_framework import serializers
 from apps.projects.models import Project, ProjectStatus
 from apps.projects.serializers import ProjectShortSerializer
 from apps.users.models import Role
-from apps.users.serializers import UserShortSerializer
+from apps.users.serializers import UserShortSerializer, ProfileSerializer
 from .models import ExpenseRequest, Ledger, Payroll, ExpenseCategory
 
 User = get_user_model()
@@ -15,6 +15,14 @@ class ExpenseCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = ExpenseCategory
         fields = ('id', 'title', 'created_at', 'updated_at')
+
+
+class ExpenseCancelSerializer(serializers.Serializer):
+    cancel_reason = serializers.CharField(
+        required=True,
+        min_length=5,
+        error_messages={'required': "Bekor qilish sababini yozish shart!"}
+    )
 
 
 class ExpenseRequestSerializer(serializers.ModelSerializer):
@@ -32,12 +40,25 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
         model = ExpenseRequest
         fields = (
             'id', 'user_info', 'type', 'project', 'project_info', 'expense_category', 'expense_category_info', 'amount',
-            'reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
-            'confirmed_at', 'created_at', 'updated_at'
+            'reason', 'cancel_reason', 'payment_method', 'card_number', 'status', 'accountant_info', 'paid_at',
+            'confirmed_at', 'cancelled_at', 'created_at', 'updated_at'
         )
         read_only_fields = (
-            'id', 'status', 'paid_at', 'confirmed_at', 'created_at', 'updated_at'
+            'id', 'status', 'paid_at', 'confirmed_at', 'cancelled_at', 'created_at', 'updated_at'
         )
+
+    def to_internal_value(self, data):
+        mutable_data = data.copy() if hasattr(data, 'copy') else dict(data)
+
+        category = mutable_data.get('expense_category')
+        if category in [0, '0', '']:
+            mutable_data['expense_category'] = None
+
+        project = mutable_data.get('project')
+        if project in [0, '0', '']:
+            mutable_data['project'] = None
+
+        return super().to_internal_value(mutable_data)
 
     def __init__(self, *args, **kwargs):
         super(ExpenseRequestSerializer, self).__init__(*args, **kwargs)
@@ -63,42 +84,74 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         request = self.context.get('request')
+        user = getattr(request, 'user', None)
 
-        if not request or not request.user or not request.user.is_authenticated:
-            return attrs
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            model_attrs = attrs.copy()
+            if 'user' not in model_attrs and user:
+                model_attrs['user'] = user
+            instance = ExpenseRequest(**model_attrs)
 
-        user = request.user
-        instance = ExpenseRequest(**attrs, user=user)
-
+        from django.core.exceptions import ValidationError as DjangoValidationError
         try:
             instance.clean()
-        except Exception as e:
-            raise serializers.ValidationError(
-                e.message_dict if hasattr(e, 'message_dict') else str(e)
-            )
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        if 'project' in attrs or instance.project is None:
+            attrs['project'] = instance.project
+
+        if 'card_number' in attrs or instance.card_number is None:
+            attrs['card_number'] = instance.card_number
+
+        if 'expense_category' in attrs or instance.expense_category is None:
+            attrs['expense_category'] = instance.expense_category
 
         return attrs
 
 
 class PayrollSerializer(serializers.ModelSerializer):
     month_display = serializers.SerializerMethodField()
-    user = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)
-    user_info = UserShortSerializer(source='user', read_only=True)
+    user_info = ProfileSerializer(source='user', read_only=True)
+    accountant_info = UserShortSerializer(source='accountant', read_only=True)
 
     class Meta:
         model = Payroll
         fields = (
-            'id', 'user', 'user_info', 'month', 'month_display',
+            'id', 'user_info', 'accountant_info', 'month', 'month_display',
             'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
             'tasks_completed', 'deadline_missed', 'bug_count',
-            'created_at', 'is_confirmed'
-        )
-        read_only_fields = (
-            'id', 'user', 'total_amount', 'created_at', 'is_confirmed'
+            'is_confirmed', 'confirmed_at', 'created_at'
         )
 
     def get_month_display(self, obj):
         return obj.month.strftime('%B, %Y')
+
+    def validate(self, attrs):
+        if self.instance:
+            instance = self.instance
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            instance = Payroll(**attrs)
+
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        return attrs
 
 
 class PayrollStatusUpdateSerializer(serializers.Serializer):
@@ -109,6 +162,8 @@ class PayrollStatusUpdateSerializer(serializers.Serializer):
 
 
 class LedgerSerializer(serializers.ModelSerializer):
+    user_info = ProfileSerializer(source='user', read_only=True)
+
     class Meta:
         model = Ledger
-        fields = '__all__'
+        fields = ('id', 'user_info', 'amount', 'transaction_type', 'description', 'created_at',)
