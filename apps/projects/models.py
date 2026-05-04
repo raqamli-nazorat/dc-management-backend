@@ -48,7 +48,7 @@ class Project(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
     prefix = models.CharField(max_length=50, unique=True, verbose_name="Prefiksi")
     title = models.CharField(max_length=255, verbose_name="Nomi")
-    description = models.TextField(verbose_name="Tavsifi")
+    description = models.TextField(null=True, blank=True, verbose_name="Tavsifi")
     deadline = models.DateTimeField(verbose_name="Muddati")
     status = models.CharField(
         max_length=20,
@@ -182,7 +182,7 @@ class Task(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, verbose_name="UID")
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='tasks', verbose_name='Loyiha')
     title = models.CharField(max_length=255, verbose_name='Nomi')
-    description = models.TextField(verbose_name='Tavsifi')
+    description = models.TextField(null=True, blank=True, verbose_name='Tavsifi')
 
     rejection_reason = models.TextField(null=True, blank=True, verbose_name="Rad etish sababi")
 
