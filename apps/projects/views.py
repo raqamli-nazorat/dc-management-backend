@@ -42,17 +42,27 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
+        base_filters = {
+            'is_hidden': False
+        }
+
+        excluded_statuses = [
+            ProjectStatus.COMPLETED,
+            ProjectStatus.CANCELLED,
+            ProjectStatus.PLANNING
+        ]
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(manager=user).exclude(
-                status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
-            ).distinct()
+            return queryset.filter(
+                manager=user,
+                **base_filters
+            ).exclude(status__in=excluded_statuses).distinct()
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
-                Q(testers=user) | Q(employees=user)
-            ).exclude(
-                status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
-            ).distinct()
+                Q(testers=user) | Q(employees=user),
+                **base_filters
+            ).exclude(status__in=excluded_statuses).distinct()
 
         return queryset.none()
 
@@ -84,13 +94,21 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         return queryset.filter(is_deleted=False, is_active=True)
 
     def get_role_based_queryset(self, queryset, user):
+        excluded_statuses = [
+            ProjectStatus.PLANNING
+        ]
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(manager=user)
+            return queryset.filter(
+                manager=user,
+                is_hidden=False
+            ).exclude(status__in=excluded_statuses).distinct()
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
-                Q(testers=user) | Q(employees=user)
-            ).distinct()
+                Q(testers=user) | Q(employees=user),
+                is_hidden=False
+            ).exclude(status__in=excluded_statuses).distinct()
 
         return queryset.none()
 
@@ -147,11 +165,17 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         return queryset.filter(is_deleted=False, is_active=True)
 
     def get_role_based_queryset(self, queryset, user):
+        active_projects_filter = Q(project__is_hidden=False) & ~Q(project__status=ProjectStatus.PLANNING)
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(project__manager=user).exclude(assignee=user)
+            return queryset.filter(
+                active_projects_filter,
+                project__manager=user
+            ).exclude(assignee=user)
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
+                active_projects_filter,
                 Q(assignee=user) |
                 Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) |
                 Q(project__employees=user, assignee__isnull=True)
@@ -218,13 +242,21 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
+        active_project_q = Q(
+            task__project__is_hidden=False,
+            task__project__is_active=True
+        ) & ~Q(task__project__status=ProjectStatus.PLANNING)
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(task__project__manager=user)
+            return queryset.filter(
+                active_project_q,
+                task__project__manager=user
+            ).distinct()
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
-                Q(task__assignee=user) |
-                Q(task__project__testers=user)
+                active_project_q,
+                Q(task__assignee=user) | Q(task__project__testers=user)
             ).distinct()
 
         return queryset.none()
@@ -258,19 +290,29 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
-            return self.queryset
+        queryset = super().get_queryset()
+
+        if user.has_any_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
+            return queryset
+
+        active_project_filter = Q(
+            task__project__is_hidden=False,
+            task__project__is_active=True
+        ) & ~Q(task__project__status=ProjectStatus.PLANNING)
 
         if user.has_role(Role.MANAGER):
-            return self.queryset.filter(task__project__manager=user)
-
-        if user.has_role(Role.EMPLOYEE):
-            return self.queryset.filter(
-                Q(task__assignee=user) |
-                Q(task__project__testers=user)
+            return queryset.filter(
+                active_project_filter,
+                task__project__manager=user
             ).distinct()
 
-        return self.queryset.none()
+        if user.has_role(Role.EMPLOYEE):
+            return queryset.filter(
+                active_project_filter,
+                Q(task__assignee=user) | Q(task__project__testers=user)
+            ).distinct()
+
+        return queryset.none()
 
     def perform_create(self, serializer):
         task = serializer.validated_data.get('task')
@@ -302,11 +344,22 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
+        active_project_filter = Q(
+            project__is_hidden=False,
+            project__is_active=True
+        ) & ~Q(project__status=ProjectStatus.PLANNING)
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(project__manager=user).distinct()
+            return queryset.filter(
+                active_project_filter,
+                project__manager=user
+            ).distinct()
 
         if user.has_role(Role.EMPLOYEE):
-            return queryset.filter(participants=user).distinct()
+            return queryset.filter(
+                active_project_filter,
+                participants=user
+            ).distinct()
 
         return queryset.none()
 
@@ -351,11 +404,22 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
     full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
+        active_project_q = Q(
+            meeting__project__is_hidden=False,
+            meeting__project__is_active=True
+        ) & ~Q(meeting__project__status=ProjectStatus.PLANNING)
+
         if user.has_role(Role.MANAGER):
-            return queryset.filter(meeting__project__manager=user)
+            return queryset.filter(
+                active_project_q,
+                meeting__project__manager=user
+            ).distinct()
 
         if user.has_role(Role.EMPLOYEE):
-            return queryset.filter(user=user)
+            return queryset.filter(
+                active_project_q,
+                user=user
+            ).distinct()
 
         return queryset.none()
 

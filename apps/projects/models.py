@@ -46,7 +46,7 @@ class Type(models.TextChoices):
 
 class Project(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True, verbose_name="UID")
-    prefix = models.CharField(max_length=50, unique=True, verbose_name="Prefiksi")
+    prefix = models.CharField(max_length=10, unique=True, verbose_name="Prefiksi")
     title = models.CharField(max_length=255, verbose_name="Nomi")
     description = models.TextField(null=True, blank=True, verbose_name="Tavsifi")
     deadline = models.DateTimeField(verbose_name="Muddati")
@@ -68,6 +68,7 @@ class Project(BaseModel):
                                              verbose_name='Jarima foizi (%)')
 
     is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
+    is_hidden = models.BooleanField(default=False, verbose_name="Yashirilganmi?")
 
     created_by = models.ForeignKey(
         User,
