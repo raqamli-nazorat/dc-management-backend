@@ -256,9 +256,24 @@ class MeetingSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         project = attrs.get('project')
         participants = attrs.get('participants', [])
+        instance = self.instance
 
-        if not project and self.instance:
-            project = self.instance.project
+        if instance:
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+        else:
+            instance = Meeting(**attrs)
+
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            if hasattr(e, 'message_dict'):
+                raise serializers.ValidationError(e.message_dict)
+            else:
+                raise serializers.ValidationError({"detail": e.messages})
+
+        if not project and instance:
+            project = instance.project
 
         if project and participants:
             project_member_ids = set(project.employees.values_list('id', flat=True)) | \
