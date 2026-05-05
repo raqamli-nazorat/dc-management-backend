@@ -129,7 +129,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         )
         read_only_fields = (
-            'id', 'uid', 'created_by', 'created_at', 'updated_at', 'reopened_count', 'rejection_reason',
+            'id', 'uid', 'created_by', 'created_at', 'updated_at', 'status', 'reopened_count', 'rejection_reason',
             'estimated_minutes', 'actual_minutes'
         )
 
@@ -165,12 +165,6 @@ class TaskSerializer(serializers.ModelSerializer):
                 setattr(instance, attr, value)
         else:
             instance = Task(**attrs)
-
-            status = attrs.get('status')
-            if status and status != TaskStatus.TODO:
-                raise serializers.ValidationError({
-                    'status': f"Yangi vazifa faqat '{TaskStatus.TODO}' holatida yaratilishi mumkin."
-                })
 
         try:
             instance.clean()

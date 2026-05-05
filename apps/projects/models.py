@@ -114,10 +114,18 @@ class Project(BaseModel):
         verbose_name_plural = "Loyihalar"
         ordering = ['-created_at']
 
+    def __str__(self):
+        return self.title
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         deferred_fields = self.get_deferred_fields()
+
+        if 'manager' not in deferred_fields:
+            self._old_manager_id = self.manager_id
+        else:
+            self._old_manager_id = None
 
         if 'status' not in deferred_fields:
             self._old_status = self.status
@@ -176,50 +184,70 @@ class Project(BaseModel):
                         'status': f"Statusni '{old_project.get_status_display()}'dan '{dict(ProjectStatus.choices).get(new_status)}'ga o'tkazish mantiqqa to'g'ri kelmaydi!"
                     })
 
+    def send_notification(self, user, title, message, action):
+        if user:
+            Notification.objects.create(
+                user=user,
+                title=title,
+                message=message,
+                type=NotificationType.SYSTEM,
+                extra_data={'project_id': self.id, 'action': action}
+            )
+
     def save(self, *args, **kwargs):
+        is_new = self.pk is None
         self.full_clean()
 
         if not self.uid:
             self.uid = generate_unique_id('PR', Project)
 
-        if self.pk:
+        manager_changed = False
+        if is_new:
+            if self.manager_id:
+                manager_changed = True
+        else:
+            old_manager_id = getattr(self, '_old_manager_id', None)
+            if self.manager_id and self.manager_id != old_manager_id:
+                manager_changed = True
+
+        if manager_changed:
+            self.send_notification(
+                user=self.manager,
+                title="Yangi loyiha biriktirildi",
+                message=f"Siz '{self.title}' loyihasiga menejer etib tayinlandingiz.",
+                action='manager_assigned'
+            )
+
+        if not is_new:
             if self.is_hidden and not self._old_is_hidden:
                 self.hidden_at = timezone.now()
-
-                if self.created_by:
-                    Notification.objects.create(
-                        user=self.created_by,
-                        title="Loyiha muzlatildi",
-                        message=f"'{self.title}' loyihasi va undagi barcha vazifalar vaqtincha to'xtatildi.",
-                        type=NotificationType.SYSTEM,
-                        extra_data={'project_id': self.id, 'action': 'freeze'}
-                    )
+                self.send_notification(
+                    user=self.created_by,
+                    title="Loyiha muzlatildi",
+                    message=f"'{self.title}' loyihasi va undagi barcha vazifalar vaqtincha to'xtatildi.",
+                    action='freeze'
+                )
 
             elif not self.is_hidden and self._old_is_hidden and self.hidden_at:
                 if self.deadline == self._old_deadline:
                     now = timezone.now()
                     working_seconds = 0
                     current_time = self.hidden_at
-
                     while current_time < now:
-                        next_checkpoint = min(
-                            now,
-                            (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                        )
+                        next_checkpoint = min(now,
+                                              (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0,
+                                                                                         microsecond=0))
                         if current_time.weekday() != 6:
                             working_seconds += (next_checkpoint - current_time).total_seconds()
                         current_time = next_checkpoint
 
                     self.deadline = self.deadline + timedelta(seconds=working_seconds)
-
-                    if self.created_by:
-                        Notification.objects.create(
-                            user=self.created_by,
-                            title="Loyiha faollashtirildi",
-                            message=f"'{self.title}' loyihasi qayta faollashtirildi. Muzlatilgan vaqt hisobga olinib, barcha muddatlar surildi.",
-                            type=NotificationType.SYSTEM,
-                            extra_data={'project_id': self.id, 'action': 'unfreeze'}
-                        )
+                    self.send_notification(
+                        user=self.created_by,
+                        title="Loyiha faollashtirildi",
+                        message=f"'{self.title}' loyihasi qayta faollashtirildi. Muddatlar surildi.",
+                        action='unfreeze'
+                    )
 
                     from .tasks import update_project_tasks_on_unlock
                     transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(self.id))
@@ -244,9 +272,6 @@ class Project(BaseModel):
                 self.was_overdue = True
 
         return super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.title
 
 
 class Task(BaseModel):
