@@ -37,7 +37,7 @@ def update_overdue_status_and_notify():
         status__in=[ProjectStatus.PLANNING, ProjectStatus.ACTIVE],
         is_hidden=False,
         deadline__lt=now
-    ).only('id', 'title', 'manager_id'))
+    ).only('id', 'title', 'manager_id', 'status', 'was_overdue'))
 
     for project in overdue_projects:
         project.status = ProjectStatus.OVERDUE
@@ -65,7 +65,7 @@ def update_overdue_status_and_notify():
         status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
         project__is_hidden=False,
         deadline__lt=now
-    ).select_related('project').only('id', 'title', 'project__manager_id'))
+    ).select_related('project').only('id', 'title', 'project__manager_id', 'status', 'was_overdue'))
 
     for task in overdue_tasks:
         task.status = TaskStatus.OVERDUE
