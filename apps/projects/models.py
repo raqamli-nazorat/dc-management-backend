@@ -316,9 +316,16 @@ class Task(BaseModel):
         super().clean()
 
         if not self.pk and self.project_id:
-            if self.project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+            p_status = self.project.status
+            if p_status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
                 raise ValidationError({
-                    'project': f"Loyiha '{self.project.get_status_display()}' holatida bo'lgani uchun unga yangi vazifa qo'shib bo'lmaydi!"
+                    'project': f"Loyiha '{self.project.get_status_display()}' holatida. Yangi vazifa qo'shish taqiqlanadi!"
+                })
+
+        if self.assignee and self.position:
+            if self.assignee.position != self.position:
+                raise ValidationError({
+                    'assignee': f"Ushbu vazifa {self.position} lavozimi uchun. Tanlangan xodim esa {self.assignee.position}."
                 })
 
         if self.pk:
@@ -328,27 +335,21 @@ class Task(BaseModel):
                 return
 
             if old_task.project_id != self.project_id:
-                raise ValidationError({
-                    'project': "Vazifa biriktirilgan loyihani o'zgartirib bo'lmaydi!"
-                })
+                raise ValidationError({'project': "Vazifa boshqa loyihaga ko'chirilishi mumkin emas!"})
 
             locked_statuses = [
                 TaskStatus.IN_PROGRESS, TaskStatus.DONE,
                 TaskStatus.PRODUCTION, TaskStatus.CHECKED,
                 TaskStatus.REJECTED, TaskStatus.OVERDUE
             ]
-
-            if old_task.status in locked_statuses:
-                if old_task.assignee_id != self.assignee_id:
-                    raise ValidationError({
-                        'assignee': f"Vazifa '{old_task.get_status_display()}' holatida bo'lgani uchun topshiruvchini o'zgartirib bo'lmaydi!"
-                    })
+            if old_task.status in locked_statuses and old_task.assignee_id != self.assignee_id:
+                raise ValidationError({
+                    'assignee': f"Vazifa '{old_task.get_status_display()}' holatida. Mas'ul xodimni o'zgartirib bo'lmaydi!"
+                })
 
         if self.assignee and self.project_id:
-            if not self.project.employees.filter(id=self.assignee.id).exists():
-                raise ValidationError({
-                    'assignee': "Bu xodim loyiha jamoasiga qo'shilmagan!"
-                })
+            if not self.project.employees.filter(id=self.assignee_id).exists():
+                raise ValidationError({'assignee': "Xodim loyiha a'zolari ro'yxatida topilmadi!"})
 
     def save(self, *args, **kwargs):
         self.full_clean()
