@@ -478,11 +478,31 @@ class Meeting(BaseModel):
         verbose_name_plural = 'Yig\'lishlar'
         ordering = ['-created_at']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        deferred_fields = self.get_deferred_fields()
+
+        if 'project' not in deferred_fields:
+            self._old_project_id = self.project_id
+        else:
+            self._old_project_id = None
+
+    def clean(self):
+        super().clean()
+
+        if self.pk:
+            if self.project_id != self._old_project_id:
+                raise ValidationError({
+                    'project': "Yig'ilish loyihasini o'zgartirib bo'lmaydi!"
+                })
+
     def save(self, *args, **kwargs):
         self.full_clean()
+
         if not self.uid:
             prefix = self.project.prefix if self.project else "MT"
             self.uid = generate_unique_id(prefix, Meeting)
+
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -86,11 +86,18 @@ class TaskService:
 
         if task.assignee is None and task.project.employees.filter(id=user.id).exists():
             if new_status == TaskStatus.IN_PROGRESS:
+                if task.position_id and user.position_id != task.position_id:
+                    raise PermissionDenied(
+                        f"Bu vazifa '{task.position.name}' lavozimi uchun mo'ljallangan. "
+                        f"Sizning lavozimingiz esa '{user.position.name}'."
+                    )
+
                 task.status = new_status
                 task.assignee = user
-                task.position = getattr(user, 'position', None)
+
                 task.save()
                 return task
+
             raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazishingiz kerak.")
 
         is_tester = task.project.testers.filter(id=user.id).exists()
