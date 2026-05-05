@@ -289,13 +289,6 @@ class Task(BaseModel):
         self._old_status = self.status
         self._old_deadline = self.deadline
 
-        self._old_project_hidden = False
-        if self.project_id:
-            try:
-                self._old_project_hidden = self.project.is_hidden
-            except Exception:
-                pass
-
     def clean(self):
         super().clean()
 
@@ -307,17 +300,19 @@ class Task(BaseModel):
 
         if self.pk:
             try:
-                old_task = Task.objects.get(pk=self.pk)
+                old_task = Task.objects.only('project_id', 'status', 'assignee_id').get(pk=self.pk)
             except Task.DoesNotExist:
                 return
 
+            if old_task.project_id != self.project_id:
+                raise ValidationError({
+                    'project': "Vazifa biriktirilgan loyihani o'zgartirib bo'lmaydi!"
+                })
+
             locked_statuses = [
-                TaskStatus.IN_PROGRESS,
-                TaskStatus.DONE,
-                TaskStatus.PRODUCTION,
-                TaskStatus.CHECKED,
-                TaskStatus.REJECTED,
-                TaskStatus.OVERDUE
+                TaskStatus.IN_PROGRESS, TaskStatus.DONE,
+                TaskStatus.PRODUCTION, TaskStatus.CHECKED,
+                TaskStatus.REJECTED, TaskStatus.OVERDUE
             ]
 
             if old_task.status in locked_statuses:
@@ -326,7 +321,7 @@ class Task(BaseModel):
                         'assignee': f"Vazifa '{old_task.get_status_display()}' holatida bo'lgani uchun topshiruvchini o'zgartirib bo'lmaydi!"
                     })
 
-        if self.assignee and self.project:
+        if self.assignee and self.project_id:
             if not self.project.employees.filter(id=self.assignee.id).exists():
                 raise ValidationError({
                     'assignee': "Bu xodim loyiha jamoasiga qo'shilmagan!"
@@ -342,7 +337,7 @@ class Task(BaseModel):
             self.position = self.assignee.position
 
         if self.pk:
-            if not self.project.is_hidden and self._old_project_hidden:
+            if not self.project.is_hidden and self.project.hidden_at:
                 if self.project.hidden_at:
                     now = timezone.now()
                     working_seconds = 0
@@ -437,7 +432,8 @@ class Meeting(BaseModel):
     def save(self, *args, **kwargs):
         self.full_clean()
         if not self.uid:
-            self.uid = generate_unique_id(self.project.prefix, Meeting)
+            prefix = self.project.prefix if self.project else "MT"
+            self.uid = generate_unique_id(prefix, Meeting)
         super().save(*args, **kwargs)
 
     def __str__(self):
