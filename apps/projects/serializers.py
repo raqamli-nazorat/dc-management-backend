@@ -254,36 +254,36 @@ class MeetingSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'is_completed')
 
     def validate(self, attrs):
-        project = attrs.get('project')
-        participants = attrs.get('participants', [])
         instance = self.instance
 
         if instance:
             for attr, value in attrs.items():
-                setattr(instance, attr, value)
+                if attr != 'participants':
+                    setattr(instance, attr, value)
         else:
-            instance = Meeting(**attrs)
+
+            meeting_attrs = {k: v for k, v in attrs.items() if k != 'participants'}
+            instance = Meeting(**meeting_attrs)
 
         try:
             instance.clean()
         except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages})
 
-        if not project and instance:
-            project = instance.project
+        participants = attrs.get('participants')
+        project = attrs.get('project') or (instance.project if instance else None)
 
         if project and participants:
-            project_member_ids = set(project.employees.values_list('id', flat=True)) | \
-                                 set(project.testers.values_list('id', flat=True))
+            member_ids = set(project.employees.values_list('id', flat=True)) | \
+                         set(project.testers.values_list('id', flat=True)) | \
+                         {project.manager_id}
 
-            for p in participants:
-                if p.id not in project_member_ids:
-                    raise serializers.ValidationError({
-                        "participants": f"{p.username} ushbu loyiha a'zosi emas."
-                    })
+            invalid_users = [p.username for p in participants if p.id not in member_ids]
+
+            if invalid_users:
+                raise serializers.ValidationError({
+                    "participants": f"Quyidagi foydalanuvchilar loyiha a'zosi emas: {', '.join(invalid_users)}"
+                })
 
         return attrs
 
