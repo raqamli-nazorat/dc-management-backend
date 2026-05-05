@@ -116,9 +116,23 @@ class Project(BaseModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._old_status = self.status
-        self._old_deadline = self.deadline
-        self._old_is_hidden = self.is_hidden
+
+        deferred_fields = self.get_deferred_fields()
+
+        if 'status' not in deferred_fields:
+            self._old_status = self.status
+        else:
+            self._old_status = None
+
+        if 'deadline' not in deferred_fields:
+            self._old_deadline = self.deadline
+        else:
+            self._old_deadline = None
+
+        if 'is_hidden' not in deferred_fields:
+            self._old_is_hidden = getattr(self, 'is_hidden', None)
+        else:
+            self._old_is_hidden = None
 
     def clean(self):
         super().clean()
@@ -286,8 +300,17 @@ class Task(BaseModel):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._old_status = self.status
-        self._old_deadline = self.deadline
+        deferred_fields = self.get_deferred_fields()
+
+        if 'status' not in deferred_fields:
+            self._old_status = self.status
+        else:
+            self._old_status = None
+
+        if 'deadline' not in deferred_fields:
+            self._old_deadline = self.deadline
+        else:
+            self._old_deadline = None
 
     def clean(self):
         super().clean()
