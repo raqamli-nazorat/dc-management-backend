@@ -178,7 +178,7 @@ class Project(BaseModel):
                         title="Loyiha muzlatildi",
                         message=f"'{self.title}' loyihasi va undagi barcha vazifalar vaqtincha to'xtatildi.",
                         type=NotificationType.SYSTEM,
-                        extra_data={'project_uid': self.uid, 'action': 'freeze'}
+                        extra_data={'project_id': self.id, 'action': 'freeze'}
                     )
 
             elif not self.is_hidden and self._old_is_hidden and self.hidden_at:
@@ -204,7 +204,7 @@ class Project(BaseModel):
                             title="Loyiha faollashtirildi",
                             message=f"'{self.title}' loyihasi qayta faollashtirildi. Muzlatilgan vaqt hisobga olinib, barcha muddatlar surildi.",
                             type=NotificationType.SYSTEM,
-                            extra_data={'project_uid': self.uid, 'action': 'unfreeze'}
+                            extra_data={'project_id': self.id, 'action': 'unfreeze'}
                         )
 
                     from .tasks import update_project_tasks_on_unlock
@@ -289,10 +289,12 @@ class Task(BaseModel):
         self._old_status = self.status
         self._old_deadline = self.deadline
 
-        try:
-            self._old_project_hidden = self.project.is_hidden if self.project_id else False
-        except:
-            self._old_project_hidden = False
+        self._old_project_hidden = False
+        if self.project_id:
+            try:
+                self._old_project_hidden = self.project.is_hidden
+            except Exception:
+                pass
 
     def clean(self):
         super().clean()

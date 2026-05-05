@@ -89,10 +89,10 @@ def update_overdue_status_and_notify():
             })
 
     if overdue_projects:
-        Project.objects.bulk_update(overdue_projects, ['status'], batch_size=500)
+        Project.objects.bulk_update(overdue_projects, ['status', 'was_overdue'], batch_size=500)
 
     if overdue_tasks:
-        Task.objects.bulk_update(overdue_tasks, ['status'], batch_size=500)
+        Task.objects.bulk_update(overdue_tasks, ['status', 'was_overdue'], batch_size=500)
 
     if notifications_to_create:
         Notification.objects.bulk_create(notifications_to_create, batch_size=500)
