@@ -152,7 +152,7 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 CELERY_BEAT_SCHEDULE = {
     'check-deadlines-every-10-min': {
         'task': 'apps.projects.tasks.update_overdue_status_and_notify',
-        'schedule': crontab(minute='*/10'),
+        'schedule': crontab(minute='*'),
     },
 
     'morning-task-reminders': {
