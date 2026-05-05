@@ -1,6 +1,7 @@
 import logging
 from collections import defaultdict
 from celery import shared_task
+from django.db import transaction
 from django.utils import timezone
 from django.db.models import Q
 
@@ -12,6 +13,21 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
+def update_project_tasks_on_unlock(project_id):
+    try:
+        project = Project.objects.get(id=project_id)
+        tasks = project.tasks.all()
+
+        with transaction.atomic():
+            for task in tasks:
+                task.save()
+
+        return f"Loyiha (ID: {project_id}) uchun {tasks.count()} ta vazifa yangilandi."
+    except Project.DoesNotExist:
+        return f"Loyiha (ID: {project_id}) topilmadi."
+
+
+@shared_task
 def update_overdue_status_and_notify():
     now = timezone.now()
     notifications_to_create = []
@@ -19,11 +35,14 @@ def update_overdue_status_and_notify():
 
     overdue_projects = list(Project.objects.filter(
         status__in=[ProjectStatus.PLANNING, ProjectStatus.ACTIVE],
+        is_hidden=False,
         deadline__lt=now
     ).only('id', 'title', 'manager_id'))
 
     for project in overdue_projects:
         project.status = ProjectStatus.OVERDUE
+        project.was_overdue = True
+
         if project.manager_id:
             msg = f"'{project.title}' loyihasi rejadagidan kechikmoqda."
 
@@ -44,11 +63,14 @@ def update_overdue_status_and_notify():
 
     overdue_tasks = list(Task.objects.filter(
         status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
+        project__is_hidden=False,
         deadline__lt=now
     ).select_related('project').only('id', 'title', 'project__manager_id'))
 
     for task in overdue_tasks:
         task.status = TaskStatus.OVERDUE
+        task.was_overdue = True
+
         if task.project and task.project.manager_id:
             msg = f"'{task.title}' vazifasi belgilangan muddatdan kechikdi."
 

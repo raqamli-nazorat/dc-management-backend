@@ -1,13 +1,16 @@
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 
 from apps.common.utils import generate_unique_id
 from apps.common.models import BaseModel
 from apps.users.models import Role
 from apps.applications.models import Position
+from apps.notifications.models import Notification, NotificationType
 
 User = get_user_model()
 
@@ -104,6 +107,7 @@ class Project(BaseModel):
     completed_at = models.DateTimeField(null=True, blank=True)
     payroll_processed = models.BooleanField(default=False)
     was_overdue = models.BooleanField(default=False, editable=False)
+    hidden_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
         verbose_name = "Loyiha "
@@ -113,6 +117,8 @@ class Project(BaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._old_status = self.status
+        self._old_deadline = self.deadline
+        self._old_is_hidden = self.is_hidden
 
     def clean(self):
         super().clean()
@@ -158,20 +164,70 @@ class Project(BaseModel):
 
     def save(self, *args, **kwargs):
         self.full_clean()
+
         if not self.uid:
             self.uid = generate_unique_id('PR', Project)
 
-        if self.status == ProjectStatus.OVERDUE:
-            self.was_overdue = True
+        if self.pk:
+            if self.is_hidden and not self._old_is_hidden:
+                self.hidden_at = timezone.now()
 
-        if self.status == ProjectStatus.OVERDUE and self.deadline > timezone.now():
-            self.status = ProjectStatus.ACTIVE
+                if self.created_by:
+                    Notification.objects.create(
+                        user=self.created_by,
+                        title="Loyiha muzlatildi",
+                        message=f"'{self.title}' loyihasi va undagi barcha vazifalar vaqtincha to'xtatildi.",
+                        type=NotificationType.SYSTEM,
+                        extra_data={'project_uid': self.uid, 'action': 'freeze'}
+                    )
 
-        if self.pk and self.status != self._old_status:
-            if self.status == ProjectStatus.COMPLETED:
-                self.completed_at = timezone.now()
-            elif self._old_status == ProjectStatus.COMPLETED:
-                self.completed_at = None
+            elif not self.is_hidden and self._old_is_hidden and self.hidden_at:
+                if self.deadline == self._old_deadline:
+                    now = timezone.now()
+                    working_seconds = 0
+                    current_time = self.hidden_at
+
+                    while current_time < now:
+                        next_checkpoint = min(
+                            now,
+                            (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                        )
+                        if current_time.weekday() != 6:
+                            working_seconds += (next_checkpoint - current_time).total_seconds()
+                        current_time = next_checkpoint
+
+                    self.deadline = self.deadline + timedelta(seconds=working_seconds)
+
+                    if self.created_by:
+                        Notification.objects.create(
+                            user=self.created_by,
+                            title="Loyiha faollashtirildi",
+                            message=f"'{self.title}' loyihasi qayta faollashtirildi. Muzlatilgan vaqt hisobga olinib, barcha muddatlar surildi.",
+                            type=NotificationType.SYSTEM,
+                            extra_data={'project_uid': self.uid, 'action': 'unfreeze'}
+                        )
+
+                    from .tasks import update_project_tasks_on_unlock
+                    transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(self.id))
+
+                if self.status == ProjectStatus.OVERDUE and self.deadline > timezone.now():
+                    self.status = ProjectStatus.ACTIVE
+                    self.was_overdue = False
+
+                self.hidden_at = None
+
+            if self.deadline != self._old_deadline and self.is_hidden == self._old_is_hidden:
+                if self.deadline > timezone.now() and self.status == ProjectStatus.OVERDUE:
+                    self.status = ProjectStatus.ACTIVE
+
+            if self.status != self._old_status:
+                if self.status == ProjectStatus.COMPLETED:
+                    self.completed_at = timezone.now()
+                elif self._old_status == ProjectStatus.COMPLETED:
+                    self.completed_at = None
+
+            if self.status == ProjectStatus.OVERDUE:
+                self.was_overdue = True
 
         return super().save(*args, **kwargs)
 
@@ -231,6 +287,12 @@ class Task(BaseModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._old_status = self.status
+        self._old_deadline = self.deadline
+
+        try:
+            self._old_project_hidden = self.project.is_hidden if self.project_id else False
+        except:
+            self._old_project_hidden = False
 
     def clean(self):
         super().clean()
@@ -277,17 +339,40 @@ class Task(BaseModel):
         if not self.position and self.assignee:
             self.position = self.assignee.position
 
-        if self.status == TaskStatus.OVERDUE:
-            self.was_overdue = True
+        if self.pk:
+            if not self.project.is_hidden and self._old_project_hidden:
+                if self.project.hidden_at:
+                    now = timezone.now()
+                    working_seconds = 0
+                    current_time = self.project.hidden_at
 
-        if self.status == TaskStatus.OVERDUE and self.deadline > timezone.now():
-            self.status = TaskStatus.IN_PROGRESS
+                    while current_time < now:
+                        next_checkpoint = min(
+                            now,
+                            (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                        )
+                        if current_time.weekday() != 6:
+                            working_seconds += (next_checkpoint - current_time).total_seconds()
+                        current_time = next_checkpoint
 
-        if self.pk and self.status != self._old_status:
-            if self.status == TaskStatus.CHECKED:
-                self.completed_at = timezone.now()
-            elif self._old_status == TaskStatus.CHECKED:
-                self.completed_at = None
+                    self.deadline = self.deadline + timedelta(seconds=working_seconds)
+
+                    if self.status == TaskStatus.OVERDUE and self.deadline > timezone.now():
+                        self.status = TaskStatus.IN_PROGRESS
+                        self.was_overdue = False
+
+            if self.deadline != self._old_deadline:
+                if self.deadline > timezone.now() and self.status == TaskStatus.OVERDUE:
+                    self.status = TaskStatus.IN_PROGRESS
+
+            if self.status != self._old_status:
+                if self.status == TaskStatus.CHECKED:
+                    self.completed_at = timezone.now()
+                elif self._old_status == TaskStatus.CHECKED:
+                    self.completed_at = None
+
+            if self.status == TaskStatus.OVERDUE:
+                self.was_overdue = True
 
         return super().save(*args, **kwargs)
 
