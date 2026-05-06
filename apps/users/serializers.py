@@ -24,7 +24,7 @@ class UserSerializer(serializers.ModelSerializer):
     position_info = PositionSerializer(source='position', read_only=True)
 
     region = serializers.PrimaryKeyRelatedField(queryset=Region.objects.all(), write_only=True)
-    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), write_only=True)
+    district = serializers.PrimaryKeyRelatedField(queryset=District.objects.all(), required=False, write_only=True)
     position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False, write_only=True)
 
     class Meta:

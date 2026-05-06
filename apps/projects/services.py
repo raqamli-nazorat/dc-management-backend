@@ -2,7 +2,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
-from .models import TaskStatus, MeetingAttendance, Meeting
+from .models import TaskStatus, MeetingAttendance, Meeting, Task
 from apps.notifications.models import Notification, NotificationType
 from apps.users.models import Role
 
@@ -16,6 +16,19 @@ class TaskService:
         TaskStatus.CHECKED: 5,
         TaskStatus.REJECTED: 5,
     }
+
+    @classmethod
+    @transaction.atomic
+    def create_task(cls, user, validated_data):
+        task = Task.objects.create(created_by=user, **validated_data)
+        if task.assignee:
+            deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
+            cls.send_task_notification(
+                task,
+                "Yangi vazifa biriktirildi",
+                f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Muddati: {deadline_str}"
+            )
+        return task
 
     @classmethod
     @transaction.atomic

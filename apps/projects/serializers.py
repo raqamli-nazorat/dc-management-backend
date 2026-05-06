@@ -13,6 +13,14 @@ from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingA
 User = get_user_model()
 
 
+class ProjectStaffSerializer(serializers.ModelSerializer):
+    position_info = PositionSerializer(source='position', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'position_info')
+
+
 class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project

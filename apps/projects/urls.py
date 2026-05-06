@@ -1,12 +1,13 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from .views import (ProjectShortViewSet, ProjectViewSet, TaskViewSet, TaskAttachmentViewSet,
+from .views import (ProjectStaffViewSet, ProjectShortViewSet, ProjectViewSet, TaskViewSet, TaskAttachmentViewSet,
                     MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet)
 
 router = SimpleRouter()
 router.register('projects', ProjectViewSet, basename='projects')
 router.register('project-shorts', ProjectShortViewSet, basename='projects-shorts')
+router.register('project-staff', ProjectStaffViewSet, basename='project-staff')
 router.register('tasks', TaskViewSet, basename='tasks')
 router.register('task-attachments', TaskAttachmentViewSet, basename='task-attachments')
 router.register('task-rejection-files', TaskRejectionFileViewSet, basename='task-rejection-files')
