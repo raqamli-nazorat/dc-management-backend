@@ -104,7 +104,7 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=['Expense Reports'])
 class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = ExpenseRequest.objects.all()
+    queryset = ExpenseRequest.objects.filter(is_active=True)
     serializer_class = ExpenseRequestReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -115,7 +115,7 @@ class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = ExpenseRequestReportSerializer.setup_eager_loading(ExpenseRequest.objects.all())
+        queryset = ExpenseRequestReportSerializer.setup_eager_loading(ExpenseRequest.objects.filter(is_active=True))
 
         if not user or not user.is_authenticated:
             return queryset.none()
@@ -133,7 +133,7 @@ class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=['Payroll Reports'])
 class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Payroll.objects.all()
+    queryset = Payroll.objects.filter(is_active=True)
     serializer_class = PayrollReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -144,7 +144,7 @@ class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = PayrollReportSerializer.setup_eager_loading(Payroll.objects.all())
+        queryset = PayrollReportSerializer.setup_eager_loading(Payroll.objects.filter(is_active=True))
 
         if not user or not user.is_authenticated:
             return queryset.none()
@@ -162,7 +162,7 @@ class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
 @extend_schema(tags=['Task Reports'])
 class TaskReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Task.objects.all()
+    queryset = Task.objects.filter(is_active=True, is_deleted=False)
     serializer_class = TaskReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
@@ -173,7 +173,7 @@ class TaskReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = TaskReportSerializer.setup_eager_loading(Task.objects.all())
+        queryset = TaskReportSerializer.setup_eager_loading(Task.objects.filter(is_active=True, is_deleted=False))
 
         if not user or not user.is_authenticated:
             return queryset.none()

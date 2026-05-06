@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 from collections import defaultdict
 from celery import shared_task
 from django.db import transaction
@@ -13,16 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
-def update_project_tasks_on_unlock(project_id):
+def update_project_tasks_on_unlock(project_id, working_seconds):
     try:
         project = Project.objects.get(id=project_id)
         tasks = project.tasks.all()
 
         with transaction.atomic():
             for task in tasks:
+                task.deadline = task.deadline + timedelta(seconds=working_seconds)
+                if task.status == TaskStatus.OVERDUE and task.deadline > timezone.now():
+                    task.status = TaskStatus.IN_PROGRESS
+                    task.was_overdue = False
                 task.save()
 
-        return f"Loyiha (ID: {project_id}) uchun {tasks.count()} ta vazifa yangilandi."
+        return f"Loyiha (ID: {project_id}) uchun {tasks.count()} ta vazifa yangilandi. Muddatlar {working_seconds} soniyaga surildi."
     except Project.DoesNotExist:
         return f"Loyiha (ID: {project_id}) topilmadi."
 

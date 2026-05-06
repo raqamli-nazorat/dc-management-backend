@@ -134,6 +134,7 @@ class ExpenseRequest(BaseModel):
                     'amount': f"Mablag‘ yetarli emas. Joriy balansingiz {self.user.balance}."
                 })
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
         self.full_clean()
         is_new = self.pk is None
@@ -145,11 +146,12 @@ class ExpenseRequest(BaseModel):
                 self.confirmed_at = timezone.now()
 
                 if self.type == ExpenseType.WITHDRAWAL:
-                    if self.user.balance < self.amount:
+                    user = User.objects.select_for_update().get(pk=self.user_id)
+                    if user.balance < self.amount:
                         raise ValidationError("Balansda yetarli mablag' qolmagan!")
 
-                    self.user.balance -= self.amount
-                    self.user.save(update_fields=['balance'])
+                    user.balance -= self.amount
+                    user.save(update_fields=['balance'])
 
                 Ledger.objects.create(
                     user=self.user,

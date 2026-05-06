@@ -250,7 +250,7 @@ class Project(BaseModel):
                     )
 
                     from .tasks import update_project_tasks_on_unlock
-                    transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(self.id))
+                    transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(self.id, working_seconds))
 
                 if self.status == ProjectStatus.OVERDUE and self.deadline > timezone.now():
                     self.status = ProjectStatus.ACTIVE
@@ -386,26 +386,6 @@ class Task(BaseModel):
             self.position = self.assignee.position
 
         if self.pk:
-            if not self.project.is_hidden and self.project.hidden_at:
-                if self.project.hidden_at:
-                    now = timezone.now()
-                    working_seconds = 0
-                    current_time = self.project.hidden_at
-
-                    while current_time < now:
-                        next_checkpoint = min(
-                            now,
-                            (current_time + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-                        )
-                        if current_time.weekday() != 6:
-                            working_seconds += (next_checkpoint - current_time).total_seconds()
-                        current_time = next_checkpoint
-
-                    self.deadline = self.deadline + timedelta(seconds=working_seconds)
-
-                    if self.status == TaskStatus.OVERDUE and self.deadline > timezone.now():
-                        self.status = TaskStatus.IN_PROGRESS
-                        self.was_overdue = False
 
             if self.deadline != self._old_deadline:
                 if self.deadline > timezone.now() and self.status == TaskStatus.OVERDUE:
