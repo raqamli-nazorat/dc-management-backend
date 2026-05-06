@@ -39,8 +39,10 @@ def update_overdue_status_and_notify():
     broadcast_data = []
 
     overdue_projects = list(Project.objects.filter(
-        status__in=[ProjectStatus.PLANNING, ProjectStatus.ACTIVE],
+        status=ProjectStatus.ACTIVE,
         is_hidden=False,
+        is_deleted=False,
+        is_active=True,
         deadline__lt=now
     ).only('id', 'title', 'manager_id', 'status', 'was_overdue'))
 
@@ -68,7 +70,9 @@ def update_overdue_status_and_notify():
 
     overdue_tasks = list(Task.objects.filter(
         status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
-        project__is_hidden=False,
+        is_deleted=False,
+        is_active=True,
+        project__status=ProjectStatus.ACTIVE,
         deadline__lt=now
     ).select_related('project').only('id', 'title', 'project__manager_id', 'status', 'was_overdue'))
 
