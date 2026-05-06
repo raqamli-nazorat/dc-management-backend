@@ -112,6 +112,9 @@ class TaskService:
 
     @classmethod
     def _handle_claim_logic(cls, task, user, new_status, now):
+        if not user.has_role(Role.EMPLOYEE):
+            raise PermissionDenied("Vazifani faqat xodimlar o'zlashtirishi mumkin.")
+
         if new_status != TaskStatus.IN_PROGRESS:
             raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazing.")
 

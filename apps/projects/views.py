@@ -9,6 +9,7 @@ from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 
 from apps.users.models import Role, User
+from apps.users.serializers import UserShortSerializer
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMixin
@@ -17,15 +18,15 @@ from .services import TaskService, MeetingService
 from .filters import TaskFilter, ProjectFilter, MeetingFilter
 from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, \
     TaskRejectionFile
-from .serializers import (ProjectStaffSerializer, ProjectShortSerializer, ProjectSerializer, TaskSerializer,
+from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer,
                           TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
                           TaskRejectionFileSerializer)
 
 
-@extend_schema(tags=['Project Staff'])
-class ProjectStaffViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = ProjectStaffSerializer
+@extend_schema(tags=['Project Employees'])
+class ProjectEmployeeViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserShortSerializer
     permission_classes = [IsManager]
 
     def get_queryset(self):
@@ -41,6 +42,25 @@ class ProjectStaffViewSet(viewsets.ReadOnlyModelViewSet):
         return User.objects.filter(
             Q(employee_projects__in=my_projects) |
             Q(tester_projects__in=my_projects)
+        ).distinct()
+
+
+@extend_schema(tags=['Project Managers'])
+class ProjectManagerViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserShortSerializer
+    permission_classes = [IsEmployee]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        involved_projects = Project.objects.filter(
+            Q(employees=user) | Q(testers=user),
+            is_deleted=False,
+            is_hidden=False
+        )
+
+        return User.objects.filter(
+            manager_projects__in=involved_projects
         ).distinct()
 
 
