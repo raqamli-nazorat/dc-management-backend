@@ -1,8 +1,10 @@
 from datetime import timedelta
 
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -103,6 +105,11 @@ class UserSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
             instance.change_password = True
+
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
 
         instance.save()
         return instance
@@ -394,17 +401,50 @@ class SocialLinksSerializer(serializers.ModelSerializer):
         model = User
         fields = ('social_links',)
 
+    def update(self, instance, validated_data):
+        instance.active_role = validated_data.get('active_role', instance.active_role)
+
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+
+        instance.save()
+        return instance
+
 
 class CardNumberSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('card_number',)
 
+    def update(self, instance, validated_data):
+        instance.active_role = validated_data.get('active_role', instance.active_role)
+
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+
+        instance.save()
+        return instance
+
 
 class ChangeActiveRoleSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('active_role',)
+
+    def update(self, instance, validated_data):
+        instance.active_role = validated_data.get('active_role', instance.active_role)
+
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict)
+
+        instance.save()
+        return instance
 
 
 class ChangePasswordSerializer(serializers.Serializer):
