@@ -119,7 +119,7 @@ def _calc_employee_kpi(user, start, end):
         Task.objects
         .filter(
             assignee=user,
-            status__in=[TaskStatus.CHECKED, TaskStatus.PRODUCTION],
+            status=TaskStatus.CHECKED,
             payroll_processed=False,
             is_active=True,
         )
