@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from .models import TaskStatus, Task, MeetingAttendance, Meeting
+from .models import TaskStatus, MeetingAttendance, Meeting
 from apps.notifications.models import Notification, NotificationType
 from apps.users.models import Role
 
@@ -17,6 +17,126 @@ class TaskService:
         TaskStatus.REJECTED: 5,
     }
 
+    @classmethod
+    @transaction.atomic
+    def change_status(cls, task, user, new_status, rejection_reason=None):
+        current_status = task.status
+        if not new_status or current_status == new_status:
+            return task
+
+        now = timezone.now()
+
+        if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
+            return cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
+
+        is_tester = task.project.testers.filter(id=user.id).exists()
+        if is_tester:
+            if task.assignee_id == user.id and new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
+                raise PermissionDenied("O'zingiz topshiruvchi bo'lgan vazifani o'zingiz tekshira olmaysiz!")
+
+            if new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
+                return cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
+
+        if task.assignee == user:
+            return cls._handle_assignee_logic(task, user, new_status, now)
+
+        if task.assignee is None and task.project.employees.filter(id=user.id).exists():
+            return cls._handle_claim_logic(task, user, new_status, now)
+
+        raise PermissionDenied("Sizda statusni o'zgartirish huquqi yo'q.")
+
+    @classmethod
+    def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
+        if new_status == TaskStatus.REJECTED:
+            return cls._apply_rejection(task, rejection_reason, now, "Vazifangiz rad etildi")
+
+        if cls.STATUS_ORDER.get(new_status, 0) < cls.STATUS_ORDER.get(task.status, 0):
+            raise PermissionDenied("Statusni orqaga qaytara olmaysiz.")
+
+        cls._update_task_time_and_status(task, new_status, now)
+        if new_status == TaskStatus.CHECKED:
+            cls.send_task_notification(task, "Vazifangiz tasdiqlandi", "Menejer vazifani yakunladi.")
+        return task
+
+    @classmethod
+    def _handle_tester_logic(cls, task, user, new_status, rejection_reason, now):
+        if task.status != TaskStatus.PRODUCTION:
+            raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshirish mumkin.")
+
+        if new_status == TaskStatus.REJECTED:
+            return cls._apply_rejection(task, rejection_reason, now, "Sizning vazifangiz rad etildi")
+
+        if new_status == TaskStatus.CHECKED:
+            task.status = TaskStatus.CHECKED
+            task.save()
+            cls.send_task_notification(task, "Tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
+            return task
+
+    @classmethod
+    def _handle_assignee_logic(cls, task, user, new_status, now):
+        transitions = {
+            TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
+            TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
+            TaskStatus.DONE: [TaskStatus.PRODUCTION],
+            TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
+        }
+        if new_status not in transitions.get(task.status, []):
+            raise PermissionDenied("Bu bosqichga o'tishga ruxsat yo'q yoki status orqaga qaytaryapsiz.")
+
+        cls._update_task_time_and_status(task, new_status, now)
+        return task
+
+    @classmethod
+    def _handle_claim_logic(cls, task, user, new_status, now):
+        if new_status != TaskStatus.IN_PROGRESS:
+            raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazing.")
+
+        if task.position_id and user.position_id != task.position_id:
+            raise PermissionDenied(f"Bu vazifa faqat '{task.position.name}' lavozimi uchun.")
+
+        task.assignee = user
+        task.status = TaskStatus.IN_PROGRESS
+        task.started_at = now
+        task.save()
+        return task
+
+    @classmethod
+    def _update_task_time_and_status(cls, task, new_status, now):
+        if new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION] and task.started_at:
+            diff_seconds = (now - task.started_at).total_seconds()
+
+            if diff_seconds >= 60:
+                elapsed_minutes = int(diff_seconds / 60)
+                task.actual_minutes += elapsed_minutes
+
+            task.started_at = None
+
+        task.status = new_status
+
+        if new_status == TaskStatus.IN_PROGRESS:
+            task.started_at = now
+
+        task.save()
+
+    @classmethod
+    def _apply_rejection(cls, task, reason, now, title):
+        if not reason or not reason.strip():
+            raise ValidationError("Rad etish sababini yozish shart!")
+
+        if task.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
+            task.reopened_count += 1
+
+        timestamp = timezone.localtime(now).strftime("%d.%m.%Y %H:%M")
+        task.rejection_reason = (
+                                    f"{task.rejection_reason}\n\n" if task.rejection_reason else "") + f"[{timestamp}] {reason}"
+
+        task.status = TaskStatus.IN_PROGRESS
+        task.started_at = now
+        task.save()
+
+        cls.send_task_notification(task, title, f"Sabab: {reason}")
+        return task
+
     @staticmethod
     def send_task_notification(task, title, message):
         if task.assignee:
@@ -27,113 +147,6 @@ class TaskService:
                 type=NotificationType.TASK,
                 extra_data={'task_id': task.id}
             )
-
-    @classmethod
-    @transaction.atomic
-    def change_status(cls, task, user, new_status, rejection_reason=None):
-        current_status = task.status
-
-        if not new_status or current_status == new_status:
-            return task
-
-        now = timezone.now()
-
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
-            if new_status == TaskStatus.REJECTED:
-                if current_status != TaskStatus.PRODUCTION:
-                    raise PermissionDenied("Faqat 'Production' holatidagi vazifanigina rad etish mumkin.")
-
-                if not rejection_reason or not rejection_reason.strip():
-                    raise ValidationError("Vazifani rad etish uchun sabab ko'rsatish shart!")
-
-                cls._apply_rejection_logic(task, rejection_reason, now)
-                cls.send_task_notification(task, "Vazifangiz rad etildi", f"Sababi: {rejection_reason}")
-                return task
-
-            if cls.STATUS_ORDER.get(new_status, 0) < cls.STATUS_ORDER.get(current_status, 0):
-                raise PermissionDenied("Statusni orqaga qaytara olmaysiz.")
-
-            if new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION] and task.started_at:
-                elapsed = int((now - task.started_at).total_seconds() / 60)
-                task.actual_minutes += max(0, elapsed)
-                task.started_at = None
-
-            task.status = new_status
-            if new_status == TaskStatus.IN_PROGRESS:
-                task.started_at = now
-
-            task.save()
-
-            if new_status == TaskStatus.CHECKED:
-                cls.send_task_notification(task, "Vazifangiz tasdiqlandi", "Vazifa muvaffaqiyatli yakunlandi.")
-            return task
-
-        if task.assignee == user:
-            employee_transitions = {
-                TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
-                TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
-                TaskStatus.DONE: [TaskStatus.PRODUCTION],
-                TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
-            }
-            if new_status not in employee_transitions.get(current_status, []):
-                raise PermissionDenied("Bu holatga o'tishga ruxsat yo'q yoki statusni orqaga qaytara olmaysiz.")
-
-            if new_status == TaskStatus.DONE and task.started_at:
-                elapsed = int((now - task.started_at).total_seconds() / 60)
-                task.actual_minutes += max(0, elapsed)
-                task.started_at = None
-
-            if new_status == TaskStatus.IN_PROGRESS:
-                task.started_at = now
-
-            task.status = new_status
-            task.save()
-            return task
-
-        if task.assignee is None and task.project.employees.filter(id=user.id).exists():
-            if new_status == TaskStatus.IN_PROGRESS:
-                if task.position_id and user.position_id != task.position_id:
-                    raise PermissionDenied(f"Bu vazifa faqat '{task.position.name}' lavozimi uchun.")
-
-                task.status = new_status
-                task.assignee = user
-                task.started_at = now
-                task.save()
-                return task
-            raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazing.")
-
-        is_tester = task.project.testers.filter(id=user.id).exists()
-        if is_tester:
-            if current_status != TaskStatus.PRODUCTION:
-                raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshira olasiz.")
-
-            if new_status == TaskStatus.REJECTED:
-                if not rejection_reason or not rejection_reason.strip():
-                    raise ValidationError("Rad etish sababini yozing.")
-                cls._apply_rejection_logic(task, rejection_reason, now)
-                cls.send_task_notification(task, "Vazifa rad etildi", f"Tester: {rejection_reason}")
-                return task
-
-            if new_status == TaskStatus.CHECKED:
-                task.status = TaskStatus.CHECKED
-                task.save()
-                cls.send_task_notification(task, "Tasdiqlandi", "Tester vazifani tasdiqladi.")
-                return task
-
-        raise PermissionDenied("Sizda statusni o'zgartirish huquqi yo'q.")
-
-    @staticmethod
-    def _apply_rejection_logic(task, reason, now):
-        if task.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
-            task.reopened_count += 1
-
-        timestamp = timezone.localtime(now).strftime("%d.%m.%Y %H:%M")
-        new_reason = f"[{timestamp}] {reason}"
-        task.rejection_reason = f"{task.rejection_reason}\n\n{new_reason}" if task.rejection_reason else new_reason
-
-        task.status = TaskStatus.IN_PROGRESS
-        task.started_at = now
-        task.save()
 
 
 class MeetingService:
