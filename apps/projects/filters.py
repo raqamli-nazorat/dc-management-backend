@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import rest_framework as filters
 
-from users.models import Role
+from apps.users.models import Role
 from .models import Task, Project, Meeting
 
 
