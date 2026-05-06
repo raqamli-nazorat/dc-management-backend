@@ -100,7 +100,7 @@ class Project(BaseModel):
                                        blank=True,
                                        verbose_name="Xodimlar")
     testers = models.ManyToManyField(User, related_name='tester_projects',
-                                     limit_choices_to={'roles__overlap': [Role.MANAGER, Role.EMPLOYEE]},
+                                     limit_choices_to={'roles__overlap': [Role.EMPLOYEE]},
                                      blank=True,
                                      verbose_name="Sinovchilar")
 

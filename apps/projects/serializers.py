@@ -178,64 +178,11 @@ class TaskSerializer(serializers.ModelSerializer):
 
 
 class TaskStatusUpdateSerializer(serializers.ModelSerializer):
-    rejection_reason = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    rejection_reason = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = Task
-        fields = (
-            'status',
-            'rejection_reason',
-        )
-
-    def validate(self, attrs):
-        status = attrs.get('status')
-        reason = attrs.get('rejection_reason')
-
-        if status == TaskStatus.REJECTED:
-            if not reason or not reason.strip():
-                raise serializers.ValidationError({
-                    "rejection_reason": "Vazifani rad etish uchun sabab ko'rsatish shart!"
-                })
-        else:
-            attrs.pop('rejection_reason', None)
-
-        return attrs
-
-    def update(self, instance, validated_data):
-        new_status = validated_data.get('status')
-        reason = validated_data.get('rejection_reason')
-
-        now = timezone.now()
-        local_now = timezone.localtime(now)
-
-        if instance.started_at:
-            elapsed = int((now - instance.started_at).total_seconds() / 60)
-            instance.actual_minutes += max(0, elapsed)
-            instance.started_at = None
-
-        if new_status == TaskStatus.REJECTED:
-            if instance.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
-                instance.reopened_count += 1
-
-            timestamp = local_now.strftime("%d.%m.%Y %H:%M")
-            new_reason_entry = f"[{timestamp}] {reason}"
-
-            if instance.rejection_reason:
-                instance.rejection_reason = f"{instance.rejection_reason}\n\n{new_reason_entry}"
-            else:
-                instance.rejection_reason = new_reason_entry
-
-            instance.status = TaskStatus.IN_PROGRESS
-            instance.started_at = now
-
-        else:
-            instance.status = new_status
-
-            if new_status == TaskStatus.IN_PROGRESS:
-                instance.started_at = now
-
-        instance.save()
-        return instance
+        fields = ('status', 'rejection_reason')
 
 
 class MeetingSerializer(serializers.ModelSerializer):
