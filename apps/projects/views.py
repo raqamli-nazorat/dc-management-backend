@@ -224,7 +224,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
 
         new_status = serializer.validated_data.get('status')
-        rejection_reason = serializer.validated_data.get('status')
+        rejection_reason = serializer.validated_data.get('rejection_reason')
         updated_task = TaskService.change_status(task, request.user, new_status, rejection_reason)
 
         return Response(TaskSerializer(updated_task).data)
