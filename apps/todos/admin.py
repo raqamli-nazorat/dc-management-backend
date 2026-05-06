@@ -18,7 +18,6 @@ class TodoAdmin(ModelAdmin):
         'user',
         'title_short',
         'color_badge',
-        'deadline',
         'status_badge',
         'created_at_formatted'
     )
@@ -33,7 +32,7 @@ class TodoAdmin(ModelAdmin):
 
     fieldsets = (
         ('Asosiy ma\'lumotlar', {
-            'fields': ('user', 'title', 'color', 'deadline', 'is_done'),
+            'fields': ('user', 'title', 'color', 'is_done'),
         }),
         ('Vaqt ko\'rsatkichlari', {
             'fields': ('created_at', 'updated_at'),

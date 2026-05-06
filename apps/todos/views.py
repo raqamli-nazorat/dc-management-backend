@@ -14,9 +14,9 @@ class TodoViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['is_done', 'color', 'deadline']
+    filterset_fields = ['is_done', 'color']
     search_fields = ['title']
-    ordering_fields = ['created_at', 'deadline']
+    ordering_fields = ['created_at']
 
     def get_queryset(self):
         queryset = super().get_queryset()

@@ -18,7 +18,6 @@ class Todo(BaseModel):
                              verbose_name="Egasi")
     title = models.CharField(max_length=255, verbose_name="Vazifa nomi")
     color = models.CharField(max_length=20, choices=TodoColor.choices, default=TodoColor.BLUE, verbose_name="Rangi")
-    deadline = models.DateField(null=True, blank=True, verbose_name="Muddati")
     is_done = models.BooleanField(default=False, verbose_name="Bajarildimi?")
 
     class Meta:
