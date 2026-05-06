@@ -1,4 +1,4 @@
-from django.core.exceptions import PermissionDenied, ValidationError
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from django.db import transaction
 from django.utils import timezone
 
@@ -121,7 +121,7 @@ class TaskService:
     @classmethod
     def _apply_rejection(cls, task, reason, now, title):
         if not reason or not reason.strip():
-            raise ValidationError("Rad etish sababini yozish shart!")
+            raise ValidationError({'rejection_reason': "Rad etish sababini yozish shart!"})
 
         if task.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
             task.reopened_count += 1
@@ -227,7 +227,6 @@ class MeetingService:
     @transaction.atomic
     def close_meeting(cls, meeting):
         if meeting.is_completed:
-            from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Bu uchrashuv allaqachon tugagan."})
 
         meeting.is_completed = True
