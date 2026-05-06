@@ -147,6 +147,12 @@ class TaskSerializer(serializers.ModelSerializer):
             return 0.00
         return value
 
+    def validate_penalty_percentage(self, value):
+        user = self.context['request'].user
+        if user.has_role(Role.EMPLOYEE) and value > 0:
+            return 0.00
+        return value
+
     def get_project_info(self, obj):
         project = obj.project
         return {

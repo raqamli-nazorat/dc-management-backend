@@ -24,10 +24,21 @@ class TaskService:
         if task.assignee:
             deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
             cls.send_task_notification(
+                task.assignee,
                 task,
                 "Yangi vazifa biriktirildi",
                 f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Muddati: {deadline_str}"
             )
+
+        manager = task.project.manager
+        if manager and manager != user:
+            cls.send_task_notification(
+                manager,
+                task,
+                "Yangi vazifa yaratildi",
+                f"Loyihangizda yangi vazifa yaratildi: '{task.title}'. Yaratuvchi: {user.get_full_name() or user.username}"
+            )
+
         return task
 
     @classmethod
@@ -68,7 +79,7 @@ class TaskService:
 
         cls._update_task_time_and_status(task, new_status, now)
         if new_status == TaskStatus.CHECKED:
-            cls.send_task_notification(task, "Vazifangiz tasdiqlandi", "Menejer vazifani yakunladi.")
+            cls.send_task_notification(task.assignee, task, "Vazifangiz tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
         return task
 
     @classmethod
@@ -82,7 +93,7 @@ class TaskService:
         if new_status == TaskStatus.CHECKED:
             task.status = TaskStatus.CHECKED
             task.save()
-            cls.send_task_notification(task, "Tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
+            cls.send_task_notification(task.assignee, task, "Vazifangiz tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
             return task
 
     @classmethod
@@ -147,14 +158,14 @@ class TaskService:
         task.started_at = now
         task.save()
 
-        cls.send_task_notification(task, title, f"Sabab: {reason}")
+        cls.send_task_notification(task.assignee, task, title, f"Sabab: {reason}")
         return task
 
     @staticmethod
-    def send_task_notification(task, title, message):
-        if task.assignee:
+    def send_task_notification(user, task, title, message):
+        if user:
             Notification.objects.create(
-                user=task.assignee,
+                user=user,
                 title=title,
                 message=message,
                 type=NotificationType.TASK,
