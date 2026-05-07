@@ -97,12 +97,15 @@ def _calc_manager_kpi(user, start, end):
         processed_project_ids.append(project.id)
         gross = _round(project.project_price)
 
-        if project.was_overdue:
-            penalty = _round((gross * project.penalty_percentage) / 100)
+        penalty_base = gross if gross > 0 else user.fixed_salary
+
+        if project.was_overdue and penalty_base > 0:
+            penalty = _round((penalty_base * project.penalty_percentage) / 100)
             total_penalty += penalty
-            kpi_bonus += (gross - penalty)
+            
+            kpi_bonus += gross
             logger.debug(
-                "Manager %s | Loyiha '%s' kechikkan (was_overdue). Bonusdan %s jarima ayirildi.",
+                "Manager %s | Loyiha '%s' kechikkan. Jarima: %s",
                 user.username, project.title, penalty
             )
         else:
@@ -137,17 +140,21 @@ def _calc_employee_kpi(user, start, end):
         bugs_count += task.reopened_count
 
         current_task_penalty = Decimal("0.00")
+        
+        # Agar vazifa narxi 0 bo'lsa, jarima asosiy oylikdan hisoblanadi
+        penalty_base = gross if gross > 0 else user.fixed_salary
 
-        if task.reopened_count > 0:
-            reopen_penalty = _round((gross * task.penalty_percentage) / 100) * task.reopened_count
-            current_task_penalty += reopen_penalty
+        if penalty_base > 0:
+            if task.reopened_count > 0:
+                reopen_penalty = _round((penalty_base * task.penalty_percentage) / 100) * task.reopened_count
+                current_task_penalty += reopen_penalty
 
-        if task.was_overdue:
-            missed_deadlines_count += 1
-            overdue_penalty = _round((gross * task.penalty_percentage) / 100)
-            current_task_penalty += overdue_penalty
-            logger.debug("Employee %s | Task '%s' kechikkan. Overdue penalty: %s", user.username, task.title,
-                         overdue_penalty)
+            if task.was_overdue:
+                missed_deadlines_count += 1
+                overdue_penalty = _round((penalty_base * task.penalty_percentage) / 100)
+                current_task_penalty += overdue_penalty
+                logger.debug("Employee %s | Task '%s' kechikkan. Jarima: %s", user.username, task.title,
+                             overdue_penalty)
 
         total_penalty += current_task_penalty
 
@@ -155,8 +162,9 @@ def _calc_employee_kpi(user, start, end):
         act = task.actual_minutes or 0
         velocity = Decimal(str(min(est / act, 1.0))) if est > 0 and act > 0 else Decimal("1.0")
 
-        weighted_bonus = _round(gross * velocity) - current_task_penalty
-        kpi_bonus += max(Decimal("0.00"), weighted_bonus)
+        # Bonus to'liq hisoblanadi, jarimalar esa total_penalty ustunida ayiriladi
+        weighted_bonus = _round(gross * velocity)
+        kpi_bonus += weighted_bonus
 
     if processed_task_ids:
         Task.objects.filter(id__in=processed_task_ids).update(payroll_processed=True)
