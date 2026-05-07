@@ -2,12 +2,13 @@ from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
 from .views import (UserViewSet, ProfileView, SocialLinksView, CardNumberView, ChangeActiveRoleView, ChangePasswordView,
-                    MyTokenObtainPairView, MyTokenRefreshView, UserPeriodStatsView, UserEfficiencyView)
+                    MyTokenObtainPairView, MyTokenRefreshView, UserPeriodStatsView, UserEfficiencyView, UserShortListView)
 
 router = SimpleRouter()
 router.register('users', UserViewSet)
 
 urlpatterns = [
+    path('users/all/', UserShortListView.as_view(), name='user-list-short'),
     path('users/me/', ProfileView.as_view(), name='profile'),
     path('users/me/social-links/', SocialLinksView.as_view(), name='social-links'),
     path('users/me/card-number/', CardNumberView.as_view(), name='card-number'),
