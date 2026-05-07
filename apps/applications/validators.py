@@ -7,8 +7,8 @@ phone_validator = RegexValidator(
 )
 
 telegram_validator = RegexValidator(
-    regex=r'^https://(t\.me/.+|[a-zA-Z0-9_]+\.t\.me)$',
-    message="Telegram havolasi https://t.me/username yoki https://username.t.me formatida bo'lishi kerak."
+    regex=r'^https://[a-zA-Z0-9_]+\.t\.me$',
+    message="Telegram havolasi https://username.t.me formatida bo'lishi kerak."
 )
 
 portfolio_validator = RegexValidator(
