@@ -43,7 +43,9 @@ class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = UserComprehensiveReportSerializer.setup_eager_loading(User.objects.filter(is_active=True))
+        queryset = UserComprehensiveReportSerializer.setup_eager_loading(
+            User.objects.filter(is_active=True).exclude(is_superuser=True)
+        )
 
         if not user or not user.is_authenticated:
             return queryset.none()
@@ -115,7 +117,9 @@ class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = ExpenseRequestReportSerializer.setup_eager_loading(ExpenseRequest.objects.filter(is_active=True))
+        queryset = ExpenseRequestReportSerializer.setup_eager_loading(
+            ExpenseRequest.objects.filter(is_active=True).exclude(user__is_superuser=True)
+        )
 
         if not user or not user.is_authenticated:
             return queryset.none()
@@ -144,7 +148,9 @@ class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
-        queryset = PayrollReportSerializer.setup_eager_loading(Payroll.objects.filter(is_active=True))
+        queryset = PayrollReportSerializer.setup_eager_loading(
+            Payroll.objects.filter(is_active=True).exclude(user__is_superuser=True)
+        )
 
         if not user or not user.is_authenticated:
             return queryset.none()
