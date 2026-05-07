@@ -48,7 +48,7 @@ class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
         if user.has_role(Role.MANAGER):
@@ -79,7 +79,7 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
         if user.has_role(Role.MANAGER):
@@ -120,7 +120,7 @@ class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
         if user.has_role(Role.MANAGER):
@@ -149,7 +149,7 @@ class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
         if user.has_role(Role.MANAGER):
@@ -178,7 +178,7 @@ class TaskReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
             return queryset
 
         if user.has_role(Role.MANAGER):

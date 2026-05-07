@@ -50,7 +50,7 @@ class TaskService:
 
         now = timezone.now()
 
-        if user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user:
+        if user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user:
             return cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
 
         is_tester = task.project.testers.filter(id=user.id).exists()

@@ -10,7 +10,6 @@ from apps.applications.models import Region, District, Position
 
 
 class Role(models.TextChoices):
-    SUPERADMIN = 'superadmin', 'Bosh administrator'
     ADMIN = 'admin', 'Administrator'
     MANAGER = 'manager', 'Menejer'
     EMPLOYEE = 'employee', 'Xodim'

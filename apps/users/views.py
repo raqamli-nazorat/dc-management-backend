@@ -43,12 +43,10 @@ class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = super().get_queryset()
 
-        return queryset.exclude(
-            Q(roles__contains=[Role.SUPERADMIN]) | Q(is_superuser=True)
-        )
+        return queryset.exclude(is_superuser=True)
 
     def perform_destroy(self, instance):
-        if instance.is_superuser or instance.has_any_role(Role.SUPERADMIN):
+        if instance.is_superuser:
             raise ValidationError({
                 "detail": "Superadminni o'chirish mumkin emas!"
             })

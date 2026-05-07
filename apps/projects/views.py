@@ -81,7 +81,7 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
     search_fields = ['title', 'description']
     ordering_fields = ['status', 'deadline', 'created_at']
 
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         base_filters = {
@@ -122,7 +122,7 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     filterset_class = ProjectFilter
     search_fields = ['title', 'description']
     ordering_fields = ['status', 'deadline', 'created_at']
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy', 'restore', 'hard_delete']:
@@ -192,7 +192,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     filter_backends = [
         DjangoFilterBackend,
@@ -267,7 +267,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
                 "Vazifa jarayonga tushgan yoki yakunlangan. Uni endi tahrirlab bo'lmaydi."
             )
 
-        is_admin_or_manager = user.has_role(Role.SUPERADMIN, Role.ADMIN) or task.project.manager == user
+        is_admin_or_manager = user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user
         is_creator = task.created_by == user
 
         if is_admin_or_manager or is_creator:
@@ -304,7 +304,7 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     filterset_fields = ['task']
     http_method_names = ['get', 'post', 'delete']
 
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         active_project_q = Q(
@@ -357,7 +357,7 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = super().get_queryset()
 
-        if user.has_any_role(Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR):
+        if user.is_superuser or user.has_any_role(Role.ADMIN, Role.AUDITOR):
             return queryset
 
         active_project_filter = Q(
@@ -390,7 +390,7 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
 
         is_tester = user in task.project.testers.all()
         is_manager = task.project.manager == user
-        is_admin = user.has_role(Role.SUPERADMIN, Role.ADMIN)
+        is_admin = user.is_superuser or user.has_role(Role.ADMIN)
 
         if not (is_admin or is_tester or is_manager):
             raise PermissionDenied("Sizda bu vazifaga rasm yuklash huquqi yo'q.")
@@ -408,7 +408,7 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'created_at']
 
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         active_project_filter = Q(
@@ -468,7 +468,7 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
 
     http_method_names = ['get', 'patch']
 
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         active_project_q = Q(
@@ -494,7 +494,7 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
         user = self.request.user
         attendance = self.get_object()
 
-        is_privileged = user.has_role(Role.SUPERADMIN, Role.ADMIN) or \
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
                         attendance.meeting.organizer == user or \
                         attendance.meeting.project.manager == user
 

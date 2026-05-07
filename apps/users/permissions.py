@@ -10,14 +10,10 @@ class RoleBasePermission(permissions.BasePermission):
         if not (user and user.is_authenticated):
             return False
 
-        if user.is_superuser or user.has_role(Role.SUPERADMIN):
+        if user.is_superuser:
             return True
 
         return user.has_role(*self.required_roles)
-
-
-class IsSuperAdmin(RoleBasePermission):
-    required_roles = [Role.SUPERADMIN]
 
 
 class IsAdmin(RoleBasePermission):

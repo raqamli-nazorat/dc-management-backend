@@ -88,7 +88,6 @@ class CustomUserAdmin(ModelAdmin):
             return mark_safe('<span style="color: gray; font-style: italic;">Tanlanmagan</span>')
 
         colors = {
-            Role.SUPERADMIN: 'red',
             Role.ADMIN: '#d35400',
             Role.MANAGER: '#2980b9',
             Role.EMPLOYEE: '#27ae60',
