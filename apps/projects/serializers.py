@@ -94,7 +94,6 @@ class TaskRejectionFileSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    attachments = TaskAttachmentSerializer(many=True, read_only=True)
     assignee_info = UserShortSerializer(source='assignee', read_only=True)
     created_by_info = UserShortSerializer(source='created_by', read_only=True)
     position_info = PositionSerializer(source='position', read_only=True)
@@ -124,7 +123,7 @@ class TaskSerializer(serializers.ModelSerializer):
 
             'estimated_input_hours', 'estimated_input_minutes',
 
-            'reopened_count', 'rejection_reason', 'attachments', 'rejection_files',
+            'reopened_count', 'rejection_reason', 'rejection_files',
             'created_at', 'updated_at'
         )
         read_only_fields = (

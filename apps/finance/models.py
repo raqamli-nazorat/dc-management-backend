@@ -2,13 +2,13 @@ from django.contrib.auth import get_user_model
 from django.core.validators import MinValueValidator
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import F
 from django.utils import timezone
 from decimal import Decimal
 
 from apps.common.models import BaseModel
 from apps.users.models import Role
 from apps.projects.models import Project
+from apps.common.validators import validate_file_size, validate_file_extension
 
 User = get_user_model()
 
@@ -165,6 +165,27 @@ class ExpenseRequest(BaseModel):
 
     def __str__(self):
         return self.user.get_username()
+
+
+class ExpenseReceipt(BaseModel):
+    expense = models.ForeignKey(
+        ExpenseRequest,
+        on_delete=models.PROTECT,
+        related_name='receipts',
+        verbose_name='Xarajat so\'rovi'
+    )
+    file = models.FileField(
+        upload_to='expense/receipts/%Y/%m/',
+        validators=[validate_file_extension, validate_file_size],
+        verbose_name='Chek hujjati'
+    )
+
+    class Meta:
+        verbose_name = "Xarajat cheki"
+        verbose_name_plural = "Xarajat cheklari"
+
+    def __str__(self):
+        return f"Chek #{self.id} ({self.expense.user.username})"
 
 
 class Ledger(BaseModel):

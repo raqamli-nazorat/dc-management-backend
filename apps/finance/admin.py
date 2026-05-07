@@ -1,8 +1,13 @@
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import ExpenseCategory, ExpenseRequest, Ledger, Payroll, Status, TransactionType
+from .models import ExpenseCategory, ExpenseRequest, Ledger, Payroll, Status, TransactionType, ExpenseReceipt
 
 from unfold.admin import ModelAdmin
+
+
+class ExpenseReceiptInline(admin.TabularInline):
+    model = ExpenseReceipt
+    extra = 0
 
 
 @admin.register(ExpenseCategory)
@@ -23,6 +28,8 @@ class ExpenseRequestAdmin(ModelAdmin):
     search_fields = ('user__username', 'reason', 'card_number')
 
     readonly_fields = ('paid_at', 'confirmed_at', 'created_at', 'updated_at', 'cancelled_at')
+
+    inlines = [ExpenseReceiptInline]
 
     fieldsets = (
         ('Asosiy ma\'lumotlar', {

@@ -2,8 +2,8 @@ from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import viewsets, status, decorators, filters, permissions
+from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework import viewsets, status, decorators, filters, permissions, parsers
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import get_user_model
@@ -12,9 +12,9 @@ from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin
 
 from .services import ExpenseService, PayrollService
 from .filters import ExpenseRequestFilter, PayrollFilter, LedgerFilter
-from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory
+from .models import ExpenseRequest, Status, Role, Payroll, Ledger, ExpenseCategory, ExpenseReceipt
 from .serializers import ExpenseRequestSerializer, PayrollSerializer, LedgerSerializer, ExpenseCategorySerializer, \
-    PayrollStatusUpdateSerializer, ExpenseCancelSerializer
+    PayrollStatusUpdateSerializer, ExpenseCancelSerializer, ExpenseReceiptSerializer
 
 User = get_user_model()
 
@@ -101,6 +101,52 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
 
         return Response({"message": "Xarajatlar muvaffaqiyatli tasdiqlandi."},
                         status=status.HTTP_200_OK)
+
+
+@extend_schema(tags=['Expense Receipts'])
+class ExpenseReceiptViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+    queryset = ExpenseReceipt.objects.filter(is_active=True)
+    serializer_class = ExpenseReceiptSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    http_method_names = ['get', 'post', 'delete']
+
+    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+
+    def get_role_based_queryset(self, queryset, user):
+        if user.has_any_role(*self.full_access_roles):
+            return queryset
+
+        if user.has_role(Role.MANAGER):
+            return queryset.filter(
+                Q(expense__user=user) |
+                Q(expense__user__employee_projects__manager=user) |
+                Q(expense__user__tester_projects__manager=user)
+            ).distinct()
+
+        return queryset.filter(expense__user=user)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+        if not user.has_role(Role.ACCOUNTANT):
+            raise PermissionDenied("Faqat hisobchi xarajat cheklarini yuklashi mumkin.")
+
+        expense = serializer.validated_data.get('expense')
+
+        if expense.status != Status.PAID:
+            raise ValidationError({'status': "Chekni faqat 'To'langan' holatidagi so'rovlarga yuklash mumkin."})
+
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if not self.request.user.has_role(Role.ACCOUNTANT):
+            raise PermissionDenied("Chekni o'chirish huquqi faqat hisobchida.")
+
+        if instance.expense.status != Status.PAID:
+            raise PermissionDenied("Faqat hali tasdiqlanmagan (Paid) so'rov cheklarini o'chirish mumkin.")
+
+        super().perform_destroy(instance)
 
 
 @extend_schema(tags=['Payroll'])

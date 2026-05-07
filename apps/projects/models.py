@@ -7,6 +7,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.common.utils import generate_unique_id
+from apps.common.validators import validate_file_size, validate_file_extension
 from apps.common.models import BaseModel
 from apps.users.models import Role
 from apps.applications.models import Position
@@ -408,7 +409,8 @@ class Task(BaseModel):
 
 class TaskAttachment(BaseModel):
     task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name='attachments', verbose_name='Vazifa')
-    file = models.FileField(upload_to='tasks/files/', verbose_name='Fayl')
+    file = models.FileField(upload_to='tasks/files/', validators=[validate_file_extension, validate_file_size],
+                            verbose_name='Fayl')
 
     class Meta:
         verbose_name = 'Vazifa fayli '
@@ -421,7 +423,8 @@ class TaskAttachment(BaseModel):
 
 class TaskRejectionFile(BaseModel):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='rejection_files', verbose_name='Vazifa')
-    file = models.ImageField(upload_to='tasks/rejections/', verbose_name='Rasm (Skrinshot)')
+    file = models.ImageField(upload_to='tasks/rejections/', validators=[validate_file_size],
+                             verbose_name='Rasm (Skrinshot)')
 
     class Meta:
         verbose_name = 'Rad etish fayli '
