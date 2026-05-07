@@ -71,7 +71,7 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
                 status__in=[ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]
             )
 
-            privileged_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+            privileged_roles = [Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
             if hasattr(user, 'roles') and not (user.is_superuser or user.has_role(*privileged_roles)):
                 self.fields['project'].queryset = queryset.filter(

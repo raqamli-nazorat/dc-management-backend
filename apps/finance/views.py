@@ -32,7 +32,7 @@ class ExpenseRequestViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     queryset = ExpenseRequest.objects.filter(is_active=True)
     serializer_class = ExpenseRequestSerializer
     permission_classes = [IsAuthenticated]
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = ExpenseRequestFilter
@@ -111,7 +111,7 @@ class ExpenseReceiptViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     http_method_names = ['get', 'post', 'delete']
 
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
         if user.has_any_role(*self.full_access_roles):
@@ -153,7 +153,7 @@ class ExpenseReceiptViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
 class PayrollViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Payroll.objects.filter(is_active=True)
     permission_classes = [IsAuthenticated]
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = PayrollFilter
@@ -202,7 +202,7 @@ class LedgerViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = Ledger.objects.filter(is_active=True)
     serializer_class = LedgerSerializer
     permission_classes = [IsAuthenticated]
-    full_access_roles = [Role.SUPERADMIN, Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
+    full_access_roles = [Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR]
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_class = LedgerFilter

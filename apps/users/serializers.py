@@ -62,13 +62,8 @@ class UserSerializer(serializers.ModelSerializer):
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
 
-        if current_user.has_role(Role.ADMIN) and not current_user.has_role(Role.SUPERADMIN):
-            if Role.SUPERADMIN in input_roles:
-                raise serializers.ValidationError({
-                    "roles": "Siz Super Admin yarata olmaysiz."
-                })
-
-            if self.instance and self.instance.has_role(Role.SUPERADMIN):
+        if current_user.has_role(Role.ADMIN) and not current_user.is_superuser:
+            if self.instance and self.instance.is_superuser:
                 raise serializers.ValidationError({
                     "detail": "Super Admin ma'lumotlarini o'zgartirish huquqi sizda yo'q."
                 })

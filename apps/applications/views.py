@@ -10,17 +10,17 @@ from apps.applications.filters import ApplicationFilter
 from apps.applications.models import Region, District, Position, Application
 from apps.applications.serializers import (RegionSerializer, DistrictSerializer, PositionSerializer,
                                            ApplicationSerializer, ApplicationStatusUpdateSerializer)
-from apps.users.permissions import IsAdmin, IsManager, IsSuperAdmin
+from apps.users.permissions import IsAdmin, IsManager
 from apps.users.models import Role
 
 
 class RoleBasedAccessMixin:
-    admin_roles = [Role.SUPERADMIN, Role.ADMIN, Role.MANAGER]
+    admin_roles = [Role.ADMIN, Role.MANAGER]
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve']:
             return [AllowAny()]
-        return [(IsSuperAdmin | IsAdmin | IsManager)()]
+        return [(IsAdmin | IsManager)()]
 
 
 @extend_schema(tags=['Region'])
