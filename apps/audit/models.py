@@ -31,6 +31,7 @@ class AuditLog(BaseModel):
     class Meta:
         verbose_name = 'Tarix yozuvi '
         verbose_name_plural = 'Tarix yozuvlari'
+        ordering = ['-timestamp']
 
     def __str__(self):
-        return self.table_name
+        return f"{self.action} {self.table_name} at {self.timestamp}"
