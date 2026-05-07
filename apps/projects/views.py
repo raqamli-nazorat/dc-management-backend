@@ -173,6 +173,20 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         instance.save()
 
 
+@extend_schema(tags=['Task Creators'])
+class TaskCreatorViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = UserShortSerializer
+    permission_classes = [IsEmployee]
+
+    def get_queryset(self):
+        user = self.request.user
+
+        return User.objects.filter(
+            created_tasks__assignee=user,
+            created_tasks__is_deleted=False
+        ).distinct()
+
+
 @extend_schema(tags=['Tasks'])
 class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')

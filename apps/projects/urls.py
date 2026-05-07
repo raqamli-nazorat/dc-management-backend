@@ -1,7 +1,8 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from .views import (ProjectEmployeeViewSet, ProjectManagerViewSet, ProjectShortViewSet, ProjectViewSet, TaskViewSet,
+from .views import (ProjectEmployeeViewSet, ProjectManagerViewSet, ProjectShortViewSet, ProjectViewSet,
+                    TaskCreatorViewSet, TaskViewSet,
                     TaskAttachmentViewSet,
                     MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet)
 
@@ -13,6 +14,7 @@ router.register('project-employees', ProjectEmployeeViewSet, basename='project-e
 router.register('project-managers', ProjectManagerViewSet, basename='project-managers')
 
 router.register('tasks', TaskViewSet, basename='tasks')
+router.register('task-creators', TaskCreatorViewSet, basename='task-creators')
 router.register('task-attachments', TaskAttachmentViewSet, basename='task-attachments')
 router.register('task-rejection-files', TaskRejectionFileViewSet, basename='task-rejection-files')
 
