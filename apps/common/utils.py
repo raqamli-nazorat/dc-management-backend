@@ -11,7 +11,7 @@ def generate_unique_id(prefix, model):
             pass
 
     while True:
-        new_uid = f"{prefix}{next_id:06d}" 
+        new_uid = f"{prefix}{next_id:04d}" 
         if not model.objects.filter(uid=new_uid).exists():
             return new_uid
         next_id += 1
