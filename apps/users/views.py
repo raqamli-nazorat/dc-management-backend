@@ -16,7 +16,7 @@ from .filters import UserFilter
 from .models import Role
 from .permissions import IsAuditor, IsAdmin, IsManager, IsEmployee
 from .serializers import (UserSerializer, UserPeriodStatsSerializer, UserEfficiencySerializer, ProfileSerializer,
-                          SocialLinksSerializer,
+                          SocialLinksSerializer, UserShortSerializer,
                           ChangePasswordSerializer,
                           MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer,
                           ChangeActiveRoleSerializer)
@@ -52,6 +52,18 @@ class UserViewSet(SoftDeleteMixin, viewsets.ModelViewSet):
             })
 
         super().perform_destroy(instance)
+
+
+@extend_schema(tags=['Users'], summary="Hamma uchun foydalanuvchilar ro'yxati")
+class UserShortListView(generics.ListAPIView):
+    queryset = User.objects.filter(is_active=True).exclude(is_superuser=True)
+    serializer_class = UserShortSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = UserFilter
+    search_fields = ['username', 'phone_number']
+    ordering_fields = ['username', 'date_joined']
+    ordering = ['username']
 
 
 @extend_schema(tags=['Profile'])

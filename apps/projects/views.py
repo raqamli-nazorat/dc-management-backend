@@ -8,8 +8,7 @@ from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 
-from apps.users.models import Role, User
-from apps.users.serializers import UserShortSerializer
+from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMixin
@@ -22,46 +21,6 @@ from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSeriali
                           TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
                           TaskRejectionFileSerializer)
-
-
-@extend_schema(tags=['Project Employees'])
-class ProjectEmployeeViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = UserShortSerializer
-    permission_classes = [IsManager]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        my_projects = Project.objects.filter(
-            manager=user,
-            is_hidden=False,
-            is_deleted=False,
-            is_active=True,
-        ).prefetch_related('employees', 'testers')
-
-        return User.objects.filter(
-            Q(employee_projects__in=my_projects) |
-            Q(tester_projects__in=my_projects)
-        ).distinct()
-
-
-@extend_schema(tags=['Project Managers'])
-class ProjectManagerViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = UserShortSerializer
-    permission_classes = [IsEmployee]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        involved_projects = Project.objects.filter(
-            Q(employees=user) | Q(testers=user),
-            is_deleted=False,
-            is_hidden=False
-        )
-
-        return User.objects.filter(
-            manager_projects__in=involved_projects
-        ).distinct()
 
 
 @extend_schema(tags=['Project Shorts'])
@@ -171,20 +130,6 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         instance.is_active = False
         instance.is_deleted = True
         instance.save()
-
-
-@extend_schema(tags=['Task Creators'])
-class TaskCreatorViewSet(viewsets.ReadOnlyModelViewSet):
-    serializer_class = UserShortSerializer
-    permission_classes = [IsEmployee]
-
-    def get_queryset(self):
-        user = self.request.user
-
-        return User.objects.filter(
-            created_tasks__assignee=user,
-            created_tasks__is_deleted=False
-        ).distinct()
 
 
 @extend_schema(tags=['Tasks'])
@@ -391,6 +336,10 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
         is_tester = user in task.project.testers.all()
         is_manager = task.project.manager == user
         is_admin = user.is_superuser or user.has_role(Role.ADMIN)
+
+        if is_tester and not is_admin:
+            if task.position_id and user.position_id != task.position_id:
+                raise PermissionDenied("Siz faqat o'z lavozimingizga mos vazifalarga rasm yuklay olasiz.")
 
         if not (is_admin or is_tester or is_manager):
             raise PermissionDenied("Sizda bu vazifaga rasm yuklash huquqi yo'q.")
