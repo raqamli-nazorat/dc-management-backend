@@ -28,12 +28,12 @@
     &quot;assignee&quot;: &quot;AlijonovUz&quot;
   }
 }</component>
-  <component name="GithubPullRequestsUISettings">{
-  &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/AlijonovUz/dc-management-backend.git&quot;,
-    &quot;accountId&quot;: &quot;9392382a-5a3a-4fc2-b563-02a597821c0d&quot;
+  <component name="GithubPullRequestsUISettings"><![CDATA[{
+  "selectedUrlAndAccountId": {
+    "url": "https://github.com/raqamli-nazorat/dc-management-backend.git",
+    "accountId": "9392382a-5a3a-4fc2-b563-02a597821c0d"
   }
-}</component>
+}]]></component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 8,
   &quot;fromUser&quot;: false
@@ -225,6 +225,7 @@
       <workItem from="1778152963512" duration="172000" />
       <workItem from="1778157984679" duration="42000" />
       <workItem from="1778158452387" duration="1039000" />
+      <workItem from="1778164101642" duration="1106000" />
     </task>
     <servers />
   </component>
