@@ -369,8 +369,10 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
         task = serializer.validated_data.get('task')
         user = self.request.user
 
-        if task.status != TaskStatus.REJECTED:
-            raise ValidationError("Faqat rad etilgan vazifalarga rasm yuklash mumkin.")
+        allowed_statuses = [TaskStatus.PRODUCTION, TaskStatus.IN_PROGRESS]
+
+        if task.status not in allowed_statuses:
+            raise ValidationError("Vazifa bu holatda bo'lganda fayl yuklab bo'lmaydi.")
 
         is_tester = user in task.project.testers.all()
         is_manager = task.project.manager == user
