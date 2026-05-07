@@ -3,13 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/serializers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/urls.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/urls.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/views.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/models.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -228,7 +221,7 @@
       <workItem from="1778091080466" duration="1449000" />
       <workItem from="1778124608963" duration="332000" />
       <workItem from="1778135511897" duration="1398000" />
-      <workItem from="1778147871574" duration="3721000" />
+      <workItem from="1778147871574" duration="4377000" />
     </task>
     <servers />
   </component>
