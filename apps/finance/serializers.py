@@ -6,7 +6,7 @@ from apps.projects.models import Project, ProjectStatus
 from apps.projects.serializers import ProjectShortSerializer
 from apps.users.models import Role
 from apps.users.serializers import UserShortSerializer, ProfileSerializer
-from .models import ExpenseRequest, Ledger, Payroll, ExpenseCategory
+from .models import ExpenseRequest, Ledger, Payroll, ExpenseCategory, ExpenseReceipt
 
 User = get_user_model()
 
@@ -115,6 +115,13 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
             attrs['expense_category'] = instance.expense_category
 
         return attrs
+
+
+class ExpenseReceiptSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExpenseReceipt
+        fields = ('id', 'expense', 'file', 'created_at')
+        read_only_fields = ('id', 'created_at')
 
 
 class PayrollSerializer(serializers.ModelSerializer):

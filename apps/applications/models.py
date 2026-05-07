@@ -3,8 +3,9 @@ from django.core.exceptions import ValidationError
 from django.conf import settings
 
 from apps.common.models import BaseModel
+from apps.common.validators import validate_file_size, validate_only_pdf
 from .validators import (phone_validator, telegram_validator,
-                         portfolio_validator, validate_resume)
+                         portfolio_validator)
 
 User = settings.AUTH_USER_MODEL
 
@@ -72,7 +73,7 @@ class Application(BaseModel):
     position = models.ForeignKey(Position, on_delete=models.PROTECT,
                                  related_name='applications', verbose_name="Lavozim")
 
-    resume = models.FileField(upload_to='applications/resumes/', validators=[validate_resume],
+    resume = models.FileField(upload_to='applications/resumes/', validators=[validate_only_pdf, validate_file_size],
                               verbose_name="Rezyume (CV)")
 
     extra_info = models.TextField(null=True, blank=True, verbose_name="Qo'shimcha ma'lumot")

@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.core.exceptions import ValidationError
 
+from apps.common.validators import validate_file_size
 from apps.users.utils import user_avatar_path, passport_path
 from apps.applications.validators import phone_validator
 from apps.applications.models import Region, District, Position
@@ -32,8 +33,10 @@ class User(AbstractUser):
     card_number = models.CharField(max_length=16, blank=True, null=True, verbose_name="Karta raqami")
     passport_series = models.CharField(max_length=9, blank=True, null=True, verbose_name="Passport seriyasi va raqami")
 
-    passport_image = models.ImageField(upload_to=passport_path, null=True, blank=True, verbose_name="Passport rasmi")
-    avatar = models.ImageField(upload_to=user_avatar_path, null=True, blank=True, verbose_name="Xodim avatari")
+    passport_image = models.ImageField(upload_to=passport_path, validators=[validate_file_size], null=True, blank=True,
+                                       verbose_name="Passport rasmi")
+    avatar = models.ImageField(upload_to=user_avatar_path, validators=[validate_file_size], null=True, blank=True,
+                               verbose_name="Xodim avatari")
 
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True,
                                  verbose_name='Lavozimi')

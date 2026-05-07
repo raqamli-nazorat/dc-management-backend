@@ -15,13 +15,3 @@ portfolio_validator = RegexValidator(
     regex=r'^https://.+$',
     message="Portfolio havolasi https:// bilan boshlanishi kerak."
 )
-
-
-def validate_resume(file):
-    if not file.name.endswith('.pdf'):
-        raise ValidationError("Faqat PDF formatidagi fayl yuklanishi mumkin.")
-    try:
-        if file.size > 10 * 1024 * 1024:
-            raise ValidationError("Fayl hajmi 10 MB dan oshmasligi kerak.")
-    except (FileNotFoundError, OSError):
-        pass
