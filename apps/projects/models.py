@@ -343,7 +343,7 @@ class Task(BaseModel):
 
         if not self.pk and self.project_id:
             p_status = self.project.status
-            if p_status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+            if p_status in [ProjectStatus.PLANNING, ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
                 raise ValidationError({
                     'project': f"Loyiha '{self.project.get_status_display()}' holatida. Yangi vazifa qo'shish taqiqlanadi!"
                 })
