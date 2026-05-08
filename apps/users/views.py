@@ -1,4 +1,3 @@
-from django.db.models import Q
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -13,7 +12,6 @@ from apps.common.throttles import CustomScopedRateThrottle
 from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
-from .models import Role
 from .permissions import IsAuditor, IsAdmin, IsManager, IsEmployee
 from .serializers import (UserSerializer, UserPeriodStatsSerializer, UserEfficiencySerializer, ProfileSerializer,
                           SocialLinksSerializer, UserShortSerializer,
@@ -168,7 +166,7 @@ class ProfileView(generics.RetrieveAPIView):
 )
 class UserPeriodStatsView(generics.RetrieveAPIView):
     serializer_class = UserPeriodStatsSerializer
-    permission_classes = [IsEmployee | IsManager]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_object(self):
         return self.request.user
