@@ -143,8 +143,11 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
 
         if is_privileged:
-            from apps.projects.models import Task, Project, MeetingAttendance
+            from apps.projects.models import Task
             filtered_tasks = Task.objects.filter(task_filter, is_active=True, is_deleted=False)
+        elif user.has_role(Role.MANAGER):
+            from apps.projects.models import Task
+            filtered_tasks = Task.objects.filter(task_filter, project__manager=obj, is_active=True, is_deleted=False)
         else:
             filtered_tasks = obj.tasks.filter(task_filter)
 
@@ -187,9 +190,16 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             ]
             project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
             filtered_projects = Project.objects.filter(project_filter, is_active=True, is_deleted=False)
+        elif user.has_role(Role.MANAGER):
+            active_project_statuses = [
+                ProjectStatus.PLANNING,
+                ProjectStatus.ACTIVE,
+                ProjectStatus.OVERDUE
+            ]
+            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+            filtered_projects = obj.manager_projects.filter(project_filter, is_active=True, is_deleted=False)
         else:
             all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
-
             active_project_statuses = [
                 ProjectStatus.PLANNING,
                 ProjectStatus.ACTIVE,
@@ -225,6 +235,13 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         if is_privileged:
             from apps.projects.models import MeetingAttendance
             filtered_meetings = MeetingAttendance.objects.filter(created_at__gte=start_date, is_active=True)
+        elif user.has_role(Role.MANAGER):
+            from apps.projects.models import MeetingAttendance
+            filtered_meetings = MeetingAttendance.objects.filter(
+                created_at__gte=start_date, 
+                meeting__project__manager=obj, 
+                is_active=True
+            )
         else:
             filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
 
