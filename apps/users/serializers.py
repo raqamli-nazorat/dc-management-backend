@@ -226,7 +226,6 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "with_reason": m_with_reason,
             "unexcused": m_missed - m_with_reason,
             "total_duration_minutes": m_duration,
-            "total_duration_hours": round(m_duration / 60, 1),
             "attendance_rate": round((m_attended / m_total * 100), 1) if m_total > 0 else 100.0
         }
 
