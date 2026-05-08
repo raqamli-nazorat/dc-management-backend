@@ -210,7 +210,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             missed=Count('id', filter=Q(is_attended=False)),
             with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(
                 absence_reason__isnull=False)),
-            total_duration=Sum('duration_minutes')
+            total_duration=Sum('meeting__duration_minutes', filter=Q(is_attended=True))
         )
 
         m_total = m_stats['total'] or 0
