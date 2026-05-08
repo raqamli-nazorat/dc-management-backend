@@ -1,0 +1,46 @@
+name: Deploy Raqamli Nazorat
+
+on:
+  push:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd /home/dc-management/dc-management-backend
+            
+            echo "1. Kodni yangilash (Production)"
+            git fetch origin production
+            git reset --hard origin/production
+            
+            echo "2. Kutubxonalarni yangilash"
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
+            
+            echo "3. Migratsiya va Statika"
+            python manage.py migrate --noinput
+            python manage.py collectstatic --noinput
+            
+            echo "4. Servislarni qayta yoqish"
+            sudo systemctl restart invoker_web
+            sudo systemctl restart invoker_worker
+            sudo systemctl restart invoker_beat
+            
+            sudo systemctl reload nginx
+            
+            echo "Muvaffaqiyatli yakunlandi!"
