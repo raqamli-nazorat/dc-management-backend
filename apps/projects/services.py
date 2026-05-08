@@ -183,26 +183,27 @@ class TaskService:
 
 class MeetingService:
     @staticmethod
-    def _send_meeting_notifications(meeting, members, organizer_id):
+    def _send_meeting_notifications(meeting, members, organizer_id, title="Yangi yig'ilish belgilandi", msg_template=None):
         notifications_to_bulk = []
         broadcast_data = []
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
 
+        if msg_template is None:
+            msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
+
         for member in members:
             if member.id != organizer_id:
-                msg = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
-
                 notifications_to_bulk.append(Notification(
                     user=member,
-                    title="Yangi yig'ilish belgilandi",
-                    message=msg,
+                    title=title,
+                    message=msg_template,
                     type=NotificationType.MEETING
                 ))
 
                 broadcast_data.append({
                     "user_id": member.id,
-                    "title": "Yangi yig'ilish belgilandi",
-                    "message": msg,
+                    "title": title,
+                    "message": msg_template,
                     "type": "meeting",
                     "extra_data": {
                         "meeting_id": meeting.id,
@@ -223,10 +224,21 @@ class MeetingService:
         if participants is None:
             return
 
-        current_attendee_ids = set(MeetingAttendance.objects.filter(meeting=meeting).values_list('user_id', flat=True))
+        current_attendees = MeetingAttendance.objects.filter(meeting=meeting).select_related('user')
+        current_attendee_ids = {a.user_id for a in current_attendees}
         new_participant_ids = {p.id for p in participants}
 
-        MeetingAttendance.objects.filter(meeting=meeting).exclude(user_id__in=new_participant_ids).delete()
+        to_remove_attendees = [a for a in current_attendees if a.user_id not in new_participant_ids]
+        if to_remove_attendees:
+            removed_users = [a.user for a in to_remove_attendees]
+            MeetingAttendance.objects.filter(id__in=[a.id for a in to_remove_attendees]).delete()
+            cls._send_meeting_notifications(
+                meeting, 
+                removed_users, 
+                organizer_id, 
+                title="Yig'ilishdan chiqarildingiz",
+                msg_template=f"Siz '{meeting.title}' yig'ilishi qatnashchilari ro'yxatidan chiqarildingiz."
+            )
 
         to_add_ids = new_participant_ids - current_attendee_ids
         to_add = [p for p in participants if p.id in to_add_ids]
