@@ -16,7 +16,7 @@ class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = (
-            'id', 'uid', 'prefix', 'title', 'description', 'status', 'created_at'
+            'id', 'uid', 'prefix', 'title', 'description', 'status', 'deadline', 'created_at'
         )
 
 
