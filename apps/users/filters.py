@@ -1,8 +1,11 @@
 from django_filters import rest_framework as filters
+
+from apps.projects.filters import CharInFilter
 from .models import User
 
+
 class UserFilter(filters.FilterSet):
-    roles = filters.CharFilter(method='filter_by_roles', label="Rollar")
+    roles = CharInFilter(method='filter_by_roles', label="Rollar")
 
     class Meta:
         model = User
@@ -16,4 +19,5 @@ class UserFilter(filters.FilterSet):
     def filter_by_roles(self, queryset, name, value):
         if not value:
             return queryset
-        return queryset.filter(roles__contains=[value])
+
+        return queryset.filter(roles__overlap=value)
