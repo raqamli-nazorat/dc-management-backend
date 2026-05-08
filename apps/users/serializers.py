@@ -129,7 +129,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         request = self.context.get('request')
         user = request.user
 
-        is_privileged = user.is_superuser or user.has_any_role(Role.ADMIN, Role.AUDITOR)
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN, Role.AUDITOR)
 
         now = timezone.now()
         start_date = now - timedelta(days=days)
