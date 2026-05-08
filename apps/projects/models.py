@@ -381,7 +381,7 @@ class Task(BaseModel):
         self.full_clean()
 
         if not self.uid:
-            self.uid = generate_unique_id(f"{self.project.prefix}-V", Task)
+            self.uid = generate_unique_id(f"{self.project.prefix}-V-", Task)
 
         if not self.position and self.assignee:
             self.position = self.assignee.position
@@ -483,7 +483,7 @@ class Meeting(BaseModel):
         self.full_clean()
 
         if not self.uid:
-            prefix = f"{self.project.prefix}-M" if self.project else "MT"
+            prefix = f"{self.project.prefix}-M-" if self.project else "MT"
             self.uid = generate_unique_id(prefix, Meeting)
 
         super().save(*args, **kwargs)
