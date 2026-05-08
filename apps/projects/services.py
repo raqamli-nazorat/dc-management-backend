@@ -27,7 +27,7 @@ class TaskService:
                 task.assignee,
                 task,
                 "Yangi vazifa biriktirildi",
-                f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Muddati: {deadline_str}"
+                f"Sizga {task.title} nomli yangi vazifa topshirildi. Muddati: {deadline_str}"
             )
 
         manager = task.project.manager
@@ -36,7 +36,7 @@ class TaskService:
                 manager,
                 task,
                 "Yangi vazifa yaratildi",
-                f"Loyihangizda yangi vazifa yaratildi: '{task.title}'. Yaratuvchi: {user.get_full_name() or user.username}"
+                f"Loyihangizda yangi vazifa yaratildi: {task.title}. Yaratuvchi: {user.get_full_name() or user.username}"
             )
 
         return task
@@ -56,7 +56,7 @@ class TaskService:
         is_tester = task.project.testers.filter(id=user.id).exists()
         if is_tester:
             if task.assignee_id == user.id and new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
-                raise PermissionDenied("O'zingiz topshiruvchi bo'lgan vazifani o'zingiz tekshira olmaysiz!")
+                raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
 
             if new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
                 return cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
@@ -67,19 +67,19 @@ class TaskService:
         if task.assignee is None and task.project.employees.filter(id=user.id).exists():
             return cls._handle_claim_logic(task, user, new_status, now)
 
-        raise PermissionDenied("Sizda statusni o'zgartirish huquqi yo'q.")
+        raise PermissionDenied("Sizda ushbu vazifani statusini o'zgartirish huquqi yo'q.")
 
     @classmethod
     def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
         if new_status == TaskStatus.REJECTED:
-            return cls._apply_rejection(task, rejection_reason, now, "Vazifangiz rad etildi")
+            return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
 
         if cls.STATUS_ORDER.get(new_status, 0) < cls.STATUS_ORDER.get(task.status, 0):
             raise PermissionDenied("Statusni orqaga qaytara olmaysiz.")
 
         cls._update_task_time_and_status(task, new_status, now)
         if new_status == TaskStatus.CHECKED:
-            cls.send_task_notification(task.assignee, task, "Vazifangiz tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
+            cls.send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
         return task
 
     @classmethod
@@ -90,15 +90,15 @@ class TaskService:
             )
 
         if task.status != TaskStatus.PRODUCTION:
-            raise PermissionDenied("Faqat 'Production'dagi vazifalarni tekshirish mumkin.")
+            raise PermissionDenied("Faqat ishga tushurilgan vazifalarni tekshirish mumkin.")
 
         if new_status == TaskStatus.REJECTED:
-            return cls._apply_rejection(task, rejection_reason, now, "Sizning vazifangiz rad etildi")
+            return cls._apply_rejection(task, rejection_reason, now, "Topshirilgan vazifa rad etildi")
 
         if new_status == TaskStatus.CHECKED:
             task.status = TaskStatus.CHECKED
             task.save()
-            cls.send_task_notification(task.assignee, task, "Vazifangiz tasdiqlandi", "Sizning vazifangiz tasdiqlandi.")
+            cls.send_task_notification(task.assignee, task, "Topshirilgan vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
             return task
 
     @classmethod
@@ -121,10 +121,10 @@ class TaskService:
             raise PermissionDenied("Vazifani faqat xodimlar o'zlashtirishi mumkin.")
 
         if new_status != TaskStatus.IN_PROGRESS:
-            raise PermissionDenied("Vazifani olish uchun uni 'Jarayonda' holatiga o'tkazing.")
+            raise PermissionDenied("Vazifani olish uchun uni jarayonga o'tkazing.")
 
         if task.position_id and user.position_id != task.position_id:
-            raise PermissionDenied(f"Bu vazifa faqat '{task.position.name}' lavozimi uchun.")
+            raise PermissionDenied(f"Bu vazifa faqat {task.position.name} lavozimi uchun.")
 
         task.assignee = user
         task.status = TaskStatus.IN_PROGRESS
@@ -190,18 +190,18 @@ class MeetingService:
 
         for member in members:
             if member.id != organizer_id:
-                msg = f"'{meeting.title}' mavzusida yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
+                msg = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
 
                 notifications_to_bulk.append(Notification(
                     user=member,
-                    title="Yangi uchrashuv belgilandi",
+                    title="Yangi yig'ilish belgilandi",
                     message=msg,
                     type=NotificationType.MEETING
                 ))
 
                 broadcast_data.append({
                     "user_id": member.id,
-                    "title": "Yangi uchrashuv belgilandi",
+                    "title": "Yangi yig'ilish belgilandi",
                     "message": msg,
                     "type": "meeting",
                     "extra_data": {
@@ -259,7 +259,7 @@ class MeetingService:
     @transaction.atomic
     def close_meeting(cls, meeting):
         if meeting.is_completed:
-            raise ValidationError({"detail": "Bu uchrashuv allaqachon tugagan."})
+            raise ValidationError({"detail": "Bu yig'ilish allaqachon tugagan."})
 
         meeting.is_completed = True
         meeting.save()
@@ -270,7 +270,7 @@ class MeetingService:
         broadcast_data = []
 
         for attendance in absent_attendances:
-            msg = f"Siz '{meeting.title}' mavzusidagi uchrashuvda qatnashmadingiz. Sababini ko'rsatishingiz so'raladi."
+            msg = f"Siz {meeting.title} yig'ilishda qatnashmadingiz. Sababini ko'rsatishingiz so'raladi."
 
             notifications_to_bulk.append(Notification(
                 user_id=attendance.user.id,
