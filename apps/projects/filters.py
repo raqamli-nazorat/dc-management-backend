@@ -16,6 +16,7 @@ class CharInFilter(filters.BaseInFilter, filters.CharFilter):
 class TaskFilter(filters.FilterSet):
     project = NumberInFilter(field_name='project_id', lookup_expr='in', label="Loyihalar")
     created_by = NumberInFilter(field_name='created_by_id', method='filter_created_by', label="Yaratuvchilar")
+    assignee = NumberInFilter(field_name='assignee_id', lookup_expr='in', label="Topshiruvchilar")
     status = CharInFilter(field_name='status', lookup_expr='in', label="Holatlar")
     priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajalar")
     type = CharInFilter(field_name='type', lookup_expr='in', label="Turlar")
