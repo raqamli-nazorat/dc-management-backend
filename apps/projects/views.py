@@ -337,7 +337,7 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
         is_manager = task.project.manager == user
         is_admin = user.is_superuser or user.has_role(Role.ADMIN)
 
-        if is_tester and not is_admin:
+        if is_tester and not (is_admin or is_manager):
             if task.position_id and user.position_id != task.position_id:
                 raise PermissionDenied("Siz faqat o'z lavozimingizga mos vazifalarga rasm yuklay olasiz.")
 
