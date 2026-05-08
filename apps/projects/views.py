@@ -380,8 +380,6 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
         return queryset.none()
 
     def get_permissions(self):
-        if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [(IsAdmin | IsManager)()]
         return [permissions.IsAuthenticated()]
 
     @transaction.atomic
@@ -391,21 +389,47 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
 
     @transaction.atomic
     def perform_update(self, serializer):
+        user = self.request.user
+        meeting = self.get_object()
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                        meeting.project.manager == user
+
+        if not is_privileged and meeting.organizer != user:
+            raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni tahrirlay olasiz.")
+
         participants = serializer.validated_data.pop('participants', None)
         meeting = serializer.save()
 
-        user = self.request.user
-
         MeetingService.handle_participants(meeting, participants, user.id)
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                        instance.project.manager == user
+
+        if not is_privileged and instance.organizer != user:
+            raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni o'chira olasiz.")
+
+        instance.is_active = False
+        instance.is_deleted = True
+        instance.save()
 
     @extend_schema(request=None)
     @action(detail=True, methods=['post'], url_path='close')
     def close_meeting(self, request, pk=None):
         meeting = self.get_object()
+        user = self.request.user
+
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                        meeting.organizer == user or \
+                        meeting.project.manager == user
+
+        if not is_privileged:
+            raise PermissionDenied("Faqat tashkilotchi yoki menejer yig'ilishni yopa oladi.")
 
         MeetingService.close_meeting(meeting)
 
-        return Response({"message": "Uchrashuv yopildi va bildirishnomalar yuborildi."})
+        return Response({"message": "Yig'ilish yopildi va bildirishnomalar yuborildi."})
 
 
 @extend_schema(tags=['Meeting Attendance'])

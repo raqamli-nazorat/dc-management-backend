@@ -126,6 +126,11 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         return self._get_stats(instance, days)
 
     def _get_stats(self, obj, days):
+        request = self.context.get('request')
+        user = request.user
+
+        is_privileged = user.is_superuser or user.has_any_role(Role.ADMIN, Role.AUDITOR)
+
         now = timezone.now()
         start_date = now - timedelta(days=days)
 
@@ -136,7 +141,12 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         ]
 
         task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
-        filtered_tasks = obj.tasks.filter(task_filter)
+
+        if is_privileged:
+            from apps.projects.models import Task, Project, MeetingAttendance
+            filtered_tasks = Task.objects.filter(task_filter, is_active=True, is_deleted=False)
+        else:
+            filtered_tasks = obj.tasks.filter(task_filter)
 
         t_stats = filtered_tasks.aggregate(
             total=Count('id'),
@@ -168,15 +178,25 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "completion_rate": t_rate
         }
 
-        all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
+        if is_privileged:
+            from apps.projects.models import Project
+            active_project_statuses = [
+                ProjectStatus.PLANNING,
+                ProjectStatus.ACTIVE,
+                ProjectStatus.OVERDUE
+            ]
+            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+            filtered_projects = Project.objects.filter(project_filter, is_active=True, is_deleted=False)
+        else:
+            all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
 
-        active_project_statuses = [
-            ProjectStatus.PLANNING,
-            ProjectStatus.ACTIVE,
-            ProjectStatus.OVERDUE
-        ]
-        project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-        filtered_projects = all_projects.filter(project_filter)
+            active_project_statuses = [
+                ProjectStatus.PLANNING,
+                ProjectStatus.ACTIVE,
+                ProjectStatus.OVERDUE
+            ]
+            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+            filtered_projects = all_projects.filter(project_filter)
 
         p_stats = filtered_projects.aggregate(
             total=Count('id'),
@@ -202,7 +222,11 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "completion_rate": p_rate
         }
 
-        filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
+        if is_privileged:
+            from apps.projects.models import MeetingAttendance
+            filtered_meetings = MeetingAttendance.objects.filter(created_at__gte=start_date, is_active=True)
+        else:
+            filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
 
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
