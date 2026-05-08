@@ -141,7 +141,6 @@ def _calc_employee_kpi(user, start, end):
 
         current_task_penalty = Decimal("0.00")
         
-        # Agar vazifa narxi 0 bo'lsa, jarima asosiy oylikdan hisoblanadi
         penalty_base = gross if gross > 0 else user.fixed_salary
 
         if penalty_base > 0:
@@ -162,7 +161,6 @@ def _calc_employee_kpi(user, start, end):
         act = task.actual_minutes or 0
         velocity = Decimal(str(min(est / act, 1.0))) if est > 0 and act > 0 else Decimal("1.0")
 
-        # Bonus to'liq hisoblanadi, jarimalar esa total_penalty ustunida ayiriladi
         weighted_bonus = _round(gross * velocity)
         kpi_bonus += weighted_bonus
 
