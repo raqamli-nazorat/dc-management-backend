@@ -347,7 +347,7 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meetings'])
-class MeetingViewSet(TrashMixin, SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+class MeetingViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Meeting.objects.filter(is_active=True)
     serializer_class = MeetingSerializer
 
@@ -452,7 +452,7 @@ class MeetingViewSet(TrashMixin, SoftDeleteMixin, RoleBasedQuerySetMixin, viewse
 
 
 @extend_schema(tags=['Meeting Attendance'])
-class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = MeetingAttendance.objects.filter(is_active=True).select_related('meeting__organizer', 'user')
     serializer_class = MeetingAttendanceSerializer
     filter_backends = [DjangoFilterBackend]
