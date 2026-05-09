@@ -55,7 +55,7 @@ def _calc_meeting_penalty(user, start, end) -> Decimal:
             user=user,
             is_attended=False,
             payroll_processed=False,
-            absence_reason__isnull=True,
+            is_excused=False,
             is_active=True,
             meeting__is_active=True,
         )
