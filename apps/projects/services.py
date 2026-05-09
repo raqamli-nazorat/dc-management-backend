@@ -325,7 +325,6 @@ class MeetingService:
 
     @classmethod
     def notify_time_change(cls, meeting):
-        from apps.notifications.models import Notification, NotificationType
         participants = meeting.participants.all()
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
         
