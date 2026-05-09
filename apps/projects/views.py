@@ -348,7 +348,7 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meetings'])
-class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+class MeetingViewSet(TrashMixin, SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     queryset = Meeting.objects.filter(is_active=True)
     serializer_class = MeetingSerializer
 
@@ -356,8 +356,15 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
     filterset_class = MeetingFilter
     search_fields = ['title', 'description']
     ordering_fields = ['start_time', 'created_at']
+    trash_user_field = 'organizer'
 
     full_access_roles = [Role.ADMIN, Role.AUDITOR]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if getattr(self, 'action', None) in ['trash', 'restore', 'hard_delete']:
+            return queryset.filter(is_deleted=True)
+        return queryset.filter(is_deleted=False, is_active=True)
 
     def get_role_based_queryset(self, queryset, user):
         active_project_filter = Q(
@@ -413,6 +420,9 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
             MeetingService.notify_time_change(meeting)
 
     def perform_destroy(self, instance):
+        if instance.is_completed:
+            raise PermissionDenied("Tugallangan yig'ilishni o'chirib bo'lmaydi.")
+
         user = self.request.user
         is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
                         instance.project.manager == user
@@ -439,7 +449,7 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
 
         MeetingService.close_meeting(meeting)
 
-        return Response({"message": "Yig'ilish yopildi va bildirishnomalar yuborildi."})
+        return Response({"message": "Yig'ilish muvaffaqiyatli yopildi."})
 
 
 @extend_schema(tags=['Meeting Attendance'])
@@ -489,7 +499,6 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
             if attendance.is_attended:
                 raise PermissionDenied("Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi.")
 
-            # Yig'ilish yopilganidan keyin 24 soat ichida sabab yozish kerak
             if attendance.meeting.is_completed and attendance.meeting.completed_at:
                 from django.utils import timezone
                 from datetime import timedelta

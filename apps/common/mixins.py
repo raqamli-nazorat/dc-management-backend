@@ -35,10 +35,13 @@ class RoleBasedQuerySetMixin:
 
 
 class TrashMixin:
+    trash_user_field = 'created_by'
+
     @extend_schema(request=None)
     @action(detail=False, methods=['get'])
     def trash(self, request):
-        queryset = self.filter_queryset(self.get_queryset()).filter(created_by=request.user)
+        filter_kwargs = {self.trash_user_field: request.user}
+        queryset = self.filter_queryset(self.get_queryset()).filter(**filter_kwargs)
         page = self.paginate_queryset(queryset)
 
         if page is not None:
@@ -51,7 +54,8 @@ class TrashMixin:
     @extend_schema(request=None)
     @action(detail=True, methods=['post'])
     def restore(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+        filter_kwargs = {'pk': pk, self.trash_user_field: request.user}
+        instance = self.get_queryset().filter(**filter_kwargs).first()
 
         if not instance:
             return Response({"detail": "Ma'lumot topilmadi."}, status=status.HTTP_404_NOT_FOUND)
@@ -69,7 +73,8 @@ class TrashMixin:
 
     @action(detail=True, methods=['delete'])
     def hard_delete(self, request, pk=None):
-        instance = self.get_queryset().filter(pk=pk, created_by=request.user).first()
+        filter_kwargs = {'pk': pk, self.trash_user_field: request.user}
+        instance = self.get_queryset().filter(**filter_kwargs).first()
 
         if not instance:
             return Response({"detail": "Ma'lumot topilmadi."}, status=status.HTTP_404_NOT_FOUND)
