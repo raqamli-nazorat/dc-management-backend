@@ -10,7 +10,7 @@ from apps.applications.filters import ApplicationFilter
 from apps.applications.models import Region, District, Position, Application
 from apps.applications.serializers import (RegionSerializer, DistrictSerializer, PositionSerializer,
                                            ApplicationSerializer, ApplicationStatusUpdateSerializer)
-from apps.users.permissions import IsAdmin, IsManager
+from apps.users.permissions import IsAdmin, IsManager, IsAuditor
 from apps.users.models import Role
 
 
@@ -60,7 +60,7 @@ class ApplicationView(ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == 'POST':
             return [AllowAny()]
-        return [(IsAdmin | IsManager)()]
+        return [(IsAdmin | IsManager | IsAuditor)()]
 
     def get_queryset(self):
         return Application.objects.filter(is_active=True).select_related(
@@ -73,8 +73,12 @@ class ApplicationDetailView(RetrieveUpdateAPIView):
     queryset = Application.objects.filter(is_active=True).select_related(
         'region', 'position', 'reviewed_by'
     )
-    permission_classes = (IsAdmin | IsManager,)
     http_method_names = ('get', 'patch',)
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [(IsAdmin | IsManager | IsAuditor)()]
+        return [(IsAdmin | IsManager)()]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':

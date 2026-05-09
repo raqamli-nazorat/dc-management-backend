@@ -10,6 +10,7 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer, TokenOb
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.applications.models import Region, District, Position
+from apps.notifications.models import Notification, NotificationType
 from apps.applications.serializers import RegionSerializer, DistrictSerializer, PositionSerializer
 from apps.projects.models import TaskStatus, ProjectStatus
 from apps.users.models import Role
@@ -99,7 +100,6 @@ class UserSerializer(serializers.ModelSerializer):
 
         if password:
             instance.set_password(password)
-            instance.change_password = True
 
         try:
             instance.full_clean()
@@ -436,7 +436,7 @@ class ProfileSerializer(serializers.ModelSerializer):
         fields = ('id', 'avatar', 'username', 'phone_number', 'card_number',
                   'passport_series', 'passport_image', 'region', 'district',
                   'position', 'roles', 'active_role', 'fixed_salary', 'balance', 'social_links',
-                  'date_joined', 'change_password')
+                  'date_joined')
 
 
 class SocialLinksSerializer(serializers.ModelSerializer):
@@ -552,9 +552,16 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
             "position": user.position.name if user.position else None,
             "roles": user.roles,
             "active_role": user.active_role,
-            "date_joined": user.date_joined,
-            "change_password": user.change_password,
+            "date_joined": user.date_joined
         }
+
+        if user.change_password:
+            Notification.objects.get_or_create(
+                user=user,
+                title="Parolingizni yangilang",
+                message="Xavfsizlik nuqtai nazaridan parolingizni yangilashingizni so'raymiz.",
+                type=NotificationType.SYSTEM
+            )
 
         return data
 
@@ -578,8 +585,7 @@ class MyTokenRefreshSerializer(TokenRefreshSerializer):
                 "position": user.position.name if user.position else None,
                 "roles": user.roles,
                 "active_role": user.active_role,
-                "date_joined": user.date_joined,
-                "change_password": user.change_password,
+                "date_joined": user.date_joined
             }
         except User.DoesNotExist:
             pass
