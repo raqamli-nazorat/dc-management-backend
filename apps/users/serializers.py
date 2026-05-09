@@ -251,7 +251,9 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             missed=Count('id', filter=Q(is_attended=False)),
             with_reason=Count('id', filter=Q(is_attended=False) & ~Q(absence_reason__exact='') & Q(
                 absence_reason__isnull=False)),
-            total_duration=Sum('meeting__duration_minutes', filter=Q(is_attended=True))
+            total_duration=Sum('meeting__duration_minutes', filter=Q(is_attended=True)),
+            unique_participants=Count('user', distinct=True),
+            unique_meetings=Count('meeting', distinct=True)
         )
 
         m_total = m_stats['total'] or 0
@@ -267,6 +269,8 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "with_reason": m_with_reason,
             "unexcused": m_missed - m_with_reason,
             "total_duration_minutes": m_duration,
+            "unique_participants": m_stats['unique_participants'] or 0,
+            "unique_meetings": m_stats['unique_meetings'] or 0,
             "attendance_rate": round((m_attended / m_total * 100), 1) if m_total > 0 else 100.0
         }
 
