@@ -71,8 +71,8 @@ class Project(BaseModel):
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
 
-    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
-    is_hidden = models.BooleanField(default=False, verbose_name="Yashirilganmi?")
+    is_deleted = models.BooleanField(default=False, db_index=True, verbose_name="O'chirilganmi?")
+    is_hidden = models.BooleanField(default=False, db_index=True, verbose_name="Yashirilganmi?")
 
     created_by = models.ForeignKey(
         User,
@@ -309,7 +309,7 @@ class Task(BaseModel):
     position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True, related_name='tasks',
                                  verbose_name='Lavozim')
 
-    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
+    is_deleted = models.BooleanField(default=False, db_index=True, verbose_name="O'chirilganmi?")
 
     estimated_minutes = models.PositiveIntegerField(default=0, verbose_name='Taxminiy vaqt (daqiqa)')
     actual_minutes = models.PositiveIntegerField(default=0, verbose_name="Haqiqiy ish vaqti (daqiqa)")
@@ -451,9 +451,9 @@ class Meeting(BaseModel):
 
     start_time = models.DateTimeField(verbose_name='Boshlanish vaqti')
     duration_minutes = models.PositiveIntegerField(verbose_name='Davomiyligi')
-    is_completed = models.BooleanField(default=False, verbose_name='Tugatildimi?')
+    is_completed = models.BooleanField(default=False, db_index=True, verbose_name='Tugatildimi?')
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tugallangan vaqt')
-    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
+    is_deleted = models.BooleanField(default=False, db_index=True, verbose_name="O'chirilganmi?")
 
     participants = models.ManyToManyField(User, through='MeetingAttendance', related_name='meeting_participants',
                                           verbose_name='Qatnashuvchilar')
@@ -517,12 +517,13 @@ class MeetingAttendance(BaseModel):
     meeting = models.ForeignKey(Meeting, on_delete=models.SET_NULL, null=True, related_name='attendances',
                                 verbose_name='Uchrashuv')
 
-    is_attended = models.BooleanField(default=True, verbose_name='Qatnashdimi?')
+    is_attended = models.BooleanField(default=True, db_index=True, verbose_name='Qatnashdimi?')
+    is_excused = models.BooleanField(default=False, db_index=True, verbose_name="Sabablimi?")
     payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
     absence_reason = models.TextField(
         null=True, blank=True, 
         validators=[MinLengthValidator(10)],
-        verbose_name="Kela olmaganlik sababi"
+        verbose_name="Sabab"
     )
 
     class Meta:

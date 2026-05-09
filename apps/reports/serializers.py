@@ -62,9 +62,9 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
                 qs = qs.filter(is_attended=attended)
 
             if excused is True:
-                qs = qs.filter(absence_reason__isnull=False).exclude(absence_reason='')
+                qs = qs.filter(is_excused=True)
             elif excused is False:
-                qs = qs.filter(Q(absence_reason__isnull=True) | Q(absence_reason=''))
+                qs = qs.filter(is_excused=False)
 
             return Subquery(qs.values('user').annotate(cnt=Count('pk')).values('cnt'), output_field=IntegerField())
 

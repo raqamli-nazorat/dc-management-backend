@@ -22,7 +22,7 @@ class User(AbstractUser):
     roles = ArrayField(models.CharField(max_length=20, choices=Role.choices), default=list, blank=True,
                        verbose_name="Rollari")
     active_role = models.CharField(max_length=20, choices=Role.choices, null=True, blank=True,
-                                   verbose_name="Aktiv rol")
+                                   db_index=True, verbose_name="Aktiv rol")
 
     region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Viloyati")
     district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True, blank=True,

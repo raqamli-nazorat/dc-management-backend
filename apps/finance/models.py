@@ -61,7 +61,7 @@ class ExpenseRequest(BaseModel):
     )
 
     type = models.CharField(max_length=20, choices=ExpenseType.choices, default=ExpenseType.WITHDRAWAL,
-                            verbose_name='Turi')
+                            db_index=True, verbose_name='Turi')
 
     expense_category = models.ForeignKey(ExpenseCategory, on_delete=models.PROTECT, null=True, blank=True,
                                          related_name='expense_requests',
@@ -74,10 +74,10 @@ class ExpenseRequest(BaseModel):
     cancel_reason = models.TextField(null=True, blank=True, verbose_name='Bekor qilish sababi')
 
     payment_method = models.CharField(max_length=10, choices=PaymentMethod.choices, default=PaymentMethod.CARD,
-                                      verbose_name='To\'lov turi')
+                                      db_index=True, verbose_name='To\'lov turi')
     card_number = models.CharField(max_length=20, null=True, blank=True, verbose_name='Karta raqami')
 
-    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name='Holati')
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, db_index=True, verbose_name='Holati')
     accountant = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='approved_expenses',
                                    limit_choices_to={'roles__contains': [Role.ACCOUNTANT]},
@@ -195,7 +195,7 @@ class Ledger(BaseModel):
     payroll = models.ForeignKey('Payroll', on_delete=models.PROTECT, null=True, blank=True, verbose_name='Ish haqi')
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Miqdori')
-    transaction_type = models.CharField(max_length=10, choices=TransactionType.choices, verbose_name='Tranzaksiya turi')
+    transaction_type = models.CharField(max_length=10, choices=TransactionType.choices, db_index=True, verbose_name='Tranzaksiya turi')
     description = models.CharField(max_length=255)
 
     class Meta:
@@ -234,7 +234,7 @@ class Payroll(BaseModel):
                                    limit_choices_to={'roles__contains': [Role.ACCOUNTANT]},
                                    verbose_name='Hisobchi')
 
-    is_confirmed = models.BooleanField(default=False, verbose_name='Tasdiqlandimi?')
+    is_confirmed = models.BooleanField(default=False, db_index=True, verbose_name='Tasdiqlandimi?')
     confirmed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tasdiqlangan vaqti')
 
     class Meta:

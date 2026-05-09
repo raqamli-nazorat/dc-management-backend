@@ -280,36 +280,72 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MeetingAttendance
-        fields = ('id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'absence_reason')
+        fields = ('id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'is_excused', 'absence_reason')
         read_only_fields = ('id', 'user_info', 'meeting')
 
     def validate(self, attrs):
-        user = self.context['request'].user
-        instance = self.instance
+            user = self.request_user
+            instance = self.instance
 
-        if instance and instance.user == user:
-            if 'is_attended' in attrs:
+            if not instance:
+                return attrs
+
+            is_organizer = (instance.meeting.organizer == user)
+            is_owner = (instance.user == user)
+            is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                            is_organizer or (instance.meeting.project and instance.meeting.project.manager == user)
+
+            for field in ['is_attended', 'is_excused']:
+                if field in attrs and not is_privileged:
+                    raise serializers.ValidationError(
+                        {field: "Faqat yig'ilish tashkilotchisi yoki mas'ullar bu holatni o'zgartira oladi."}
+                    )
+
+            if is_owner and not is_privileged:
+                if instance.is_attended:
+                    raise serializers.ValidationError(
+                        {"detail": "Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi."}
+                    )
+
+                if instance.meeting.is_completed and instance.meeting.completed_at:
+                    from django.utils import timezone
+                    from datetime import timedelta
+                    if timezone.now() > instance.meeting.completed_at + timedelta(hours=24):
+                        raise serializers.ValidationError(
+                            {"detail": "Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
+                        )
+
+                if instance.absence_reason and 'absence_reason' in attrs:
+                    raise serializers.ValidationError(
+                        {"absence_reason": "Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz."}
+                    )
+
+            if 'absence_reason' in attrs and not (is_owner or is_privileged):
                 raise serializers.ValidationError(
-                    {"is_attended": "Siz o'z ishtirok holatingizni o'zgartira olmaysiz."}
+                    {"absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."}
                 )
+            new_is_attended = attrs.get('is_attended', instance.is_attended)
+            new_absence_reason = attrs.get('absence_reason', instance.absence_reason)
 
-        new_is_attended = attrs.get('is_attended', instance.is_attended if instance else False)
-        absence_reason = attrs.get('absence_reason', instance.absence_reason if instance else None)
+            if new_is_attended is True:
+                attrs['absence_reason'] = None
+                attrs['is_excused'] = False
+            else:
+                if not new_absence_reason and not is_privileged:
+                    raise serializers.ValidationError(
+                        {"absence_reason": "Qatnashmaganlik sababini ko'rsatish shart."}
+                    )
 
-        if new_is_attended is True:
-            attrs['absence_reason'] = None
-        elif not absence_reason:
-            if 'absence_reason' in attrs or (instance and not instance.is_attended):
-                raise serializers.ValidationError(
-                    {"absence_reason": "Yig'ilishda qatnashmagan bo'lsangiz, sabab ko'rsatishingiz shart."}
-                )
-
-        if instance:
             for attr, value in attrs.items():
                 setattr(instance, attr, value)
+            
             try:
                 instance.clean()
             except DjangoValidationError as e:
-                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages})
+                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else e.messages)
 
-        return attrs
+            return attrs
+
+    @property
+    def request_user(self):
+        return self.context['request'].user
