@@ -140,7 +140,7 @@ class ExpenseRequest(BaseModel):
         is_new = self.pk is None
 
         if not is_new:
-            old_instance = ExpenseRequest.objects.get(pk=self.pk)
+            old_instance = ExpenseRequest.objects.select_for_update().get(pk=self.pk)
 
             if old_instance.status != Status.CONFIRMED and self.status == Status.CONFIRMED:
                 self.confirmed_at = timezone.now()
