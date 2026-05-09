@@ -276,6 +276,7 @@ class MeetingSerializer(serializers.ModelSerializer):
 class MeetingAttendanceSerializer(serializers.ModelSerializer):
     user_info = UserShortSerializer(source='user', read_only=True)
     meeting_title = serializers.CharField(source='meeting.title', read_only=True)
+    absence_reason = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = MeetingAttendance
@@ -293,8 +294,22 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
                 )
 
         new_is_attended = attrs.get('is_attended', instance.is_attended if instance else False)
+        absence_reason = attrs.get('absence_reason', instance.absence_reason if instance else None)
 
         if new_is_attended is True:
             attrs['absence_reason'] = None
+        elif not absence_reason:
+            if 'absence_reason' in attrs or (instance and not instance.is_attended):
+                raise serializers.ValidationError(
+                    {"absence_reason": "Yig'ilishda qatnashmagan bo'lsangiz, sabab ko'rsatishingiz shart."}
+                )
+
+        if instance:
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
+            try:
+                instance.clean()
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages})
 
         return attrs
