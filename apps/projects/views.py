@@ -10,7 +10,6 @@ from rest_framework.response import Response
 
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
-
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMixin
 
 from .services import TaskService, MeetingService
@@ -509,6 +508,24 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
                 raise PermissionDenied("Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz.")
 
             serializer.save()
+
+            meeting = attendance.meeting
+            if meeting.organizer and meeting.organizer != attendance.user:
+                from apps.notifications.models import Notification, NotificationType
+                
+                msg = f"{attendance.user.username} '{meeting.title}' yig'ilishiga qatnasha olmaganiga sabab yozdi: {serializer.validated_data.get('absence_reason')}"
+                
+                Notification.objects.create(
+                    user=meeting.organizer,
+                    title="Yig'ilishga kelmaslik sababi",
+                    message=msg,
+                    type=NotificationType.MEETING,
+                    extra_data={
+                        "meeting_id": meeting.id,
+                        "attendance_id": attendance.id,
+                        "action": "open_attendance"
+                    }
+                )
             return
 
         raise PermissionDenied("Sizda ushbu yozuvni tahrirlash uchun huquq yo'q.")

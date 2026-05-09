@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, MinLengthValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -519,7 +519,11 @@ class MeetingAttendance(BaseModel):
 
     is_attended = models.BooleanField(default=True, verbose_name='Qatnashdimi?')
     payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
-    absence_reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
+    absence_reason = models.TextField(
+        null=True, blank=True, 
+        validators=[MinLengthValidator(10)],
+        verbose_name="Kela olmaganlik sababi"
+    )
 
     class Meta:
         verbose_name = 'Yig\'ilishga qatnashish '
