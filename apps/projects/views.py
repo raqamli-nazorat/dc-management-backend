@@ -347,8 +347,8 @@ class TaskRejectionFileViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Meetings'])
-class MeetingViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
-    queryset = Meeting.objects.filter(is_active=True)
+class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
+    queryset = Meeting.objects.all()
     serializer_class = MeetingSerializer
 
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
@@ -367,8 +367,7 @@ class MeetingViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 
     def get_role_based_queryset(self, queryset, user):
         active_project_filter = Q(
-            project__is_hidden=False,
-            project__is_active=True
+            project__is_hidden=False
         ) & ~Q(project__status=ProjectStatus.PLANNING)
 
         if user.has_role(Role.MANAGER):
