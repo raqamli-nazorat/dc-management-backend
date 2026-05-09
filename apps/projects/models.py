@@ -453,6 +453,7 @@ class Meeting(BaseModel):
     duration_minutes = models.PositiveIntegerField(verbose_name='Davomiyligi')
     is_completed = models.BooleanField(default=False, verbose_name='Tugatildimi?')
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tugallangan vaqt')
+    is_deleted = models.BooleanField(default=False, verbose_name="O'chirilganmi?")
 
     participants = models.ManyToManyField(User, through='MeetingAttendance', related_name='meeting_participants',
                                           verbose_name='Qatnashuvchilar')
