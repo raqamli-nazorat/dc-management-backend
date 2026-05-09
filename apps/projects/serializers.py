@@ -267,7 +267,7 @@ class MeetingSerializer(serializers.ModelSerializer):
                     
                     if start_time < c_end and end_time > c_start:
                         raise serializers.ValidationError({
-                            "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band ({conflict.meeting.title}: {c_start.strftime('%H:%M')} - {c_end.strftime('%H:%M')})"
+                            "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band."
                         })
 
         return attrs
