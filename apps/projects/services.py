@@ -227,6 +227,9 @@ class MeetingService:
         current_attendees = MeetingAttendance.objects.filter(meeting=meeting).select_related('user')
         current_attendee_ids = {a.user_id for a in current_attendees}
         new_participant_ids = {p.id for p in participants}
+        
+        if organizer_id not in new_participant_ids:
+            new_participant_ids.add(organizer_id)
 
         to_remove_attendees = [a for a in current_attendees if a.user_id not in new_participant_ids]
         if to_remove_attendees:
@@ -241,15 +244,18 @@ class MeetingService:
             )
 
         to_add_ids = new_participant_ids - current_attendee_ids
-        to_add = [p for p in participants if p.id in to_add_ids]
 
-        if to_add:
+        if to_add_ids:
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            to_add_users = User.objects.filter(id__in=to_add_ids)
+
             attendances = [
                 MeetingAttendance(user=user, meeting=meeting)
-                for user in to_add
+                for user in to_add_users
             ]
             MeetingAttendance.objects.bulk_create(attendances)
-            cls._send_meeting_notifications(meeting, to_add, organizer_id)
+            cls._send_meeting_notifications(meeting, to_add_users, organizer_id)
 
     @classmethod
     @transaction.atomic
@@ -274,6 +280,7 @@ class MeetingService:
             raise ValidationError({"detail": "Bu yig'ilish allaqachon tugagan."})
 
         meeting.is_completed = True
+        meeting.completed_at = timezone.now()
         meeting.save()
 
         absent_attendances = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False).select_related('user')
@@ -315,3 +322,40 @@ class MeetingService:
             transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
 
         return meeting
+
+    @classmethod
+    def notify_time_change(cls, meeting):
+        from apps.notifications.models import Notification, NotificationType
+        participants = meeting.participants.all()
+        start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
+        
+        notifications_to_bulk = []
+        broadcast_data = []
+        
+        msg = f"'{meeting.title}' yig'ilishi vaqti o'zgardi. Yangi vaqt: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
+        
+        for member in participants:
+            if member.id != meeting.organizer_id:
+                notifications_to_bulk.append(Notification(
+                    user=member,
+                    title="Yig'ilish vaqti o'zgardi",
+                    message=msg,
+                    type=NotificationType.MEETING
+                ))
+                
+                broadcast_data.append({
+                    "user_id": member.id,
+                    "title": "Yig'ilish vaqti o'zgardi",
+                    "message": msg,
+                    "type": "meeting",
+                    "extra_data": {
+                        "meeting_id": meeting.id,
+                        "action": "open_meeting",
+                        "project_id": meeting.project_id
+                    }
+                })
+        
+        if notifications_to_bulk:
+            Notification.objects.bulk_create(notifications_to_bulk)
+            from apps.notifications.tasks import mass_notification_sender
+            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))

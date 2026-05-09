@@ -374,7 +374,7 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
                 active_project_filter,
-                participants=user
+                Q(participants=user) | Q(organizer=user)
             ).distinct()
 
         return queryset.none()
@@ -398,9 +398,19 @@ class MeetingViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.ModelView
             raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni tahrirlay olasiz.")
 
         participants = serializer.validated_data.pop('participants', None)
+        
+        time_changed = False
+        if meeting._old_start_time and meeting.start_time != meeting._old_start_time:
+            time_changed = True
+        if meeting._old_duration_minutes and meeting.duration_minutes != meeting._old_duration_minutes:
+            time_changed = True
+
         meeting = serializer.save()
 
         MeetingService.handle_participants(meeting, participants, user.id)
+        
+        if time_changed:
+            MeetingService.notify_time_change(meeting)
 
     def perform_destroy(self, instance):
         user = self.request.user
@@ -478,6 +488,13 @@ class MeetingAttendanceViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets
         if attendance.user == user:
             if attendance.is_attended:
                 raise PermissionDenied("Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi.")
+
+            # Yig'ilish yopilganidan keyin 24 soat ichida sabab yozish kerak
+            if attendance.meeting.is_completed and attendance.meeting.completed_at:
+                from django.utils import timezone
+                from datetime import timedelta
+                if timezone.now() > attendance.meeting.completed_at + timedelta(hours=24):
+                    raise PermissionDenied("Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi.")
 
             if attendance.absence_reason and 'absence_reason' in self.request.data:
                 raise PermissionDenied("Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz.")

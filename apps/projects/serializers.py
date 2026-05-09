@@ -236,6 +236,40 @@ class MeetingSerializer(serializers.ModelSerializer):
                     "participants": f"Quyidagi foydalanuvchilar loyiha a'zosi emas: {', '.join(invalid_users)}"
                 })
 
+        start_time = attrs.get('start_time') or (instance.start_time if instance else None)
+        duration = attrs.get('duration_minutes') or (instance.duration_minutes if instance else 0)
+        
+        if start_time and duration:
+            from datetime import timedelta
+            end_time = start_time + timedelta(minutes=duration)
+            
+            check_user_ids = set()
+            if participants:
+                check_user_ids.update([p.id for p in participants])
+
+            request = self.context.get('request')
+            organizer = instance.organizer if instance else (request.user if request else None)
+            if organizer:
+                check_user_ids.add(organizer.id)
+
+            if check_user_ids:
+                from apps.projects.models import MeetingAttendance
+                conflicts = MeetingAttendance.objects.filter(
+                    user_id__in=check_user_ids,
+                    meeting__is_active=True,
+                    meeting__is_completed=False,
+                    meeting__start_time__lt=end_time
+                ).select_related('meeting', 'user').exclude(meeting_id=instance.pk if instance else None)
+
+                for conflict in conflicts:
+                    c_start = conflict.meeting.start_time
+                    c_end = c_start + timedelta(minutes=conflict.meeting.duration_minutes)
+                    
+                    if start_time < c_end and end_time > c_start:
+                        raise serializers.ValidationError({
+                            "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band ({conflict.meeting.title}: {c_start.strftime('%H:%M')} - {c_end.strftime('%H:%M')})"
+                        })
+
         return attrs
 
 
