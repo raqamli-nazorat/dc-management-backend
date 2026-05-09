@@ -452,6 +452,7 @@ class Meeting(BaseModel):
     start_time = models.DateTimeField(verbose_name='Boshlanish vaqti')
     duration_minutes = models.PositiveIntegerField(verbose_name='Davomiyligi')
     is_completed = models.BooleanField(default=False, verbose_name='Tugatildimi?')
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tugallangan vaqt')
 
     participants = models.ManyToManyField(User, through='MeetingAttendance', related_name='meeting_participants',
                                           verbose_name='Qatnashuvchilar')
@@ -470,6 +471,16 @@ class Meeting(BaseModel):
         else:
             self._old_project_id = None
 
+        if 'start_time' not in deferred_fields:
+            self._old_start_time = self.start_time
+        else:
+            self._old_start_time = None
+
+        if 'duration_minutes' not in deferred_fields:
+            self._old_duration_minutes = self.duration_minutes
+        else:
+            self._old_duration_minutes = None
+
     def clean(self):
         super().clean()
 
@@ -478,6 +489,13 @@ class Meeting(BaseModel):
                 raise ValidationError({
                     'project': "Yig'ilish loyihasini o'zgartirib bo'lmaydi!"
                 })
+        else:
+            if self.project_id:
+                p_status = self.project.status
+                if p_status in [ProjectStatus.PLANNING, ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+                    raise ValidationError({
+                        'project': f"Loyiha '{self.project.get_status_display()}' holatida. Yangi yig'ilish qo'shish taqiqlanadi!"
+                    })
 
     def save(self, *args, **kwargs):
         self.full_clean()
