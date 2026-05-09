@@ -66,6 +66,8 @@ class ExpenseService:
         if not (is_owner or is_accountant):
             raise PermissionDenied("Sizda bu so'rovni bekor qilish huquqi yo'q.")
 
+        expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
+
         if expense.status != Status.PENDING:
             raise ValidationError({'status': "Faqat 'Kutilmoqda' holatidagi so'rovni bekor qilish mumkin."})
 
@@ -97,6 +99,8 @@ class ExpenseService:
         if not user.has_role(Role.ACCOUNTANT):
             raise PermissionDenied({'detail': "To'lovlarni amalga oshirish uchun faqat hisobchilar vakolatli."})
 
+        expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
+
         if expense.status != Status.PENDING:
             raise ValidationError({'status': "Faqat \"Kutilayotgan\" so'rovlarni \"To'langan\" deb belgilash mumkin."})
 
@@ -127,6 +131,8 @@ class ExpenseService:
             raise PermissionDenied(
                 {'detail': "Faqat dastlabki so'rov beruvchi mablag'ni olganligini tasdiqlashi mumkin."})
 
+        expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
+
         if expense.status != Status.PAID:
             raise ValidationError({'status': "So'rov tasdiqlanishidan oldin u “To'langan” holatida bo'lishi kerak."})
 
@@ -151,7 +157,7 @@ class PayrollService:
         if not accountant_user.has_role(Role.ACCOUNTANT):
             raise PermissionDenied("Sizda oyliklarki tasdiqlash huquqi yo'q.")
 
-        payrolls = Payroll.objects.filter(id__in=payroll_ids, is_confirmed=False).select_related('user')
+        payrolls = Payroll.objects.select_for_update().filter(id__in=payroll_ids, is_confirmed=False).select_related('user')
 
         if not payrolls.exists():
             raise ValidationError({"detail": "Hech qanday tasdiqlanishi kerak bo'lgan oylik topilmadi."})
