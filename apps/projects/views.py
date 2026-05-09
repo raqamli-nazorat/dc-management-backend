@@ -123,7 +123,7 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 
         if instance.status != ProjectStatus.PLANNING:
             raise ValidationError({
-                "detail": f"Loyihani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Rejalashtirilmoqda' holatidagilarni o'chirish mumkin."
+                "detail": f"Loyihani {instance.get_status_display()} holatida o'chirib bo'lmaydi. Faqat 'Rejalashtirilmoqda' holatidagilarni o'chirish mumkin."
             })
 
         instance.is_active = False
@@ -195,7 +195,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 
         if instance.status != TaskStatus.TODO:
             raise ValidationError({
-                "detail": f"Vazifani '{instance.get_status_display()}' holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
+                "detail": f"Vazifani {instance.get_status_display()} holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
             })
 
         instance.is_active = False
@@ -281,7 +281,7 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
 
         if task.status in locked_statuses:
             raise ValidationError(
-                f"Vazifa '{task.get_status_display()}' holatida bo'lgani uchun unga fayl biriktira olmaysiz."
+                f"Vazifa {task.get_status_display()} holatida bo'lgani uchun unga fayl biriktira olmaysiz."
             )
 
         serializer.save()
@@ -396,6 +396,10 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         user = self.request.user
         meeting = self.get_object()
+
+        if meeting.is_completed:
+            raise PermissionDenied("Tugatilgan yig'ilishni tahrirlash mumkin emas.")
+
         is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
                         meeting.project.manager == user
 
@@ -482,49 +486,23 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
         return queryset.none()
 
     def perform_update(self, serializer):
+        attendance = serializer.save()
         user = self.request.user
-        attendance = self.get_object()
+        meeting = attendance.meeting
 
-        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                        attendance.meeting.organizer == user or \
-                        attendance.meeting.project.manager == user
-
-        if is_privileged:
-            serializer.save()
-            return
-
-        if attendance.user == user:
-            if attendance.is_attended:
-                raise PermissionDenied("Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi.")
-
-            if attendance.meeting.is_completed and attendance.meeting.completed_at:
-                from django.utils import timezone
-                from datetime import timedelta
-                if timezone.now() > attendance.meeting.completed_at + timedelta(hours=24):
-                    raise PermissionDenied("Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi.")
-
-            if attendance.absence_reason and 'absence_reason' in self.request.data:
-                raise PermissionDenied("Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz.")
-
-            serializer.save()
-
-            meeting = attendance.meeting
-            if meeting.organizer and meeting.organizer != attendance.user:
-                from apps.notifications.models import Notification, NotificationType
-                
-                msg = f"{attendance.user.username} '{meeting.title}' yig'ilishiga qatnasha olmaganiga sabab yozdi: {serializer.validated_data.get('absence_reason')}"
-                
-                Notification.objects.create(
-                    user=meeting.organizer,
-                    title="Yig'ilishga kelmaslik sababi",
-                    message=msg,
-                    type=NotificationType.MEETING,
-                    extra_data={
-                        "meeting_id": meeting.id,
-                        "attendance_id": attendance.id,
-                        "action": "open_attendance"
-                    }
-                )
-            return
-
-        raise PermissionDenied("Sizda ushbu yozuvni tahrirlash uchun huquq yo'q.")
+        if attendance.user == user and meeting.organizer and meeting.organizer != user:
+            from apps.notifications.models import Notification, NotificationType
+            
+            msg = f"{user.username} {meeting.title} yig'ilishiga qatnasha olmaganiga sabab yozdi."
+            
+            Notification.objects.create(
+                user=meeting.organizer,
+                title="Yig'ilishga qatnashmaslik sababi",
+                message=msg,
+                type=NotificationType.MEETING,
+                extra_data={
+                    "meeting_id": meeting.id,
+                    "attendance_id": attendance.id,
+                    "action": "open_attendance"
+                }
+            )

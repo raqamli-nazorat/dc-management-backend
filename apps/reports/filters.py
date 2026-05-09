@@ -135,10 +135,10 @@ class UserReportFilter(filters.FilterSet):
                 filters_q &= Q(is_attended=True)
 
             elif status == 'absent_reason':
-                filters_q &= Q(is_attended=False) & ~Q(absence_reason__isnull=True) & ~Q(absence_reason='')
+                filters_q &= Q(is_attended=False) & Q(is_excused=True)
 
             elif status == 'absent_no_reason':
-                filters_q &= Q(is_attended=False) & (Q(absence_reason__isnull=True) | Q(absence_reason=''))
+                filters_q &= Q(is_attended=False) & Q(is_excused=False)
 
         subquery = MeetingAttendance.objects.filter(filters_q).values('user').annotate(
             cnt=Count('pk')).values('cnt')

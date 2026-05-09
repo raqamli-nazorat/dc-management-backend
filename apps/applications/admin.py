@@ -57,9 +57,6 @@ class ApplicationAdmin(ModelAdmin):
         }),
     )
 
-    def has_delete_permission(self, request, obj=None):
-        return False
-
     @admin.display(description='Holati', ordering='status')
     def status_colored(self, obj):
         colors = {
