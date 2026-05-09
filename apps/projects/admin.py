@@ -97,7 +97,7 @@ class TaskAdmin(ModelAdmin):
 class MeetingAdmin(ModelAdmin):
     list_display = ('uid', 'title', 'project', 'organizer', 'start_time', 'is_completed')
     list_display_links = ('uid', 'title')
-    list_filter = ('is_active', 'is_deleted', 'is_completed', 'start_time', 'project', 'organizer')
+    list_filter = ('is_completed', 'start_time', 'project', 'organizer')
     search_fields = ('title', 'description', 'project__title', 'organizer__username')
 
     inlines = [MeetingAttendanceInline]
@@ -107,6 +107,6 @@ class MeetingAdmin(ModelAdmin):
             'fields': ('project', 'organizer', 'title', 'description', 'link', 'penalty_percentage')
         }),
         ('Schedule', {
-            'fields': ('start_time', 'duration_minutes', 'is_completed')
+            'fields': ('start_time', 'duration_minutes', 'is_completed', 'is_deleted', 'is_active')
         }),
     )
