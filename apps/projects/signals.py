@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db.models.signals import post_save, m2m_changed
 from django.dispatch import receiver
 from django.db import transaction
+from django.core.exceptions import ValidationError
 
 from apps.projects.models import Project, Task
 from apps.notifications.models import Notification, NotificationType
@@ -68,6 +69,11 @@ def handle_project_post_save(sender, instance, created, **kwargs):
 
 @receiver(m2m_changed, sender=Project.employees.through)
 def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
+    if action in ["pre_add", "pre_remove"]:
+        from apps.projects.models import ProjectStatus
+        if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+            raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Xodimlarni tahrirlash taqiqlanadi!")
+
     if action == "post_add" and pk_set:
         users = User.objects.filter(id__in=pk_set)
         for user in users:
@@ -92,6 +98,11 @@ def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
 
 @receiver(m2m_changed, sender=Project.testers.through)
 def handle_project_testers_change(sender, instance, action, pk_set, **kwargs):
+    if action in ["pre_add", "pre_remove"]:
+        from apps.projects.models import ProjectStatus
+        if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+            raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Sinovchilarni tahrirlash taqiqlanadi!")
+
     if action == "post_add" and pk_set:
         users = User.objects.filter(id__in=pk_set)
         for user in users:
