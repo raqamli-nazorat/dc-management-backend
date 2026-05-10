@@ -7,7 +7,8 @@ from apps.applications.serializers import PositionSerializer
 from apps.users.serializers import UserShortSerializer
 from apps.users.models import Role
 
-from .models import Project, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, TaskRejectionFile
+from .models import (Project, ProjectDocument, Task, TaskAttachment, TaskStatus,
+                     Meeting, MeetingAttendance, TaskRejectionFile, ProjectStatus)
 
 User = get_user_model()
 
@@ -77,6 +78,20 @@ class ProjectSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({"detail": e.messages})
 
         return data
+
+
+class ProjectDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectDocument
+        fields = ('id', 'project', 'name', 'url', 'created_at')
+        read_only_fields = ('id', 'created_at')
+
+    def validate_project(self, value):
+        if value.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+            raise serializers.ValidationError(
+                f"Loyiha '{value.get_status_display()}' holatida. Hujjat qo'shish mumkin emas."
+            )
+        return value
 
 
 class TaskAttachmentSerializer(serializers.ModelSerializer):
@@ -238,11 +253,11 @@ class MeetingSerializer(serializers.ModelSerializer):
 
         start_time = attrs.get('start_time') or (instance.start_time if instance else None)
         duration = attrs.get('duration_minutes') or (instance.duration_minutes if instance else 0)
-        
+
         if start_time and duration:
             from datetime import timedelta
             end_time = start_time + timedelta(minutes=duration)
-            
+
             check_user_ids = set()
             if participants is not None:
                 check_user_ids.update([p.id for p in participants])
@@ -267,7 +282,7 @@ class MeetingSerializer(serializers.ModelSerializer):
                 for conflict in conflicts:
                     c_start = conflict.meeting.start_time
                     c_end = c_start + timedelta(minutes=conflict.meeting.duration_minutes)
-                    
+
                     if start_time < c_end and end_time > c_start:
                         raise serializers.ValidationError({
                             "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band."
@@ -287,67 +302,67 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'user_info', 'meeting')
 
     def validate(self, attrs):
-            user = self.request_user
-            instance = self.instance
+        user = self.request_user
+        instance = self.instance
 
-            if not instance:
-                return attrs
-
-            is_organizer = (instance.meeting.organizer == user)
-            is_owner = (instance.user == user)
-            is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                            is_organizer or (instance.meeting.project and instance.meeting.project.manager == user)
-
-            for field in ['is_attended', 'is_excused']:
-                if field in attrs and not is_privileged:
-                    raise serializers.ValidationError(
-                        {field: "Faqat yig'ilish tashkilotchisi yoki mas'ullar bu holatni o'zgartira oladi."}
-                    )
-
-            if is_owner and not is_privileged:
-                if instance.is_attended:
-                    raise serializers.ValidationError(
-                        {"detail": "Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi."}
-                    )
-
-                if instance.meeting.is_completed and instance.meeting.completed_at:
-                    from django.utils import timezone
-                    from datetime import timedelta
-                    if timezone.now() > instance.meeting.completed_at + timedelta(hours=24):
-                        raise serializers.ValidationError(
-                            {"detail": "Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
-                        )
-
-                if instance.absence_reason and 'absence_reason' in attrs:
-                    raise serializers.ValidationError(
-                        {"absence_reason": "Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz."}
-                    )
-
-            if 'absence_reason' in attrs and not (is_owner or is_privileged):
-                raise serializers.ValidationError(
-                    {"absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."}
-                )
-            new_is_attended = attrs.get('is_attended', instance.is_attended)
-            new_absence_reason = attrs.get('absence_reason', instance.absence_reason)
-
-            if new_is_attended is True:
-                attrs['absence_reason'] = None
-                attrs['is_excused'] = False
-            else:
-                if not new_absence_reason and not is_privileged:
-                    raise serializers.ValidationError(
-                        {"absence_reason": "Qatnashmaganlik sababini ko'rsatish shart."}
-                    )
-
-            for attr, value in attrs.items():
-                setattr(instance, attr, value)
-            
-            try:
-                instance.clean()
-            except DjangoValidationError as e:
-                raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else e.messages)
-
+        if not instance:
             return attrs
+
+        is_organizer = (instance.meeting.organizer == user)
+        is_owner = (instance.user == user)
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                        is_organizer or (instance.meeting.project and instance.meeting.project.manager == user)
+
+        for field in ['is_attended', 'is_excused']:
+            if field in attrs and not is_privileged:
+                raise serializers.ValidationError(
+                    {field: "Faqat yig'ilish tashkilotchisi yoki mas'ullar bu holatni o'zgartira oladi."}
+                )
+
+        if is_owner and not is_privileged:
+            if instance.is_attended:
+                raise serializers.ValidationError(
+                    {"detail": "Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi."}
+                )
+
+            if instance.meeting.is_completed and instance.meeting.completed_at:
+                from django.utils import timezone
+                from datetime import timedelta
+                if timezone.now() > instance.meeting.completed_at + timedelta(hours=24):
+                    raise serializers.ValidationError(
+                        {"detail": "Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
+                    )
+
+            if instance.absence_reason and 'absence_reason' in attrs:
+                raise serializers.ValidationError(
+                    {"absence_reason": "Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz."}
+                )
+
+        if 'absence_reason' in attrs and not (is_owner or is_privileged):
+            raise serializers.ValidationError(
+                {"absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."}
+            )
+        new_is_attended = attrs.get('is_attended', instance.is_attended)
+        new_absence_reason = attrs.get('absence_reason', instance.absence_reason)
+
+        if new_is_attended is True:
+            attrs['absence_reason'] = None
+            attrs['is_excused'] = False
+        else:
+            if not new_absence_reason and not is_privileged:
+                raise serializers.ValidationError(
+                    {"absence_reason": "Qatnashmaganlik sababini ko'rsatish shart."}
+                )
+
+        for attr, value in attrs.items():
+            setattr(instance, attr, value)
+
+        try:
+            instance.clean()
+        except DjangoValidationError as e:
+            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else e.messages)
+
+        return attrs
 
     @property
     def request_user(self):

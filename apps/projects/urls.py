@@ -3,11 +3,12 @@ from rest_framework.routers import SimpleRouter
 
 from .views import (ProjectShortViewSet, ProjectViewSet, TaskViewSet,
                     TaskAttachmentViewSet,
-                    MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet)
+                    MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet, ProjectDocumentViewSet)
 
 router = SimpleRouter()
 
 router.register('projects', ProjectViewSet, basename='projects')
+router.register('project-documents', ProjectDocumentViewSet, basename='project-documents')
 router.register('project-shorts', ProjectShortViewSet, basename='projects-shorts')
 
 router.register('tasks', TaskViewSet, basename='tasks')
