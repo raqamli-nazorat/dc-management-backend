@@ -14,9 +14,10 @@ from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMix
 
 from .services import TaskService, MeetingService
 from .filters import TaskFilter, ProjectFilter, MeetingFilter
-from .models import Project, ProjectStatus, Task, TaskAttachment, TaskStatus, Meeting, MeetingAttendance, \
+from .models import Project, ProjectStatus, ProjectDocument, Task, TaskAttachment, TaskStatus, Meeting, \
+    MeetingAttendance, \
     TaskRejectionFile
-from .serializers import (ProjectShortSerializer, ProjectSerializer, TaskSerializer,
+from .serializers import (ProjectShortSerializer, ProjectSerializer, ProjectDocumentSerializer, TaskSerializer,
                           TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
                           TaskRejectionFileSerializer)
@@ -131,6 +132,29 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         instance.save()
 
 
+class ProjectDocumentViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets.ModelViewSet):
+    queryset = ProjectDocument.objects.filter(is_active=True)
+    serializer_class = ProjectDocumentSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [IsAdmin()]
+        return [permissions.IsAuthenticated()]
+
+    def get_role_based_queryset(self, queryset, user):
+        if user.has_any_role(Role.ADMIN, Role.AUDITOR):
+            return queryset
+
+        excluded_statuses = [ProjectStatus.PLANNING]
+
+        return queryset.filter(
+            project__is_hidden=False,
+            project__in=Project.objects.filter(
+                Q(manager=user) | Q(employees=user) | Q(testers=user)
+            )
+        ).exclude(project__status__in=excluded_statuses).distinct()
+
+
 @extend_schema(tags=['Tasks'])
 class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
     queryset = Task.objects.select_related('project', 'assignee').prefetch_related('attachments')
@@ -206,7 +230,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         user = self.request.user
         task = self.get_object()
 
-        if task.status != TaskStatus.TODO:
+        if not task.status in [TaskStatus.TODO, TaskStatus.OVERDUE]:
             raise PermissionDenied(
                 "Vazifa jarayonga tushgan yoki yakunlangan. Uni endi tahrirlab bo'lmaydi."
             )
@@ -407,7 +431,7 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni tahrirlay olasiz.")
 
         participants = serializer.validated_data.pop('participants', None)
-        
+
         time_changed = False
         if meeting._old_start_time and meeting.start_time != meeting._old_start_time:
             time_changed = True
@@ -417,7 +441,7 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         meeting = serializer.save()
 
         MeetingService.handle_participants(meeting, participants, user.id)
-        
+
         if time_changed:
             MeetingService.notify_time_change(meeting)
 
@@ -492,9 +516,9 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
 
         if attendance.user == user and meeting.organizer and meeting.organizer != user:
             from apps.notifications.models import Notification, NotificationType
-            
+
             msg = f"{user.username} {meeting.title} yig'ilishiga qatnasha olmaganiga sabab yozdi."
-            
+
             Notification.objects.create(
                 user=meeting.organizer,
                 title="Yig'ilishga qatnashmaslik sababi",
