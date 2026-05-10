@@ -12,11 +12,19 @@ def validate_only_pdf(value):
 def validate_file_extension(value):
     ext = os.path.splitext(value.name)[1]
 
-    valid_extensions = ['.pdf', '.jpg', '.jpeg', '.png', '.webp']
+    valid_extensions = [
+        '.jpg', '.jpeg', '.png', '.webp', '.gif',
+        '.pdf', '.txt',
+        '.doc', '.docx',
+        '.xls', '.xlsx',
+        '.ppt', '.pptx',
+        '.csv'
+    ]
 
     if not ext.lower() in valid_extensions:
+        allowed_exts_str = ", ".join([e.replace('.', '').upper() for e in valid_extensions])
         raise ValidationError(
-            "Faqat PDF, JPG, JPEG, PNG yoki WEBP formatidagi fayllarni yuklash mumkin."
+            f"Faqat quyidagi formatdagi fayllarni yuklash mumkin: {allowed_exts_str}."
         )
 
 
