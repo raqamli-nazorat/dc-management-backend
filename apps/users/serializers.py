@@ -59,7 +59,6 @@ class UserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         current_user = request.user
 
-        input_roles = attrs.get('roles', [])
         password = attrs.get('password')
         confirm_password = attrs.get('confirm_password')
 
@@ -435,57 +434,25 @@ class ProfileSerializer(serializers.ModelSerializer):
                   'passport_series', 'passport_image', 'region', 'district',
                   'position', 'roles', 'active_role', 'fixed_salary', 'balance', 'social_links',
                   'date_joined')
+        read_only_fields = ('id', 'username', 'passport_series', 'passport_image', 'region', 'district',
+                            'position', 'roles', 'fixed_salary', 'balance',
+                            'date_joined')
 
+    def validate(self, attrs):
+        instance = self.instance
 
-class SocialLinksSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('social_links',)
+        if instance:
+            for attr, value in attrs.items():
+                setattr(instance, attr, value)
 
-    def update(self, instance, validated_data):
-        instance.social_links = validated_data.get('social_links', instance.social_links)
+            try:
+                instance.full_clean()
+            except DjangoValidationError as e:
+                raise serializers.ValidationError(
+                    e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages}
+                )
 
-        try:
-            instance.full_clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
-
-        instance.save()
-        return instance
-
-
-class CardNumberSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('card_number',)
-
-    def update(self, instance, validated_data):
-        instance.card_number = validated_data.get('card_number', instance.card_number)
-
-        try:
-            instance.full_clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
-
-        instance.save()
-        return instance
-
-
-class ChangeActiveRoleSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ('active_role',)
-
-    def update(self, instance, validated_data):
-        instance.active_role = validated_data.get('active_role', instance.active_role)
-
-        try:
-            instance.full_clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
-
-        instance.save()
-        return instance
+        return attrs
 
 
 class ChangePasswordSerializer(serializers.Serializer):

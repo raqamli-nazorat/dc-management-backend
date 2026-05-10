@@ -287,7 +287,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # S3 storage settings
 
-USE_S3 = env.bool('USE_S3', True)
+USE_S3 = env.bool('USE_S3', False)
 
 if USE_S3:
     STORAGES = {
