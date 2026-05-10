@@ -1,5 +1,7 @@
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+
 from rest_framework import serializers
 
 from apps.projects.models import Project, ProjectStatus
@@ -86,6 +88,12 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         user = getattr(request, 'user', None)
 
+        if not self.instance:
+            if user.is_superuser or user.has_role(Role.ADMIN) or user.has_role(Role.ACCOUNTANT):
+                raise serializers.ValidationError(
+                    "Admin yoki Hisobchi xarajat so'rovi yarata olmaydi."
+                )
+
         if self.instance:
             instance = self.instance
             for attr, value in attrs.items():
@@ -96,7 +104,6 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
                 model_attrs['user'] = user
             instance = ExpenseRequest(**model_attrs)
 
-        from django.core.exceptions import ValidationError as DjangoValidationError
         try:
             instance.clean()
         except DjangoValidationError as e:

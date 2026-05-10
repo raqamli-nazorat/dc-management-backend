@@ -158,7 +158,7 @@ class ExpenseRequest(BaseModel):
                     expense=self,
                     amount=self.amount,
                     transaction_type=TransactionType.DEBIT,
-                    description=f"{self.get_type_display()} tasdiqlandi. Sabab: {self.reason[:100]}"
+                    description=f"{self.get_type_display()} tasdiqlandi. Sabab: {self.reason if self.reason else "Ko'rsatilmagan"}"
                 )
 
         super().save(*args, **kwargs)
@@ -196,7 +196,7 @@ class Ledger(BaseModel):
 
     amount = models.DecimalField(max_digits=12, decimal_places=2, verbose_name='Miqdori')
     transaction_type = models.CharField(max_length=10, choices=TransactionType.choices, db_index=True, verbose_name='Tranzaksiya turi')
-    description = models.CharField(max_length=255)
+    description = models.TextField()
 
     class Meta:
         verbose_name = "Arxiv "
