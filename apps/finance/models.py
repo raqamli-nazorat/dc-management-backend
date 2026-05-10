@@ -113,7 +113,7 @@ class ExpenseRequest(BaseModel):
 
         if self.type == ExpenseType.OTHER and not self.expense_category:
             raise ValidationError({
-                'expense_category': "Agar xarajat turi \"Boshqa\" bo'lsa, sabab toifasini tanlash shart!"
+                'expense_category': "Agar xarajat turi boshqa bo'lsa, sabab toifasini tanlash shart!"
             })
 
         if self.type != ExpenseType.OTHER and self.expense_category:

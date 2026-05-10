@@ -238,8 +238,8 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         elif user.has_role(Role.MANAGER):
             from apps.projects.models import MeetingAttendance
             filtered_meetings = MeetingAttendance.objects.filter(
-                created_at__gte=start_date, 
-                meeting__project__manager=obj, 
+                created_at__gte=start_date,
+                meeting__project__manager=obj,
                 is_active=True
             )
         else:
@@ -443,7 +443,7 @@ class SocialLinksSerializer(serializers.ModelSerializer):
         fields = ('social_links',)
 
     def update(self, instance, validated_data):
-        instance.active_role = validated_data.get('active_role', instance.active_role)
+        instance.social_links = validated_data.get('social_links', instance.social_links)
 
         try:
             instance.full_clean()
@@ -460,7 +460,7 @@ class CardNumberSerializer(serializers.ModelSerializer):
         fields = ('card_number',)
 
     def update(self, instance, validated_data):
-        instance.active_role = validated_data.get('active_role', instance.active_role)
+        instance.card_number = validated_data.get('card_number', instance.card_number)
 
         try:
             instance.full_clean()
