@@ -27,7 +27,7 @@ class MeetingAttendanceInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'manager', 'status_colored', 'created_at', 'deadline')
+    list_display = ('uid', 'title', 'manager', 'status_colored', 'created_at', 'deadline', 'is_active')
     list_display_links = ('uid', 'title')
     list_filter = ('status', 'created_at', 'deadline', 'manager')
     search_fields = ('title', 'description', 'manager__username')
@@ -64,7 +64,7 @@ class ProjectAdmin(ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'project', 'assignee', 'type_badge', 'priority', 'status', 'deadline')
+    list_display = ('uid', 'title', 'project', 'assignee', 'type_badge', 'priority', 'status', 'deadline', 'is_active')
     list_display_links = ('uid', 'title')
     list_filter = ('status', 'priority', 'type', 'project', 'assignee', 'deadline')
     search_fields = ('title', 'description', 'project__title', 'assignee__username')
@@ -95,7 +95,7 @@ class TaskAdmin(ModelAdmin):
 
 @admin.register(Meeting)
 class MeetingAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'project', 'organizer', 'start_time', 'is_completed')
+    list_display = ('uid', 'title', 'project', 'organizer', 'start_time', 'is_completed', 'is_active')
     list_display_links = ('uid', 'title')
     list_filter = ('is_completed', 'start_time', 'project', 'organizer')
     search_fields = ('title', 'description', 'project__title', 'organizer__username')

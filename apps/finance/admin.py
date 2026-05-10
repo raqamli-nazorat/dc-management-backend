@@ -21,7 +21,7 @@ class ExpenseCategoryAdmin(ModelAdmin):
 
 @admin.register(ExpenseRequest)
 class ExpenseRequestAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'type', 'amount_formatted', 'status_colored', 'payment_method', 'created_at')
+    list_display = ('id', 'user', 'type', 'amount_formatted', 'status_colored', 'payment_method', 'created_at', 'is_active')
     list_display_links = ('id', 'user')
 
     list_filter = ('status', 'type', 'payment_method', 'created_at')
@@ -65,7 +65,7 @@ class ExpenseRequestAdmin(ModelAdmin):
 
 @admin.register(Ledger)
 class LedgerAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'transaction_type_colored', 'amount_formatted', 'expense', 'payroll', 'created_at')
+    list_display = ('id', 'user', 'transaction_type_colored', 'amount_formatted', 'expense', 'payroll', 'created_at', 'is_active')
     list_display_links = ('id', 'user')
     list_filter = ('transaction_type', 'created_at')
     search_fields = ('user__username', 'description')
@@ -92,7 +92,7 @@ class LedgerAdmin(ModelAdmin):
 
 @admin.register(Payroll)
 class PayrollAdmin(ModelAdmin):
-    list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at', 'is_confirmed')
+    list_display = ('id', 'user', 'month', 'fixed_salary', 'total_amount_formatted', 'created_at', 'is_confirmed', 'is_active')
     list_display_links = ('id', 'user')
     list_filter = ('month', 'created_at')
     search_fields = ('user__username',)
