@@ -9,19 +9,20 @@ def exception_handler(exc, context):
     response = base_exception_handler(exc, context)
 
     if response is None:
-        return Response(
-            {
-                "data": None,
-                "error": {
-                    "errorId": status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    "isFriendly": False,
-                    "errorMsg": "Serverdagi ichki xatolik.",
-                    "details": None,
-                },
-                "success": False,
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        )
+        return response
+        # return Response(
+        #     {
+        #         "data": None,
+        #         "error": {
+        #             "errorId": status.HTTP_500_INTERNAL_SERVER_ERROR,
+        #             "isFriendly": False,
+        #             "errorMsg": "Serverdagi ichki xatolik.",
+        #             "details": None,
+        #         },
+        #         "success": False,
+        #     },
+        #     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        # )
 
     data = response.data
     error_msg = "Kutilmagan xatolik yuzaga keldi."
