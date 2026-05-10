@@ -275,6 +275,24 @@ class Project(BaseModel):
         return super().save(*args, **kwargs)
 
 
+class ProjectDocument(BaseModel):
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        verbose_name="Loyiha"
+    )
+    name = models.CharField(max_length=255, verbose_name="Hujjat nomi")
+    url = models.URLField(verbose_name="Hujjat havolasi")
+
+    def __str__(self):
+        return f"{self.name} ({self.project.title})"
+
+    class Meta:
+        verbose_name = "Loyiha hujjati"
+        verbose_name_plural = "Loyiha hujjatlari"
+
+
 class Task(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, verbose_name="UID")
     project = models.ForeignKey(Project, on_delete=models.PROTECT, related_name='tasks', verbose_name='Loyiha')
@@ -521,7 +539,7 @@ class MeetingAttendance(BaseModel):
     is_excused = models.BooleanField(default=False, db_index=True, verbose_name="Sabablimi?")
     payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
     absence_reason = models.TextField(
-        null=True, blank=True, 
+        null=True, blank=True,
         validators=[MinLengthValidator(10)],
         verbose_name="Sabab"
     )

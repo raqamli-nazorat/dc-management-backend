@@ -2,10 +2,15 @@ from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
     Project, Task, TaskAttachment, TaskRejectionFile, Meeting,
-    MeetingAttendance, ProjectStatus, Type
+    MeetingAttendance, ProjectStatus, Type, ProjectDocument
 )
 
 from unfold.admin import ModelAdmin
+
+
+class ProjectDocumentInline(admin.TabularInline):
+    model = ProjectDocument
+    extra = 1
 
 
 class TaskAttachmentInline(admin.TabularInline):
@@ -33,6 +38,8 @@ class ProjectAdmin(ModelAdmin):
     search_fields = ('title', 'description', 'manager__username')
     filter_horizontal = ('employees', 'testers')
     exclude = ('payroll_processed',)
+
+    inlines = [ProjectDocumentInline]
 
     fieldsets = (
         ('Loyiha haqida ma\'lumot', {
@@ -77,7 +84,7 @@ class TaskAdmin(ModelAdmin):
             'fields': ('project', 'title', 'description', 'rejection_reason')
         }),
         ('Tasniflash', {
-            'fields': ('status', 'priority', 'type','position', 'sprint')
+            'fields': ('status', 'priority', 'type', 'position', 'sprint')
         }),
         ('Topshiriq & narxlar', {
             'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
