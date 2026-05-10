@@ -148,7 +148,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             from apps.projects.models import Task
             filtered_tasks = Task.objects.filter(task_filter, project__manager=obj, is_active=True, is_deleted=False)
         else:
-            filtered_tasks = obj.tasks.filter(task_filter)
+            filtered_tasks = obj.tasks.filter(task_filter, is_active=True, is_deleted=False)
 
         t_stats = filtered_tasks.aggregate(
             total=Count('id'),
@@ -205,7 +205,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                 ProjectStatus.OVERDUE
             ]
             project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-            filtered_projects = all_projects.filter(project_filter)
+            filtered_projects = all_projects.filter(project_filter, is_active=True, is_deleted=False)
 
         p_stats = filtered_projects.aggregate(
             total=Count('id'),
@@ -242,7 +242,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                 is_active=True
             )
         else:
-            filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
+            filtered_meetings = obj.attendances.filter(created_at__gte=start_date, is_active=True, meeting__is_active=True, meeting__is_deleted=False)
 
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
@@ -305,7 +305,7 @@ class UserEfficiencySerializer(serializers.Serializer):
         ]
 
         task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
-        filtered_tasks = obj.tasks.filter(task_filter)
+        filtered_tasks = obj.tasks.filter(task_filter, is_active=True, is_deleted=False)
 
         t_stats = filtered_tasks.aggregate(
             total=Count('id'),
@@ -324,7 +324,7 @@ class UserEfficiencySerializer(serializers.Serializer):
         else:
             task_score = 0.0
 
-        filtered_meetings = obj.attendances.filter(created_at__gte=start_date)
+        filtered_meetings = obj.attendances.filter(created_at__gte=start_date, is_active=True, meeting__is_active=True, meeting__is_deleted=False)
 
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
@@ -348,7 +348,7 @@ class UserEfficiencySerializer(serializers.Serializer):
             ProjectStatus.OVERDUE
         ]
         project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-        managed_projects = obj.manager_projects.filter(project_filter)
+        managed_projects = obj.manager_projects.filter(project_filter, is_active=True, is_deleted=False)
 
         p_stats = managed_projects.aggregate(
             total=Count('id'),
