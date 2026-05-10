@@ -137,6 +137,7 @@ class ExpenseService:
             raise ValidationError({'status': "So'rov tasdiqlanishidan oldin u to'langan holatida bo'lishi kerak."})
 
         expense.status = Status.CONFIRMED
+        expense.confirmed_at = timezone.now()
         expense.save()
 
         if expense.accountant:

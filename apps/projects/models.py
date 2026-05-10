@@ -152,10 +152,15 @@ class Project(BaseModel):
             except Project.DoesNotExist:
                 return
 
+            is_soft_delete_action = (self.is_active != old_project.is_active) or (self.is_deleted != old_project.is_deleted)
+            
+            if old_project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED] and not is_soft_delete_action:
+                raise ValidationError(f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
+
             if old_project.status == ProjectStatus.ACTIVE:
                 if old_project.manager_id != self.manager_id:
                     raise ValidationError({
-                        'manager': "Loyiha 'Faol' holatida menejerni o'zgartirib bo'lmaydi!"
+                        'manager': "Loyiha faol holatida menejerni o'zgartirib bo'lmaydi!"
                     })
 
             old_status = old_project.status
@@ -164,7 +169,7 @@ class Project(BaseModel):
             if old_status != new_status:
                 if old_status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
                     raise ValidationError({
-                        'status': f"Loyiha '{old_project.get_status_display()}' holatida. Uning statusini qayta o'zgartirib bo'lmaydi!"
+                        'status': f"Loyiha {old_project.get_status_display()} holatida. Uning statusini qayta o'zgartirib bo'lmaydi!"
                     })
 
                 valid_transitions = {
@@ -178,22 +183,12 @@ class Project(BaseModel):
 
                     if new_status == ProjectStatus.OVERDUE:
                         raise ValidationError({
-                            'status': "'Muddati o'tgan' holatini qo'lda belgilab bo'lmaydi! Bu tizim tomonidan avtomatik amalga oshiriladi."
+                            'status': "Muddati o'tgan holatini qo'lda belgilab bo'lmaydi! U tizim tomonidan avtomatik amalga oshiriladi."
                         })
 
                     raise ValidationError({
-                        'status': f"Statusni '{old_project.get_status_display()}'dan '{dict(ProjectStatus.choices).get(new_status)}'ga o'tkazish mantiqqa to'g'ri kelmaydi!"
+                        'status': f"Statusni {old_project.get_status_display()} dan {dict(ProjectStatus.choices).get(new_status)} ga o'tkazish mantiqqa to'g'ri kelmaydi!"
                     })
-
-    def send_notification(self, user, title, message, action):
-        if user:
-            Notification.objects.create(
-                user=user,
-                title=title,
-                message=message,
-                type=NotificationType.SYSTEM,
-                extra_data={'project_id': self.id, 'action': action}
-            )
 
     def save(self, *args, **kwargs):
         is_new = self.pk is None
@@ -202,32 +197,9 @@ class Project(BaseModel):
         if not self.uid:
             self.uid = generate_unique_id('PR', Project)
 
-        manager_changed = False
-        if is_new:
-            if self.manager_id:
-                manager_changed = True
-        else:
-            old_manager_id = getattr(self, '_old_manager_id', None)
-            if self.manager_id and self.manager_id != old_manager_id:
-                manager_changed = True
-
-        if manager_changed:
-            self.send_notification(
-                user=self.manager,
-                title="Yangi loyiha biriktirildi",
-                message=f"Siz '{self.title}' loyihasiga menejer etib tayinlandingiz.",
-                action='manager_assigned'
-            )
-
         if not is_new:
             if self.is_hidden and not self._old_is_hidden:
                 self.hidden_at = timezone.now()
-                self.send_notification(
-                    user=self.created_by,
-                    title="Loyiha muzlatildi",
-                    message=f"'{self.title}' loyihasi va undagi barcha vazifalar vaqtincha to'xtatildi.",
-                    action='freeze'
-                )
 
             elif not self.is_hidden and self._old_is_hidden and self.hidden_at:
                 if self.deadline == self._old_deadline:
@@ -243,15 +215,8 @@ class Project(BaseModel):
                         current_time = next_checkpoint
 
                     self.deadline = self.deadline + timedelta(seconds=working_seconds)
-                    self.send_notification(
-                        user=self.created_by,
-                        title="Loyiha faollashtirildi",
-                        message=f"'{self.title}' loyihasi qayta faollashtirildi. Muddatlar surildi.",
-                        action='unfreeze'
-                    )
-
-                    from .tasks import update_project_tasks_on_unlock
-                    transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(self.id, working_seconds))
+                    self._was_unfrozen = True
+                    self._unfreeze_working_seconds = working_seconds
 
                 if self.status == ProjectStatus.OVERDUE and self.deadline > timezone.now():
                     self.status = ProjectStatus.ACTIVE
@@ -363,7 +328,7 @@ class Task(BaseModel):
             p_status = self.project.status
             if p_status in [ProjectStatus.PLANNING, ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
                 raise ValidationError({
-                    'project': f"Loyiha '{self.project.get_status_display()}' holatida. Yangi vazifa qo'shish taqiqlanadi!"
+                    'project': f"Loyiha {self.project.get_status_display()} holatida. Yangi vazifa qo'shish taqiqlanadi!"
                 })
 
         if self.assignee and self.position:
@@ -388,7 +353,7 @@ class Task(BaseModel):
             ]
             if old_task.status in locked_statuses and old_task.assignee_id != self.assignee_id:
                 raise ValidationError({
-                    'assignee': f"Vazifa '{old_task.get_status_display()}' holatida. Mas'ul xodimni o'zgartirib bo'lmaydi!"
+                    'assignee': f"Vazifa {old_task.get_status_display()} holatida. Mas'ul xodimni o'zgartirib bo'lmaydi!"
                 })
 
         if self.assignee and self.project_id:
@@ -513,7 +478,7 @@ class Meeting(BaseModel):
                 p_status = self.project.status
                 if p_status in [ProjectStatus.PLANNING, ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
                     raise ValidationError({
-                        'project': f"Loyiha '{self.project.get_status_display()}' holatida. Yangi yig'ilish qo'shish taqiqlanadi!"
+                        'project': f"Loyiha {self.project.get_status_display()} holatida. Yangi yig'ilish qo'shish taqiqlanadi!"
                     })
 
     def save(self, *args, **kwargs):

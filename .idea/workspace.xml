@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="" />
+    <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/finance/services.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/services.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/apps.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/apps.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/models.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -246,7 +253,7 @@
       <workItem from="1778388993310" duration="2319000" />
       <workItem from="1778391612620" duration="832000" />
       <workItem from="1778393617267" duration="104000" />
-      <workItem from="1778432150666" duration="1193000" />
+      <workItem from="1778432150666" duration="2466000" />
     </task>
     <servers />
   </component>
