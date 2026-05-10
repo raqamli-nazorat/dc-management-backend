@@ -1,5 +1,6 @@
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
+from django.db import transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
@@ -25,6 +26,7 @@ def expense_pre_save(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=ExpenseRequest)
+@transaction.atomic
 def expense_post_save(sender, instance, created, **kwargs):
     if not created:
         _old_status = getattr(instance, '_old_status', None)
