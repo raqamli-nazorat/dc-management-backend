@@ -244,8 +244,10 @@ class MeetingSerializer(serializers.ModelSerializer):
             end_time = start_time + timedelta(minutes=duration)
             
             check_user_ids = set()
-            if participants:
+            if participants is not None:
                 check_user_ids.update([p.id for p in participants])
+            elif instance:
+                check_user_ids.update(instance.participants.values_list('id', flat=True))
 
             request = self.context.get('request')
             organizer = instance.organizer if instance else (request.user if request else None)
@@ -256,6 +258,7 @@ class MeetingSerializer(serializers.ModelSerializer):
                 from apps.projects.models import MeetingAttendance
                 conflicts = MeetingAttendance.objects.filter(
                     user_id__in=check_user_ids,
+                    is_attended=True,
                     meeting__is_active=True,
                     meeting__is_completed=False,
                     meeting__start_time__lt=end_time
