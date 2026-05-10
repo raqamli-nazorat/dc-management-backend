@@ -54,13 +54,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
         else:
             instance = Application(**attrs)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+        instance.clean()
 
         return attrs
 

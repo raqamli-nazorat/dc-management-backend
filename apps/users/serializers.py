@@ -100,10 +100,7 @@ class UserSerializer(serializers.ModelSerializer):
         if password:
             instance.set_password(password)
 
-        try:
-            instance.full_clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict)
+        instance.full_clean()
 
         instance.save()
         return instance
@@ -445,12 +442,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             for attr, value in attrs.items():
                 setattr(instance, attr, value)
 
-            try:
-                instance.full_clean()
-            except DjangoValidationError as e:
-                raise serializers.ValidationError(
-                    e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages}
-                )
+            instance.full_clean()
 
         return attrs
 

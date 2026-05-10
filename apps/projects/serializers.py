@@ -69,13 +69,7 @@ class ProjectSerializer(serializers.ModelSerializer):
         else:
             instance = Project(**model_data)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+        instance.clean()
 
         return data
 
@@ -185,13 +179,7 @@ class TaskSerializer(serializers.ModelSerializer):
         else:
             instance = Task(**attrs)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+        instance.clean()
 
         return attrs
 
@@ -231,10 +219,7 @@ class MeetingSerializer(serializers.ModelSerializer):
             meeting_attrs = {k: v for k, v in attrs.items() if k != 'participants'}
             instance = Meeting(**meeting_attrs)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else {"detail": e.messages})
+        instance.clean()
 
         participants = attrs.get('participants')
         project = attrs.get('project') or (instance.project if instance else None)
@@ -357,10 +342,7 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
         for attr, value in attrs.items():
             setattr(instance, attr, value)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            raise serializers.ValidationError(e.message_dict if hasattr(e, 'message_dict') else e.messages)
+        instance.clean()
 
         return attrs
 
