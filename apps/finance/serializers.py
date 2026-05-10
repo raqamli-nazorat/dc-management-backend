@@ -104,13 +104,7 @@ class ExpenseRequestSerializer(serializers.ModelSerializer):
                 model_attrs['user'] = user
             instance = ExpenseRequest(**model_attrs)
 
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+        instance.clean()
 
         if 'project' in attrs or instance.project is None:
             attrs['project'] = instance.project
@@ -156,14 +150,7 @@ class PayrollSerializer(serializers.ModelSerializer):
         else:
             instance = Payroll(**attrs)
 
-        from django.core.exceptions import ValidationError as DjangoValidationError
-        try:
-            instance.clean()
-        except DjangoValidationError as e:
-            if hasattr(e, 'message_dict'):
-                raise serializers.ValidationError(e.message_dict)
-            else:
-                raise serializers.ValidationError({"detail": e.messages})
+        instance.clean()
 
         return attrs
 
