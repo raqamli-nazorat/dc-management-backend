@@ -19,7 +19,8 @@ class TodoAdmin(ModelAdmin):
         'title_short',
         'color_badge',
         'status_badge',
-        'created_at_formatted'
+        'created_at_formatted',
+        'is_active'
     )
 
     list_display_links = ('id', 'user')
