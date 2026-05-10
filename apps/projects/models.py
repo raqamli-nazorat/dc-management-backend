@@ -409,7 +409,7 @@ class Task(BaseModel):
 
 class TaskAttachment(BaseModel):
     task = models.ForeignKey(Task, on_delete=models.PROTECT, related_name='attachments', verbose_name='Vazifa')
-    file = models.FileField(upload_to='tasks/files/', validators=[validate_file_extension, validate_file_size],
+    file = models.FileField(upload_to='tasks/files/', validators=[validate_file_size],
                             verbose_name='Fayl')
 
     class Meta:
