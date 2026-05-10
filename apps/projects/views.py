@@ -132,6 +132,7 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         instance.save()
 
 
+@extend_schema(tags=['Project Documents'])
 class ProjectDocumentViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = ProjectDocument.objects.filter(is_active=True)
     serializer_class = ProjectDocumentSerializer
