@@ -3,7 +3,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
-from rest_framework import viewsets, permissions, generics, filters, status
+from rest_framework import viewsets, permissions, generics, filters, status, parsers
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -14,10 +14,9 @@ from apps.common.mixins import SoftDeleteMixin
 from .filters import UserFilter
 from .permissions import IsAuditor, IsAdmin, IsManager, IsEmployee
 from .serializers import (UserSerializer, UserPeriodStatsSerializer, UserEfficiencySerializer, ProfileSerializer,
-                          SocialLinksSerializer, UserShortSerializer,
+                          UserShortSerializer,
                           ChangePasswordSerializer,
-                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer, CardNumberSerializer,
-                          ChangeActiveRoleSerializer)
+                          MyTokenRefreshSerializer, MyTokenObtainPairSerializer)
 
 User = get_user_model()
 
@@ -65,87 +64,11 @@ class UserShortListView(generics.ListAPIView):
 
 
 @extend_schema(tags=['Profile'])
-class SocialLinksView(generics.UpdateAPIView):
-    serializer_class = SocialLinksSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['put']
-
-    def get_object(self):
-        return self.request.user
-
-    def put(self, request, *args, **kwargs):
-        serializer = SocialLinksSerializer(
-            data=request.data,
-            instance=self.get_object(),
-            partial=True,
-        )
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                "message": "Ijtimoiy tarmoqlar muvaffaqiyatli yangilandi."
-            }, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema(tags=['Profile'])
-class CardNumberView(generics.UpdateAPIView):
-    serializer_class = CardNumberSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['put']
-
-    def get_object(self):
-        return self.request.user
-
-    def put(self, request, *args, **kwargs):
-        serializer = CardNumberSerializer(
-            data=request.data,
-            instance=self.get_object(),
-            partial=True,
-        )
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response({
-                "message": "Karta raqam muvaffaqiyatli yangilandi."
-            }, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema(tags=['Profile'])
-class ChangeActiveRoleView(generics.UpdateAPIView):
-    serializer_class = ChangeActiveRoleSerializer
-    permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ['put']
-
-    def get_object(self):
-        return self.request.user
-
-    def put(self, request, *args, **kwargs):
-        serializer = self.get_serializer(
-            instance=self.get_object(),
-            data=request.data,
-            partial=True,
-        )
-
-        if serializer.is_valid():
-            serializer.save()
-
-            active_role_display = self.request.user.get_active_role_display()
-
-            return Response({
-                "message": f"Aktiv rol '{active_role_display}'ga muvaffaqiyatli o'zgartirildi.",
-            }, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-@extend_schema(tags=['Profile'])
-class ProfileView(generics.RetrieveAPIView):
+class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [parsers.FormParser, parsers.MultiPartParser, parsers.JSONParser]
+    http_method_names = ['get', 'patch']
 
     def get_object(self):
         return self.request.user
