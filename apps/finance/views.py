@@ -135,7 +135,7 @@ class ExpenseReceiptViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
         expense = serializer.validated_data.get('expense')
 
         if expense.status != Status.PAID:
-            raise ValidationError({'status': "Chekni faqat 'To'langan' holatidagi so'rovlarga yuklash mumkin."})
+            raise ValidationError({'status': "Chekni faqat to'langan so'rovlarga yuklash mumkin."})
 
         serializer.save()
 
@@ -144,7 +144,7 @@ class ExpenseReceiptViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
             raise PermissionDenied("Chekni o'chirish huquqi faqat hisobchida.")
 
         if instance.expense.status != Status.PAID:
-            raise PermissionDenied("Faqat hali tasdiqlanmagan (Paid) so'rov cheklarini o'chirish mumkin.")
+            raise PermissionDenied("Faqat to'langan so'rov cheklarini o'chirish mumkin.")
 
         super().perform_destroy(instance)
 

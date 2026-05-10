@@ -69,7 +69,7 @@ class ExpenseService:
         expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
 
         if expense.status != Status.PENDING:
-            raise ValidationError({'status': "Faqat 'Kutilmoqda' holatidagi so'rovni bekor qilish mumkin."})
+            raise ValidationError({'status': "Faqat kutilmoqda holatidagi so'rovni bekor qilish mumkin."})
 
         expense.status = Status.CANCELLED
         expense.cancel_reason = cancel_reason
@@ -102,7 +102,7 @@ class ExpenseService:
         expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
 
         if expense.status != Status.PENDING:
-            raise ValidationError({'status': "Faqat \"Kutilayotgan\" so'rovlarni \"To'langan\" deb belgilash mumkin."})
+            raise ValidationError({'status': "Faqat kutilayotgan so'rovlarni to'langan deb belgilash mumkin."})
 
         expense.status = Status.PAID
         expense.accountant = user
@@ -134,7 +134,7 @@ class ExpenseService:
         expense = ExpenseRequest.objects.select_for_update().get(pk=expense.pk)
 
         if expense.status != Status.PAID:
-            raise ValidationError({'status': "So'rov tasdiqlanishidan oldin u “To'langan” holatida bo'lishi kerak."})
+            raise ValidationError({'status': "So'rov tasdiqlanishidan oldin u to'langan holatida bo'lishi kerak."})
 
         expense.status = Status.CONFIRMED
         expense.save()
