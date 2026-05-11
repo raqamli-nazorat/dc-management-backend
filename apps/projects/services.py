@@ -21,7 +21,8 @@ class TaskService:
     @transaction.atomic
     def create_task(cls, user, validated_data):
         task = Task.objects.create(created_by=user, **validated_data)
-        if task.assignee:
+
+        if task.assignee and task.assignee != user:
             deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
             cls.send_task_notification(
                 task.assignee,
@@ -36,7 +37,7 @@ class TaskService:
                 manager,
                 task,
                 "Yangi vazifa yaratildi",
-                f"Loyihangizda yangi vazifa yaratildi: {task.title}. Yaratuvchi: {user.get_full_name() or user.username}"
+                f"Loyihangizda yangi vazifa yaratildi: {task.title}. Yaratuvchi: {user.username}"
             )
 
         return task
