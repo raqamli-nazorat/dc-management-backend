@@ -65,6 +65,26 @@ def handle_project_post_save(sender, instance, created, **kwargs):
             if working_seconds > 0:
                 from apps.projects.tasks import update_project_tasks_on_unlock
                 transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(instance.id, working_seconds))
+                
+        _old_status = getattr(instance, '_old_status', None)
+        from apps.projects.models import ProjectStatus
+        if _old_status == ProjectStatus.PLANNING and instance.status in [ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]:
+            for emp in instance.employees.all():
+                send_system_notification(
+                    user=emp,
+                    title="Siz loyihaga qo'shildingiz",
+                    message=f"Siz {instance.title} loyihasiga xodim sifatida qo'shildingiz.",
+                    action='project_assigned',
+                    project_id=instance.id
+                )
+            for tester in instance.testers.all():
+                send_system_notification(
+                    user=tester,
+                    title="Siz loyihaga qo'shildingiz",
+                    message=f"Siz {instance.title} loyihasiga sinovchi sifatida qo'shildingiz.",
+                    action='project_assigned',
+                    project_id=instance.id
+                )
 
 
 @receiver(m2m_changed, sender=Project.employees.through)
@@ -75,15 +95,17 @@ def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
             raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Xodimlarni tahrirlash taqiqlanadi!")
 
     if action == "post_add" and pk_set:
-        users = User.objects.filter(id__in=pk_set)
-        for user in users:
-            send_system_notification(
-                user=user,
-                title="Siz loyihaga qo'shildingiz",
-                message=f"Siz {instance.title} loyihasiga xodim sifatida qo'shildingiz.",
-                action='project_assigned',
-                project_id=instance.id
-            )
+        from apps.projects.models import ProjectStatus
+        if instance.status != ProjectStatus.PLANNING:
+            users = User.objects.filter(id__in=pk_set)
+            for user in users:
+                send_system_notification(
+                    user=user,
+                    title="Siz loyihaga qo'shildingiz",
+                    message=f"Siz {instance.title} loyihasiga xodim sifatida qo'shildingiz.",
+                    action='project_assigned',
+                    project_id=instance.id
+                )
 
     elif action == "post_remove" and pk_set:
         users = User.objects.filter(id__in=pk_set)
@@ -104,15 +126,17 @@ def handle_project_testers_change(sender, instance, action, pk_set, **kwargs):
             raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Sinovchilarni tahrirlash taqiqlanadi!")
 
     if action == "post_add" and pk_set:
-        users = User.objects.filter(id__in=pk_set)
-        for user in users:
-            send_system_notification(
-                user=user,
-                title="Siz loyihaga qo'shildingiz",
-                message=f"Siz {instance.title} loyihasiga sinovchi sifatida qo'shildingiz.",
-                action='project_assigned',
-                project_id=instance.id
-            )
+        from apps.projects.models import ProjectStatus
+        if instance.status != ProjectStatus.PLANNING:
+            users = User.objects.filter(id__in=pk_set)
+            for user in users:
+                send_system_notification(
+                    user=user,
+                    title="Siz loyihaga qo'shildingiz",
+                    message=f"Siz {instance.title} loyihasiga sinovchi sifatida qo'shildingiz.",
+                    action='project_assigned',
+                    project_id=instance.id
+                )
     elif action == "post_remove" and pk_set:
         users = User.objects.filter(id__in=pk_set)
         for user in users:
