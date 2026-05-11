@@ -136,6 +136,8 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 class ProjectDocumentViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets.ModelViewSet):
     queryset = ProjectDocument.objects.filter(is_active=True)
     serializer_class = ProjectDocumentSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['project']
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
@@ -269,9 +271,9 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
     serializer_class = TaskAttachmentSerializer
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
+    http_method_names = ['get', 'post', 'delete']
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['task']
-    http_method_names = ['get', 'post', 'delete']
 
     full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
