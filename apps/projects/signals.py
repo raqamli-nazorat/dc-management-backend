@@ -4,8 +4,8 @@ from django.dispatch import receiver
 from django.db import transaction
 from django.core.exceptions import ValidationError
 
-from apps.projects.models import Project, Task
 from apps.notifications.models import Notification, NotificationType
+from apps.projects.models import Project, ProjectStatus
 
 User = get_user_model()
 
@@ -67,7 +67,6 @@ def handle_project_post_save(sender, instance, created, **kwargs):
                 transaction.on_commit(lambda: update_project_tasks_on_unlock.delay(instance.id, working_seconds))
                 
         _old_status = getattr(instance, '_old_status', None)
-        from apps.projects.models import ProjectStatus
         if _old_status == ProjectStatus.PLANNING and instance.status in [ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]:
             for emp in instance.employees.all():
                 send_system_notification(
@@ -90,12 +89,10 @@ def handle_project_post_save(sender, instance, created, **kwargs):
 @receiver(m2m_changed, sender=Project.employees.through)
 def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
     if action in ["pre_add", "pre_remove"]:
-        from apps.projects.models import ProjectStatus
         if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
             raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Xodimlarni tahrirlash taqiqlanadi!")
 
     if action == "post_add" and pk_set:
-        from apps.projects.models import ProjectStatus
         if instance.status != ProjectStatus.PLANNING:
             users = User.objects.filter(id__in=pk_set)
             for user in users:
@@ -121,12 +118,10 @@ def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
 @receiver(m2m_changed, sender=Project.testers.through)
 def handle_project_testers_change(sender, instance, action, pk_set, **kwargs):
     if action in ["pre_add", "pre_remove"]:
-        from apps.projects.models import ProjectStatus
         if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
             raise ValidationError(f"Loyiha {instance.get_status_display()} holatida. Sinovchilarni tahrirlash taqiqlanadi!")
 
     if action == "post_add" and pk_set:
-        from apps.projects.models import ProjectStatus
         if instance.status != ProjectStatus.PLANNING:
             users = User.objects.filter(id__in=pk_set)
             for user in users:
