@@ -160,37 +160,49 @@ def notify_meeting_end(self, meeting_id):
     try:
         meeting = Meeting.objects.select_related('organizer').get(id=meeting_id)
 
-        if meeting.is_active and not meeting.is_completed:
-            title = "Yig'ilish tugadi"
-            message = f"Hurmatli {meeting.organizer.username}, '{meeting.title}' uchrashuvi uchun belgilangan vaqt tugadi. Iltimos, ishtirokchilar ishtirokini tekshirib, davomatni yakunlang."
+        if not meeting.is_active or meeting.is_completed:
+            return f"Meeting {meeting_id} allaqachon yopilgan yoki o'chirilgan."
 
-            Notification.objects.create(
-                user=meeting.organizer,
-                title=title,
-                message=message,
-                type=NotificationType.MEETING,
-                extra_data={
-                    "meeting_id": meeting.id,
-                    "action": "close_meeting"
-                }
-            )
+        current_scheduled_end = meeting.start_time + timedelta(minutes=meeting.duration_minutes)
+        now = timezone.now()
 
-            data = {
-                "user_id": meeting.organizer.id,
-                "title": title,
-                "message": message,
-                "type": NotificationType.MEETING,
-                "extra_data": {
-                    "meeting_id": meeting.id,
-                    "action": "close_meeting",
-                    "project_id": meeting.project_id
-                }
+        time_diff = abs((now - current_scheduled_end).total_seconds())
+        if time_diff > 120:
+            return f"Meeting {meeting_id} vaqti o'zgargan (Farq: {time_diff} sek). Eski xabar bekor qilindi."
+
+        title = "Yig'ilish tugadi"
+        message = (f"Hurmatli {meeting.organizer.username}, '{meeting.title}' uchrashuvi uchun "
+                   f"belgilangan vaqt tugadi. Iltimos, ishtirokchilar ishtirokini tekshirib, "
+                   f"davomatni yakunlang.")
+
+        Notification.objects.create(
+            user=meeting.organizer,
+            title=title,
+            message=message,
+            type=NotificationType.MEETING,
+            extra_data={
+                "meeting_id": meeting.id,
+                "action": "close_meeting"
             }
-            send_single_notification_task.delay(data)
+        )
 
-        return f"Meeting {meeting_id} end notification sent."
+        broadcast_data = {
+            "user_id": meeting.organizer.id,
+            "title": title,
+            "message": message,
+            "type": "meeting",
+            "extra_data": {
+                "meeting_id": meeting.id,
+                "action": "close_meeting",
+                "project_id": meeting.project_id
+            }
+        }
+        send_single_notification_task.delay(broadcast_data)
+
+        return f"Meeting {meeting_id} end notification sent to {meeting.organizer.username}."
+
     except Meeting.DoesNotExist:
-        return f"Meeting {meeting_id} already deleted."
+        return f"Meeting {meeting_id} topilmadi (o'chirib yuborilgan bo'lishi mumkin)."
     except Exception as exc:
-        logger.error(f"Yig'ilish yakuni haqida xabar yuborishda xatolik {meeting_id}: {exc}")
+        logger.error(f"Yig'ilish yakuni xabarnomasida xatolik (ID: {meeting_id}): {exc}")
         raise self.retry(exc=exc)
