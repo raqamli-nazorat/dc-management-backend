@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
@@ -447,6 +449,14 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
         if time_changed:
             MeetingService.notify_time_change(meeting)
+
+            if meeting.duration_minutes > 0:
+                from .tasks import notify_meeting_end
+
+                transaction.on_commit(lambda: notify_meeting_end.apply_async(
+                    args=[meeting.id],
+                    eta=meeting.start_time + timedelta(minutes=meeting.duration_minutes)
+                ))
 
     def perform_destroy(self, instance):
         user = self.request.user
