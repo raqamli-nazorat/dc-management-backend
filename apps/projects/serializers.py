@@ -77,7 +77,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 class ProjectDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectDocument
-        fields = ('id', 'project', 'name', 'url', 'created_at')
+        fields = ('id', 'project', 'name', 'value', 'created_at')
         read_only_fields = ('id', 'created_at')
 
     def validate_project(self, value):

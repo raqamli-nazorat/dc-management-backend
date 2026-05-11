@@ -152,10 +152,12 @@ class Project(BaseModel):
             except Project.DoesNotExist:
                 return
 
-            is_soft_delete_action = (self.is_active != old_project.is_active) or (self.is_deleted != old_project.is_deleted)
-            
+            is_soft_delete_action = (self.is_active != old_project.is_active) or (
+                    self.is_deleted != old_project.is_deleted)
+
             if old_project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED] and not is_soft_delete_action:
-                raise ValidationError(f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
+                raise ValidationError(
+                    f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
 
             if old_project.status == ProjectStatus.ACTIVE:
                 if old_project.manager_id != self.manager_id:
@@ -247,8 +249,8 @@ class ProjectDocument(BaseModel):
         related_name='documents',
         verbose_name="Loyiha"
     )
-    name = models.CharField(max_length=255, verbose_name="Hujjat nomi")
-    url = models.URLField(verbose_name="Hujjat havolasi")
+    name = models.CharField(max_length=255, verbose_name="Nomi")
+    value = models.CharField(max_length=255, verbose_name="Qiymati")
 
     def __str__(self):
         return f"{self.name} ({self.project.title})"
