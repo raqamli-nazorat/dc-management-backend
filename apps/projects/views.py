@@ -449,15 +449,13 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             MeetingService.notify_time_change(meeting)
 
     def perform_destroy(self, instance):
+        user = self.request.user
+
+        if not instance.organizer != user:
+            raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni o'chira olasiz.")
+
         if instance.is_completed:
             raise PermissionDenied("Tugallangan yig'ilishni o'chirib bo'lmaydi.")
-
-        user = self.request.user
-        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                        instance.project.manager == user
-
-        if not is_privileged and instance.organizer != user:
-            raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni o'chira olasiz.")
 
         instance.is_active = False
         instance.is_deleted = True
