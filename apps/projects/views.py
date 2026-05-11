@@ -515,7 +515,7 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
                 active_project_q,
-                user=user
+                Q(user=user) | Q(meeting__organizer=user)
             ).distinct()
 
         return queryset.none()
