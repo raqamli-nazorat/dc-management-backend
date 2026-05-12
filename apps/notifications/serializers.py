@@ -21,3 +21,7 @@ class UserDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDevice
         fields = ('fcm_token', 'device_type', 'device_id')
+        extra_kwargs = {
+            'device_id': {'validators': []},
+            'fcm_token': {'validators': []}
+        }
