@@ -1,6 +1,6 @@
 import json
 import logging
-from celery import shared_task
+from celery import shared_task, group
 from firebase_admin import messaging
 from .models import UserDevice
 
@@ -9,33 +9,42 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def mass_notification_sender(notification_data_list):
-    for data in notification_data_list:
-        send_single_notification_task.delay(data)
+    if not notification_data_list:
+        return "Ro'yxat bo'sh"
+
+    task_signatures = [send_single_notification_task.s(data) for data in notification_data_list]
+
+    task_chunks = group(task_signatures).skew(step=1).chunks(50)
+    task_chunks.apply_async()
+
+    return f"{len(notification_data_list)} xabarlar bo'laklarga bo'lindi."
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
 def send_single_notification_task(self, data):
+    send_websocket_notification.delay(data)
+
+    send_push_notification_task.delay(
+        user_id=data['user_id'],
+        title=data['title'],
+        message=data['message'],
+        notification_type=data.get('type', 'system'),
+        extra_data=data.get('extra_data', {})
+    )
+
+
+@shared_task
+def send_websocket_notification(data):
     from channels.layers import get_channel_layer
     from asgiref.sync import async_to_sync
-
     try:
         channel_layer = get_channel_layer()
         group_name = f"user_{data['user_id']}_notifications"
-
         async_to_sync(channel_layer.group_send)(
             group_name, {"type": "send_notification", "message": data}
         )
-
-        send_push_notification_task.delay(
-            user_id=data['user_id'],
-            title=data['title'],
-            message=data['message'],
-            notification_type=data.get('type', 'system'),
-            extra_data=data.get('extra_data', {})
-        )
-    except Exception as exc:
-        logger.error(f"Foydalanuvchi uchun bitta bildirishnoma xatosi {data['user_id']}: {exc}")
-        raise self.retry(exc=exc)
+    except Exception as e:
+        logger.error(f"WS Error: {e}")
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=3)
