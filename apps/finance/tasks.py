@@ -39,16 +39,15 @@ def _send_accountant_notifications(month_label):
             title="Oylik hisob-kitob yakunlandi",
             message=f"{month_label} oyi uchun maoshlar hisoblab chiqildi. Tasdiqlashingizni kutmoqda.",
             type=NotificationType.FINANCE,
-            created_at=timezone.now()
         ) for accountant in accountants
     ]
 
     if notifications:
         Notification.objects.bulk_create(notifications)
-        logger.info(f"{len(notifications)} ta hisobchiga bildirishnoma yuborildi.")
+        logger.info("%d ta hisobchiga bildirishnoma yuborildi.", len(notifications))
 
 
-def _calc_meeting_penalty(user, start, end) -> Decimal:
+def _calc_meeting_penalty(user) -> Decimal:
     missed_qs = list(
         MeetingAttendance.objects
         .filter(
@@ -78,7 +77,7 @@ def _calc_meeting_penalty(user, start, end) -> Decimal:
     return total_penalty
 
 
-def _calc_manager_kpi(user, start, end):
+def _calc_manager_kpi(user):
     completed_projects = list(
         Project.objects
         .filter(
@@ -96,20 +95,14 @@ def _calc_manager_kpi(user, start, end):
     for project in completed_projects:
         processed_project_ids.append(project.id)
         gross = _round(project.project_price)
-
         penalty_base = gross if gross > 0 else user.fixed_salary
 
         if project.was_overdue and penalty_base > 0:
             penalty = _round((penalty_base * project.penalty_percentage) / 100)
             total_penalty += penalty
-            
-            kpi_bonus += gross
-            logger.debug(
-                "Manager %s | Loyiha '%s' kechikkan. Jarima: %s",
-                user.username, project.title, penalty
-            )
-        else:
-            kpi_bonus += gross
+            logger.debug("Manager %s | Loyiha '%s' kechikkan. Jarima: %s", user.username, project.title, penalty)
+
+        kpi_bonus += gross
 
     if processed_project_ids:
         Project.objects.filter(id__in=processed_project_ids).update(payroll_processed=True)
@@ -117,7 +110,7 @@ def _calc_manager_kpi(user, start, end):
     return kpi_bonus, total_penalty
 
 
-def _calc_employee_kpi(user, start, end):
+def _calc_employee_kpi(user):
     completed_tasks = list(
         Task.objects
         .filter(
@@ -140,7 +133,6 @@ def _calc_employee_kpi(user, start, end):
         bugs_count += task.reopened_count
 
         current_task_penalty = Decimal("0.00")
-        
         penalty_base = gross if gross > 0 else user.fixed_salary
 
         if penalty_base > 0:
@@ -160,9 +152,7 @@ def _calc_employee_kpi(user, start, end):
         est = task.estimated_minutes or 0
         act = task.actual_minutes or 0
         velocity = Decimal(str(min(est / act, 1.0))) if est > 0 and act > 0 else Decimal("1.0")
-
-        weighted_bonus = _round(gross * velocity)
-        kpi_bonus += weighted_bonus
+        kpi_bonus += _round(gross * velocity)
 
     if processed_task_ids:
         Task.objects.filter(id__in=processed_task_ids).update(payroll_processed=True)
@@ -185,8 +175,7 @@ def calculate_monthly_salaries(self):
         .iterator(chunk_size=500)
     )
 
-    processed = 0
-    errors = 0
+    processed = errors = 0
 
     for user in users_qs:
         try:
@@ -194,16 +183,12 @@ def calculate_monthly_salaries(self):
             processed += 1
         except Exception as exc:
             errors += 1
-            logger.error(
-                "Foydalanuvchi %s (%s) uchun hisoblashda xato: %s",
-                user.username, user.pk, exc,
-                exc_info=True,
-            )
+            logger.error("Foydalanuvchi %s (%s) uchun hisoblashda xato: %s", user.username, user.pk, exc, exc_info=True)
 
     try:
         _send_accountant_notifications(month_label)
     except Exception as e:
-        logger.error(f"Hisobchilarga xabar yuborishda xatolik: {e}")
+        logger.error("Hisobchilarga xabar yuborishda xatolik: %s", e)
 
     result = f"{month_label} oyi | muvaffaqiyatli: {processed} | xato: {errors}"
     logger.info("Oylik hisob-kitob yakunlandi: %s", result)
@@ -211,49 +196,34 @@ def calculate_monthly_salaries(self):
 
 
 def _process_user(user: User, month_start, month_end):
-    try:
-        with transaction.atomic():
-            kpi_bonus = Decimal("0.00")
-            total_penalty = Decimal("0.00")
-            tasks_done = 0
-            missed_deadlines = 0
-            bugs_count = 0
+    with transaction.atomic():
+        kpi_bonus = Decimal("0.00")
+        total_penalty = Decimal("0.00")
+        tasks_done = missed_deadlines = bugs_count = 0
 
-            if user.has_any_role(Role.MANAGER):
-                mgr_kpi, proj_penalty = _calc_manager_kpi(user, month_start, month_end)
-                kpi_bonus += mgr_kpi
-                total_penalty += proj_penalty
+        if user.has_any_role(Role.MANAGER):
+            mgr_kpi, proj_penalty = _calc_manager_kpi(user)
+            kpi_bonus += mgr_kpi
+            total_penalty += proj_penalty
 
-            if user.has_any_role(Role.EMPLOYEE):
-                meeting_penalty = _calc_meeting_penalty(user, month_start, month_end)
-                total_penalty += meeting_penalty
+        if user.has_any_role(Role.EMPLOYEE):
+            total_penalty += _calc_meeting_penalty(user)
 
-                emp_kpi, task_penalty, emp_tasks_done, emp_missed_deadlines, emp_bugs_count = _calc_employee_kpi(
-                    user, month_start, month_end
-                )
-                kpi_bonus += emp_kpi
-                total_penalty += task_penalty
-                tasks_done += emp_tasks_done
-                missed_deadlines += emp_missed_deadlines
-                bugs_count += emp_bugs_count
+            emp_kpi, task_penalty, tasks_done, missed_deadlines, bugs_count = _calc_employee_kpi(user)
+            kpi_bonus += emp_kpi
+            total_penalty += task_penalty
 
-            Payroll.objects.update_or_create(
-                user=user,
-                month=month_start.date(),
-                defaults={
-                    "fixed_salary": user.fixed_salary,
-                    "kpi_bonus": kpi_bonus,
-                    "penalty_amount": total_penalty,
-                    "total_amount": max(Decimal("0.00"), user.fixed_salary + kpi_bonus - total_penalty),
-                    "tasks_completed": tasks_done,
-                    "deadline_missed": missed_deadlines,
-                    "bug_count": bugs_count,
-                    "is_confirmed": False
-                }
-            )
-
-            logger.info(f"Muvaffaqiyatli: {user.username}")
-
-    except Exception as exc:
-        logger.error(f"Foydalanuvchi {user.username} uchun xatolik: {exc}")
-        raise exc
+        Payroll.objects.update_or_create(
+            user=user,
+            month=month_start.date(),
+            defaults={
+                "fixed_salary": user.fixed_salary,
+                "kpi_bonus": kpi_bonus,
+                "penalty_amount": total_penalty,
+                "total_amount": max(Decimal("0.00"), user.fixed_salary + kpi_bonus - total_penalty),
+                "tasks_completed": tasks_done,
+                "deadline_missed": missed_deadlines,
+                "bug_count": bugs_count,
+                "is_confirmed": False,
+            }
+        )
