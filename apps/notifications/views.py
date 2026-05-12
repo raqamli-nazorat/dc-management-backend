@@ -1,6 +1,7 @@
 import uuid
 
 from django.core.cache import cache
+from django.db.models import Count, Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import generics, status, permissions
@@ -35,6 +36,27 @@ class NotificationListView(generics.ListAPIView):
 
     def get_queryset(self):
         return super().get_queryset().filter(user=self.request.user).order_by('is_read')
+
+
+@extend_schema(tags=["Notifications"])
+class NotificationCountView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, *args, **kwargs):
+        counts = Notification.objects.filter(
+            user=request.user,
+            is_active=True
+        ).aggregate(
+            unread_count=Count('id', filter=Q(is_read=False)),
+            read_count=Count('id', filter=Q(is_read=True)),
+            total_count=Count('id')
+        )
+
+        return Response({
+            "unread": counts['unread_count'],
+            "read": counts['read_count'],
+            "total": counts['total_count']
+        })
 
 
 @extend_schema(tags=["Notifications"])

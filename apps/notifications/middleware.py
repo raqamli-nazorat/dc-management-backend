@@ -8,17 +8,17 @@ User = get_user_model()
 
 
 @database_sync_to_async
-def get_user_from_ticket(ticket):
+def get_user_and_cache_key(ticket):
     cache_key = f"ws_ticket_{ticket}"
     user_id = cache.get(cache_key)
 
     if user_id:
-        cache.delete(cache_key)
         try:
-            return User.objects.only('id', 'username', 'roles').get(pk=user_id)
+            user = User.objects.only('id', 'username').get(pk=user_id)
+            return user, cache_key
         except User.DoesNotExist:
-            return AnonymousUser()
-    return AnonymousUser()
+            return AnonymousUser(), None
+    return AnonymousUser(), None
 
 
 class TicketAuthMiddleware:
@@ -31,8 +31,11 @@ class TicketAuthMiddleware:
         ticket = query_params.get("ticket", [None])[0]
 
         if ticket:
-            scope['user'] = await get_user_from_ticket(ticket)
+            user, cache_key = await get_user_and_cache_key(ticket)
+            scope['user'] = user
+            scope['ws_cache_key'] = cache_key
         else:
             scope['user'] = AnonymousUser()
+            scope['ws_cache_key'] = None
 
         return await self.app(scope, receive, send)
