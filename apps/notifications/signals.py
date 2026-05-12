@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -18,4 +19,4 @@ def post_save_handler(sender, instance, created, **kwargs):
             "created_at": instance.created_at.isoformat()
         }
 
-        mass_notification_sender.delay([message_data])
+        transaction.on_commit(lambda: mass_notification_sender.delay([message_data]))
