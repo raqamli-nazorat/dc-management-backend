@@ -123,11 +123,6 @@ class Project(BaseModel):
 
         deferred_fields = self.get_deferred_fields()
 
-        if 'manager' not in deferred_fields:
-            self._old_manager_id = self.manager_id
-        else:
-            self._old_manager_id = None
-
         if 'status' not in deferred_fields:
             self._old_status = self.status
         else:
@@ -158,12 +153,6 @@ class Project(BaseModel):
             if old_project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED] and not is_soft_delete_action:
                 raise ValidationError(
                     f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
-
-            if old_project.status == ProjectStatus.ACTIVE:
-                if old_project.manager_id != self.manager_id:
-                    raise ValidationError({
-                        'manager': "Loyiha faol holatida menejerni o'zgartirib bo'lmaydi!"
-                    })
 
             old_status = old_project.status
             new_status = self.status
