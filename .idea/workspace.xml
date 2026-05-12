@@ -3,8 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/notifications/consumers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/consumers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/notifications/middleware.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/middleware.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -263,7 +261,7 @@
       <workItem from="1778578887528" duration="230000" />
       <workItem from="1778580010712" duration="17000" />
       <workItem from="1778585212144" duration="1030000" />
-      <workItem from="1778598503902" duration="2647000" />
+      <workItem from="1778598503902" duration="4790000" />
     </task>
     <servers />
   </component>

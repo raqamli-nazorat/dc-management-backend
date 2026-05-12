@@ -1,10 +1,11 @@
 import logging
-from datetime import timedelta
 from collections import defaultdict
+from datetime import timedelta
+
 from celery import shared_task
 from django.db import transaction
-from django.utils import timezone
 from django.db.models import Q
+from django.utils import timezone
 
 from apps.notifications.models import NotificationType, Notification
 from apps.notifications.tasks import mass_notification_sender, send_single_notification_task
@@ -17,17 +18,26 @@ logger = logging.getLogger(__name__)
 def update_project_tasks_on_unlock(project_id, working_seconds):
     try:
         project = Project.objects.get(id=project_id)
-        tasks = project.tasks.all()
+        tasks = list(project.tasks.all())
+
+        if not tasks:
+            return f"Loyiha (ID: {project_id}) uchun vazifalar topilmadi."
+
+        now = timezone.now()
+        td = timedelta(seconds=working_seconds)
+
+        for task in tasks:
+            task.deadline += td
+
+            if task.status == TaskStatus.OVERDUE and task.deadline > now:
+                task.status = TaskStatus.IN_PROGRESS
+                task.was_overdue = False
 
         with transaction.atomic():
-            for task in tasks:
-                task.deadline = task.deadline + timedelta(seconds=working_seconds)
-                if task.status == TaskStatus.OVERDUE and task.deadline > timezone.now():
-                    task.status = TaskStatus.IN_PROGRESS
-                    task.was_overdue = False
-                task.save()
+            Task.objects.bulk_update(tasks, ['deadline', 'status', 'was_overdue'], batch_size=500)
 
-        return f"Loyiha (ID: {project_id}) uchun {tasks.count()} ta vazifa yangilandi. Muddatlar {working_seconds} soniyaga surildi."
+        return f"Loyiha (ID: {project_id}) uchun {len(tasks)} ta vazifa yangilandi."
+
     except Project.DoesNotExist:
         return f"Loyiha (ID: {project_id}) topilmadi."
 
