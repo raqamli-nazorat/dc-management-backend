@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q, OuterRef, Subquery, IntegerField
+from django.db.models import Count, Q, OuterRef, Subquery, IntegerField, DecimalField, Sum
 from apps.projects.models import Project, Task, MeetingAttendance
 from apps.finance.models import ExpenseRequest, Payroll
 
@@ -39,6 +39,8 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
 
             return Subquery(
                 Project.objects.filter(filters)
+                .order_by()
+                .values('is_active')
                 .annotate(cnt=Count('pk', distinct=True))
                 .values('cnt')[:1],
                 output_field=IntegerField()
@@ -58,8 +60,13 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
             if rejected:
                 qs = qs.filter(reopened_count__gt=0)
 
-            return Subquery(qs.values('assignee').annotate(cnt=Count('pk')).values('cnt')[:1],
-                            output_field=IntegerField())
+            return Subquery(
+                qs.order_by()
+                .values('is_active')
+                .annotate(cnt=Count('pk'))
+                .values('cnt')[:1],
+                output_field=IntegerField()
+            )
 
         def get_meeting_subquery(attended=None, excused=None):
             meeting_filter = Q(meeting__project__isnull=True) | Q(meeting__project__is_hidden=False)
@@ -78,24 +85,39 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
             elif excused is False:
                 qs = qs.filter(is_excused=False)
 
-            return Subquery(qs.values('user').annotate(cnt=Count('pk')).values('cnt')[:1], output_field=IntegerField())
+            return Subquery(
+                qs.order_by()
+                .values('is_active')
+                .annotate(cnt=Count('pk'))
+                .values('cnt')[:1],
+                output_field=IntegerField()
+            )
 
         def get_expense_subquery(status=None):
-            from django.db.models import DecimalField, Sum
             qs = ExpenseRequest.objects.filter(user=OuterRef('pk'), is_active=True)
 
             if status:
                 qs = qs.filter(status=status)
 
-            return Subquery(qs.values('user').annotate(total=Sum('amount')).values('total'),
-                            output_field=DecimalField())
+            return Subquery(
+                qs.order_by().
+                values('user').
+                annotate(total=Sum('amount')).
+                values('total')[:1],
+                output_field=DecimalField()
+            )
 
         def get_payroll_subquery(field):
-            from django.db.models import DecimalField, Sum
 
             return Subquery(
-                Payroll.objects.filter(user=OuterRef('pk'), is_active=True).values('user').annotate(
-                    total=Sum(field)).values('total'),
+                Payroll.objects.filter(
+                    user=OuterRef('pk'),
+                    is_active=True
+                )
+                .order_by()
+                .values('user')
+                .annotate(
+                    total=Sum(field)).values('total')[:1],
                 output_field=DecimalField()
             )
 
@@ -209,7 +231,12 @@ class ProjectComprehensiveReportSerializer(serializers.ModelSerializer):
     @staticmethod
     def setup_eager_loading(queryset):
         def get_task_subquery(status=None, rejected=False):
-            qs = Task.objects.filter(project=OuterRef('pk'), is_active=True, is_deleted=False)
+            qs = Task.objects.filter(
+                project=OuterRef('pk'),
+                is_active=True,
+                is_deleted=False,
+                project__is_hidden=False
+            )
 
             if status:
                 qs = qs.filter(status=status)
@@ -217,7 +244,13 @@ class ProjectComprehensiveReportSerializer(serializers.ModelSerializer):
             if rejected:
                 qs = qs.filter(reopened_count__gt=0)
 
-            return Subquery(qs.values('project').annotate(cnt=Count('pk')).values('cnt'), output_field=IntegerField())
+            return Subquery(
+                qs.order_by()
+                .values('is_active')
+                .annotate(cnt=Count('pk'))
+                .values('cnt')[:1],
+                output_field=IntegerField()
+            )
 
         return queryset.select_related('created_by', 'manager').prefetch_related('employees', 'testers').annotate(
             t_total=get_task_subquery(),

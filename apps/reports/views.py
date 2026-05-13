@@ -75,7 +75,7 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         user = getattr(self.request, 'user', None)
         queryset = ProjectComprehensiveReportSerializer.setup_eager_loading(
-            Project.objects.filter(is_active=True, is_deleted=False)
+            Project.objects.filter(is_active=True, is_deleted=False, is_hidden=False)
         )
 
         if not user or not user.is_authenticated:
