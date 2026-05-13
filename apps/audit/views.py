@@ -5,7 +5,7 @@ from drf_spectacular.utils import extend_schema
 
 from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsAuditor
-from common.mixins import RoleBasedQuerySetMixin
+from apps.common.mixins import RoleBasedQuerySetMixin
 from .serializers import AuditLogSerializer
 from .filters import AuditLogFilter
 from .models import AuditLog
