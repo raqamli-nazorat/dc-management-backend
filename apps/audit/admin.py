@@ -40,7 +40,7 @@ class AuditLogAdmin(ModelAdmin):
 
     @admin.display(description='Vaqt', ordering='created_at')
     def created_at_formatted(self, obj):
-        return obj.timestamp.strftime("%d.%m.%Y %H:%M:%S")
+        return obj.created_at.strftime("%d.%m.%Y %H:%M:%S")
 
     @admin.display(description='Harakat', ordering='action')
     def action_colored(self, obj):
