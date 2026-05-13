@@ -4,12 +4,12 @@ from apps.users.serializers import UserShortSerializer
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
-    user_details = UserShortSerializer(source='user', read_only=True)
+    user_info = UserShortSerializer(source='user', read_only=True)
 
     class Meta:
         model = AuditLog
         fields = (
-            'id', 'user', 'user_details', 'action', 'ip_address',
+            'id', 'user_info', 'action', 'ip_address',
             'table_name', 'record_id', 'old_values', 'new_values',
             'created_at'
         )
