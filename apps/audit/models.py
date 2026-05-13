@@ -26,12 +26,10 @@ class AuditLog(BaseModel):
     old_values = models.JSONField(null=True, blank=True, verbose_name='Eski qiymati')
     new_values = models.JSONField(null=True, blank=True, verbose_name='Yangi qiymati')
 
-    timestamp = models.DateTimeField(auto_now_add=True, verbose_name='Vaqti')
-
     class Meta:
         verbose_name = 'Tarix yozuvi '
         verbose_name_plural = 'Tarix yozuvlari'
-        ordering = ['-timestamp']
+        ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.action} {self.table_name} at {self.timestamp}"
+        return f"{self.action} {self.table_name} at {self.created_at}"

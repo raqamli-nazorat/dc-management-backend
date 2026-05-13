@@ -5,20 +5,21 @@ from .models import AuditLog, ActionType
 
 from unfold.admin import ModelAdmin
 
+
 @admin.register(AuditLog)
 class AuditLogAdmin(ModelAdmin):
-    list_display = ('id', 'timestamp_formatted', 'user', 'action_colored', 'table_name', 'record_id', 'ip_address')
-    list_display_links = ('id', 'timestamp_formatted')
+    list_display = ('id', 'created_at_formatted', 'user', 'action_colored', 'table_name', 'record_id', 'ip_address')
+    list_display_links = ('id', 'created_at_formatted')
 
-    list_filter = ('action', 'table_name', 'timestamp')
+    list_filter = ('action', 'table_name', 'created_at')
     search_fields = ('table_name', 'record_id', 'user__username', 'user__first_name', 'user__last_name', 'ip_address')
 
     readonly_fields = ('user', 'action', 'ip_address', 'table_name', 'record_id',
-                       'pretty_old_values', 'pretty_new_values', 'timestamp')
+                       'pretty_old_values', 'pretty_new_values', 'created_at')
 
     fieldsets = (
         ('Foydalanuvchi va so\'rov haqida ma\'lumot', {
-            'fields': ('timestamp', 'user', 'ip_address')
+            'fields': ('created_at', 'user', 'ip_address')
         }),
         ('Harakat tafsilotlari', {
             'fields': ('action', 'table_name', 'record_id')
@@ -37,8 +38,8 @@ class AuditLogAdmin(ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return False
 
-    @admin.display(description='Vaqt', ordering='timestamp')
-    def timestamp_formatted(self, obj):
+    @admin.display(description='Vaqt', ordering='created_at')
+    def created_at_formatted(self, obj):
         return obj.timestamp.strftime("%d.%m.%Y %H:%M:%S")
 
     @admin.display(description='Harakat', ordering='action')
