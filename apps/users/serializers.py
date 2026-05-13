@@ -1,6 +1,5 @@
 from datetime import timedelta
 
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth import get_user_model
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
@@ -12,7 +11,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from apps.applications.models import Region, District, Position
 from apps.notifications.models import Notification, NotificationType
 from apps.applications.serializers import RegionSerializer, DistrictSerializer, PositionSerializer
-from apps.projects.models import TaskStatus, ProjectStatus
+from apps.projects.models import TaskStatus, ProjectStatus, Task, Project, MeetingAttendance
 from apps.users.models import Role
 
 User = get_user_model()
@@ -130,22 +129,22 @@ class UserPeriodStatsSerializer(serializers.Serializer):
         now = timezone.now()
         start_date = now - timedelta(days=days)
 
-        active_task_statuses = [
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.OVERDUE
-        ]
-
-        task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
+        active_task_statuses = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]
+        t_base_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
+        t_common_kwargs = {
+            'is_active': True,
+            'is_deleted': False,
+            'project__is_hidden': False,
+            'project__is_active': True,
+            'project__is_deleted': False
+        }
 
         if is_privileged:
-            from apps.projects.models import Task
-            filtered_tasks = Task.objects.filter(task_filter, is_active=True, is_deleted=False)
+            filtered_tasks = Task.objects.filter(t_base_filter, **t_common_kwargs)
         elif user.has_role(Role.MANAGER):
-            from apps.projects.models import Task
-            filtered_tasks = Task.objects.filter(task_filter, project__manager=obj, is_active=True, is_deleted=False)
+            filtered_tasks = Task.objects.filter(t_base_filter, project__manager=obj, **t_common_kwargs)
         else:
-            filtered_tasks = obj.tasks.filter(task_filter, is_active=True, is_deleted=False)
+            filtered_tasks = obj.tasks.filter(t_base_filter, **t_common_kwargs)
 
         t_stats = filtered_tasks.aggregate(
             total=Count('id'),
@@ -177,32 +176,21 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "completion_rate": t_rate
         }
 
+        active_project_statuses = [ProjectStatus.PLANNING, ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]
+        p_base_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
+        p_common_kwargs = {
+            'is_active': True,
+            'is_deleted': False,
+            'is_hidden': False
+        }
+
         if is_privileged:
-            from apps.projects.models import Project
-            active_project_statuses = [
-                ProjectStatus.PLANNING,
-                ProjectStatus.ACTIVE,
-                ProjectStatus.OVERDUE
-            ]
-            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-            filtered_projects = Project.objects.filter(project_filter, is_active=True, is_deleted=False)
+            filtered_projects = Project.objects.filter(p_base_filter, **p_common_kwargs)
         elif user.has_role(Role.MANAGER):
-            active_project_statuses = [
-                ProjectStatus.PLANNING,
-                ProjectStatus.ACTIVE,
-                ProjectStatus.OVERDUE
-            ]
-            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-            filtered_projects = obj.manager_projects.filter(project_filter, is_active=True, is_deleted=False)
+            filtered_projects = obj.manager_projects.filter(p_base_filter, **p_common_kwargs)
         else:
             all_projects = (obj.manager_projects.all() | obj.employee_projects.all()).distinct()
-            active_project_statuses = [
-                ProjectStatus.PLANNING,
-                ProjectStatus.ACTIVE,
-                ProjectStatus.OVERDUE
-            ]
-            project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-            filtered_projects = all_projects.filter(project_filter, is_active=True, is_deleted=False)
+            filtered_projects = all_projects.filter(p_base_filter, **p_common_kwargs)
 
         p_stats = filtered_projects.aggregate(
             total=Count('id'),
@@ -228,18 +216,23 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "completion_rate": p_rate
         }
 
+        common_meeting_filters = {
+            'created_at__gte': start_date,
+            'is_active': True,
+            'meeting__is_active': True,
+            'meeting__is_deleted': False,
+            'meeting__project__is_hidden': False
+        }
+
         if is_privileged:
-            from apps.projects.models import MeetingAttendance
-            filtered_meetings = MeetingAttendance.objects.filter(created_at__gte=start_date, is_active=True)
+            filtered_meetings = MeetingAttendance.objects.filter(**common_meeting_filters).distinct()
         elif user.has_role(Role.MANAGER):
-            from apps.projects.models import MeetingAttendance
             filtered_meetings = MeetingAttendance.objects.filter(
-                created_at__gte=start_date,
                 meeting__project__manager=obj,
-                is_active=True
-            )
+                **common_meeting_filters
+            ).distinct()
         else:
-            filtered_meetings = obj.attendances.filter(created_at__gte=start_date, is_active=True, meeting__is_active=True, meeting__is_deleted=False)
+            filtered_meetings = obj.attendances.filter(**common_meeting_filters).distinct()
 
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
@@ -295,19 +288,23 @@ class UserEfficiencySerializer(serializers.Serializer):
         now = timezone.now()
         start_date = now - timedelta(days=days)
 
-        active_task_statuses = [
-            TaskStatus.TODO,
-            TaskStatus.IN_PROGRESS,
-            TaskStatus.OVERDUE
-        ]
+        active_task_statuses = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]
+        task_filter = Q(status__in=active_task_statuses) | Q(updated_at__gte=start_date)
 
-        task_filter = Q(updated_at__gte=start_date) | Q(status__in=active_task_statuses)
-        filtered_tasks = obj.tasks.filter(task_filter, is_active=True, is_deleted=False)
+        filtered_tasks = obj.tasks.filter(
+            task_filter,
+            is_active=True,
+            is_deleted=False,
+            project__is_hidden=False,
+            project__is_active=True,
+            project__is_deleted=False
+        )
 
         t_stats = filtered_tasks.aggregate(
             total=Count('id'),
             overdue=Count('id', filter=Q(status=TaskStatus.OVERDUE)),
             rejected=Count('id', filter=Q(reopened_count__gt=0)),
+            total_reopened=Sum('reopened_count')
         )
 
         total_tasks = t_stats['total'] or 0
@@ -321,7 +318,15 @@ class UserEfficiencySerializer(serializers.Serializer):
         else:
             task_score = 0.0
 
-        filtered_meetings = obj.attendances.filter(created_at__gte=start_date, is_active=True, meeting__is_active=True, meeting__is_deleted=False)
+        meeting_project_filter = Q(meeting__project__isnull=True) | Q(meeting__project__is_hidden=False)
+
+        filtered_meetings = obj.attendances.filter(
+            meeting_project_filter,
+            created_at__gte=start_date,
+            is_active=True,
+            meeting__is_active=True,
+            meeting__is_deleted=False
+        )
 
         m_stats = filtered_meetings.aggregate(
             total=Count('id'),
@@ -331,46 +336,37 @@ class UserEfficiencySerializer(serializers.Serializer):
 
         total_meetings = m_stats['total'] or 0
         missed = m_stats['missed'] or 0
-        with_reason = m_stats['with_reason'] or 0
-        unexcused_meetings = missed - with_reason
+        unexcused_meetings = missed - (m_stats['with_reason'] or 0)
 
-        if total_meetings > 0:
-            meeting_score = 100.0 * (total_meetings - unexcused_meetings) / total_meetings
-        else:
-            meeting_score = 0.0
+        meeting_score = 100.0 * (total_meetings - unexcused_meetings) / total_meetings if total_meetings > 0 else 0.0
 
-        active_project_statuses = [
-            ProjectStatus.PLANNING,
-            ProjectStatus.ACTIVE,
-            ProjectStatus.OVERDUE
-        ]
-        project_filter = Q(updated_at__gte=start_date) | Q(status__in=active_project_statuses)
-        managed_projects = obj.manager_projects.filter(project_filter, is_active=True, is_deleted=False)
+        active_project_statuses = [ProjectStatus.PLANNING, ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]
+        project_filter = Q(status__in=active_project_statuses) | Q(updated_at__gte=start_date)
+
+        managed_projects = obj.manager_projects.filter(
+            project_filter,
+            is_active=True,
+            is_deleted=False,
+            is_hidden=False
+        )
 
         p_stats = managed_projects.aggregate(
             total=Count('id'),
-            overdue=Count('id', filter=Q(status=ProjectStatus.OVERDUE))
+            overdue=Count('id', filter=Q(status=ProjectStatus.OVERDUE)),
+            cancelled=Count('id', filter=Q(status=ProjectStatus.CANCELLED))
         )
 
-        total_projects = p_stats['total'] or 0
-        overdue_projects = p_stats['overdue'] or 0
+        total_p = p_stats['total'] or 0
+        cancelled_p = p_stats['cancelled'] or 0
+        effective_p_total = total_p - cancelled_p
+        overdue_p = p_stats['overdue'] or 0
 
-        if total_projects > 0:
-            project_score = 100.0 * (total_projects - overdue_projects) / total_projects
+        if effective_p_total > 0:
+            project_score = 100.0 * (effective_p_total - overdue_p) / effective_p_total
         else:
             project_score = 0.0
 
-        w_task = 0.0
-        w_project = 0.0
-        w_meeting = 0.0
-
-        if total_projects > 0:
-            w_task = 0.4
-            w_project = 0.4
-            w_meeting = 0.2
-        else:
-            w_task = 0.8
-            w_meeting = 0.2
+        w_task, w_project, w_meeting = (0.4, 0.4, 0.2) if total_p > 0 else (0.8, 0.0, 0.2)
 
         total_weight = 0.0
         earned_score = 0.0
@@ -379,7 +375,7 @@ class UserEfficiencySerializer(serializers.Serializer):
             earned_score += task_score * w_task
             total_weight += w_task
 
-        if total_projects > 0:
+        if effective_p_total > 0:
             earned_score += project_score * w_project
             total_weight += w_project
 
@@ -387,10 +383,7 @@ class UserEfficiencySerializer(serializers.Serializer):
             earned_score += meeting_score * w_meeting
             total_weight += w_meeting
 
-        if total_weight == 0.0:
-            overall_efficiency = 100.0
-        else:
-            overall_efficiency = earned_score / total_weight
+        overall_efficiency = earned_score / total_weight if total_weight > 0 else 100.0
 
         return {
             "overall_efficiency": round(overall_efficiency, 1),
@@ -401,8 +394,10 @@ class UserEfficiencySerializer(serializers.Serializer):
                 "total_tasks": total_tasks,
                 "overdue_tasks": overdue_tasks,
                 "rejected_tasks": rejected_tasks,
-                "total_projects": total_projects,
-                "overdue_projects": overdue_projects,
+                "total_reopened_actions": t_stats['total_reopened'] or 0,
+                "total_projects": total_p,
+                "overdue_projects": overdue_p,
+                "cancelled_projects": cancelled_p,
                 "total_meetings": total_meetings,
                 "unexcused_meetings": unexcused_meetings
             }
