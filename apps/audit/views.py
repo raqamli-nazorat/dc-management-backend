@@ -1,10 +1,10 @@
 from django.db.models import Q
 from rest_framework import viewsets, filters
-from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema
+from rest_framework.permissions import IsAuthenticated
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.users.models import Role
-from apps.users.permissions import IsAdmin, IsAuditor
 from apps.common.mixins import RoleBasedQuerySetMixin
 from .serializers import AuditLogSerializer
 from .filters import AuditLogFilter
@@ -15,7 +15,7 @@ from .models import AuditLog
 class AuditLogViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet):
     queryset = AuditLog.objects.select_related('user').all()
     serializer_class = AuditLogSerializer
-    permission_classes = [IsAdmin | IsAuditor]
+    permission_classes = [IsAuthenticated]
 
     full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
