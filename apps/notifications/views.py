@@ -35,7 +35,7 @@ class NotificationListView(generics.ListAPIView):
     filterset_fields = ['type', 'is_read']
 
     def get_queryset(self):
-        return super().get_queryset().filter(user=self.request.user).order_by('is_read')
+        return super().get_queryset().filter(user=self.request.user)
 
 
 @extend_schema(tags=["Notifications"])
