@@ -31,9 +31,9 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
                 Q(employees=OuterRef('pk')) |
                 Q(testers=OuterRef('pk')),
                 is_active=True,
-                is_deleted=False
+                is_deleted=False,
+                is_hidden=False
             )
-
             if status:
                 filters &= Q(status=status)
 
@@ -45,28 +45,40 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
             )
 
         def get_task_subquery(status=None, rejected=False):
-            qs = Task.objects.filter(assignee=OuterRef('pk'), is_active=True, is_deleted=False)
-
+            qs = Task.objects.filter(
+                assignee=OuterRef('pk'),
+                is_active=True,
+                is_deleted=False,
+                project__is_hidden=False,
+                project__is_active=True,
+                project__is_deleted=False
+            )
             if status:
                 qs = qs.filter(status=status)
-
             if rejected:
                 qs = qs.filter(reopened_count__gt=0)
 
-            return Subquery(qs.values('assignee').annotate(cnt=Count('pk')).values('cnt'), output_field=IntegerField())
+            return Subquery(qs.values('assignee').annotate(cnt=Count('pk')).values('cnt')[:1],
+                            output_field=IntegerField())
 
         def get_meeting_subquery(attended=None, excused=None):
-            qs = MeetingAttendance.objects.filter(user=OuterRef('pk'), is_active=True)
+            meeting_filter = Q(meeting__project__isnull=True) | Q(meeting__project__is_hidden=False)
 
+            qs = MeetingAttendance.objects.filter(
+                meeting_filter,
+                user=OuterRef('pk'),
+                is_active=True,
+                meeting__is_active=True,
+                meeting__is_deleted=False
+            )
             if attended is not None:
                 qs = qs.filter(is_attended=attended)
-
             if excused is True:
                 qs = qs.filter(is_excused=True)
             elif excused is False:
                 qs = qs.filter(is_excused=False)
 
-            return Subquery(qs.values('user').annotate(cnt=Count('pk')).values('cnt'), output_field=IntegerField())
+            return Subquery(qs.values('user').annotate(cnt=Count('pk')).values('cnt')[:1], output_field=IntegerField())
 
         def get_expense_subquery(status=None):
             from django.db.models import DecimalField, Sum
