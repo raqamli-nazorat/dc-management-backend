@@ -10,9 +10,28 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterField(
-            model_name='user',
-            name='card_number',
-            field=models.JSONField(blank=True, default=dict, verbose_name='Karta raqami'),
+        migrations.RunSQL(
+            sql="""
+                ALTER TABLE users_user 
+                ALTER COLUMN card_number TYPE jsonb 
+                USING CASE 
+                    WHEN card_number IS NULL OR card_number = '' THEN '{}'::jsonb
+                    ELSE to_jsonb(card_number)
+                END;
+            """,
+            reverse_sql="""
+                ALTER TABLE users_user 
+                ALTER COLUMN card_number TYPE varchar(16);
+            """
+        ),
+
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AlterField(
+                    model_name='user',
+                    name='card_number',
+                    field=models.JSONField(blank=True, default=dict, verbose_name='Karta raqami'),
+                ),
+            ]
         ),
     ]
