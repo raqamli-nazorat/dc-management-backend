@@ -143,7 +143,7 @@ class ProjectDocumentViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets.M
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdmin() | IsManager()]
+            return [IsAdmin(), IsManager()]
         return [permissions.IsAuthenticated()]
 
     def get_role_based_queryset(self, queryset, user):
