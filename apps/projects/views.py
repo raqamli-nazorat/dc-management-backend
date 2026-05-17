@@ -50,9 +50,9 @@ class ProjectShortViewSet(RoleBasedQuerySetMixin, viewsets.ReadOnlyModelViewSet)
         }
 
         excluded_statuses = [
+            ProjectStatus.PLANNING,
             ProjectStatus.COMPLETED,
             ProjectStatus.CANCELLED,
-            ProjectStatus.PLANNING
         ]
 
         if user.has_role(Role.MANAGER):

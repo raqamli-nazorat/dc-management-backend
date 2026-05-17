@@ -3,7 +3,7 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/users/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/apps/projects/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/views.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -61,7 +61,7 @@
     &quot;ai.playground.ignore.import.keys.banner.in.settings&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;git-widget-placeholder&quot;: &quot;alijonov&quot;,
-    &quot;last_opened_file_path&quot;: &quot;D:/Programming/my codes/python/works/m-gas-backend&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Programming/my codes/python/FastAPI/fragment&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
     &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.completion.inline&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
@@ -275,7 +275,9 @@
       <workItem from="1778759786460" duration="100000" />
       <workItem from="1778768690262" duration="44000" />
       <workItem from="1778820395895" duration="10000" />
-      <workItem from="1778946379983" duration="338000" />
+      <workItem from="1778946379983" duration="1257000" />
+      <workItem from="1778986956720" duration="338000" />
+      <workItem from="1779011687525" duration="651000" />
     </task>
     <servers />
   </component>

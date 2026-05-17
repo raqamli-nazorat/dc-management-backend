@@ -123,6 +123,11 @@ class Project(BaseModel):
 
         deferred_fields = self.get_deferred_fields()
 
+        if 'manager' not in deferred_fields:
+            self._old_manager_id = self.manager_id
+        else:
+            self._old_manager_id = None
+
         if 'status' not in deferred_fields:
             self._old_status = self.status
         else:
