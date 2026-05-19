@@ -3,13 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="603e22b4-df9f-4934-ad43-2dd56d4495f2" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/applications/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/applications/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/audit/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/audit/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/finance/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/finance/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/notifications/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/notifications/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/admin.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/projects/signals.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/projects/signals.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/apps/todos/admin.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/todos/admin.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/apps/users/serializers.py" beforeDir="false" afterPath="$PROJECT_DIR$/apps/users/serializers.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -289,7 +282,7 @@
       <workItem from="1779030444884" duration="20000" />
       <workItem from="1779030605748" duration="4000" />
       <workItem from="1779030633882" duration="3000" />
-      <workItem from="1779147904368" duration="1561000" />
+      <workItem from="1779147904368" duration="2556000" />
     </task>
     <servers />
   </component>

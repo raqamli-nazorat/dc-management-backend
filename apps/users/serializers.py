@@ -361,14 +361,21 @@ class UserEfficiencySerializer(serializers.Serializer):
         start_date = now - timedelta(days=days)
         obj_is_manager = obj.has_role(Role.MANAGER)
 
-        active_task_statuses = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]
-        task_filter = Q(status__in=active_task_statuses) | Q(updated_at__gte=start_date)
+        task_filter = (
+                Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]) |
+                Q(updated_at__gte=start_date)
+        )
         t_common_kwargs = {
             'is_active': True,
             'is_deleted': False,
             'project__is_hidden': False,
             'project__is_active': True,
-            'project__is_deleted': False
+            'project__is_deleted': False,
+            'project__status__in': [
+                ProjectStatus.ACTIVE,
+                ProjectStatus.OVERDUE,
+                ProjectStatus.COMPLETED,
+            ]
         }
 
         if obj_is_manager:
@@ -425,8 +432,10 @@ class UserEfficiencySerializer(serializers.Serializer):
         ) if total_meetings > 0 else 0.0
 
         if obj_is_manager:
-            active_project_statuses = [ProjectStatus.PLANNING, ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]
-            project_filter = Q(status__in=active_project_statuses) | Q(updated_at__gte=start_date)
+            project_filter = (
+                    Q(status__in=[ProjectStatus.ACTIVE, ProjectStatus.OVERDUE, ProjectStatus.COMPLETED]) |
+                    Q(updated_at__gte=start_date)
+            )
 
             managed_projects = obj.manager_projects.filter(
                 project_filter,
