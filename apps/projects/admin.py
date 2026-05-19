@@ -43,7 +43,7 @@ class ProjectAdmin(ModelAdmin):
 
     fieldsets = (
         ('Loyiha haqida ma\'lumot', {
-            'fields': ('prefix', 'title', 'description', 'status', 'is_active', 'is_hidden')
+            'fields': ('prefix', 'title', 'description', 'status', 'is_hidden')
         }),
         ('Narxlar', {
             'fields': ('project_price', 'penalty_percentage')
@@ -53,6 +53,10 @@ class ProjectAdmin(ModelAdmin):
         }),
         ('Vaqt jadvali', {
             'fields': ('deadline',)
+        }),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'updated_at', 'is_active'),
+            'classes': ('collapse',),
         }),
     )
 
@@ -92,6 +96,10 @@ class TaskAdmin(ModelAdmin):
         ('Vaqtni kuzatish & Sifat', {
             'fields': ('deadline', 'estimated_minutes', 'actual_minutes', 'reopened_count')
         }),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'updated_at', 'is_active'),
+            'classes': ('collapse',),
+        }),
     )
 
     @admin.display(description='Turi')
@@ -110,10 +118,14 @@ class MeetingAdmin(ModelAdmin):
     inlines = [MeetingAttendanceInline]
 
     fieldsets = (
-        ('Meeting Details', {
+        ('Asosiy', {
             'fields': ('project', 'organizer', 'title', 'description', 'link', 'penalty_percentage')
         }),
-        ('Schedule', {
-            'fields': ('start_time', 'duration_minutes', 'is_completed', 'is_deleted', 'is_active')
+        ('Vaqtni kuzatish & Holat', {
+            'fields': ('start_time', 'duration_minutes', 'is_completed', 'is_deleted')
+        }),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'updated_at', 'is_active'),
+            'classes': ('collapse',),
         }),
     )

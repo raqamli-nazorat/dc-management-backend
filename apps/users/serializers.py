@@ -295,19 +295,87 @@ class UserEfficiencySerializer(serializers.Serializer):
         days = months * 30
         return self._calculate_efficiency(instance, days)
 
+    def _generate_insights(self, data, obj_is_manager):
+        insights = []
+        metrics = data['metrics']
+
+        total_tasks = metrics.get('total_tasks', 0)
+        overdue_tasks = metrics.get('overdue_tasks', 0)
+        rejected_tasks = metrics.get('rejected_tasks', 0)
+        total_reopened = metrics.get('total_reopened_actions', 0)
+
+        if total_tasks > 0:
+            overdue_pct = overdue_tasks / total_tasks * 100
+            rejected_pct = rejected_tasks / total_tasks * 100
+
+            if overdue_pct >= 50:
+                if obj_is_manager:
+                    insights.append(
+                        f"Loyihalaridagi vazifalarning {round(overdue_pct)}%i muddati o'tib ketgan — nazorat yetarli emas.")
+                else:
+                    insights.append(f"Vazifalarning {round(overdue_pct)}%i muddati o'tib ketgan.")
+            elif overdue_pct >= 20:
+                if obj_is_manager:
+                    insights.append(f"Loyihalaridagi vazifalarning {round(overdue_pct)}%i kechikmoqda.")
+                else:
+                    insights.append(f"Vazifalarning {round(overdue_pct)}%i kechikmoqda.")
+
+            if not obj_is_manager:
+                if rejected_pct >= 30:
+                    insights.append(f"Vazifalarning {round(rejected_pct)}%i qayta ochilgan — sifat past.")
+                elif rejected_pct >= 10:
+                    insights.append(f"Vazifalarning {round(rejected_pct)}%i bir marta qaytarilgan.")
+
+                if total_reopened > total_tasks:
+                    insights.append(
+                        f"O'rtacha har bir vazifa {round(total_reopened / total_tasks, 1)} marta qayta ochilgan.")
+
+        total_meetings = metrics.get('total_meetings', 0)
+        unexcused_meetings = metrics.get('unexcused_meetings', 0)
+
+        if total_meetings > 0:
+            unexcused_pct = unexcused_meetings / total_meetings * 100
+            if unexcused_pct >= 50:
+                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}%i sababsiz o'tkazib yuborilgan.")
+            elif unexcused_pct >= 20:
+                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}%i qatnashilmagan.")
+
+        if obj_is_manager:
+            total_projects = metrics.get('total_projects', 0)
+            overdue_projects = metrics.get('overdue_projects', 0)
+
+            if total_projects > 0:
+                overdue_p_pct = overdue_projects / total_projects * 100
+                if overdue_p_pct >= 50:
+                    insights.append(f"Loyihalarning {round(overdue_p_pct)}%i muddati o'tib ketgan.")
+                elif overdue_p_pct >= 20:
+                    insights.append(f"Loyihalarning {round(overdue_p_pct)}%i kechikmoqda.")
+
+        if not insights:
+            insights.append("Hamma ko'rsatkichlar yaxshi darajada.")
+
+        return insights
+
     def _calculate_efficiency(self, obj, days):
         now = timezone.now()
         start_date = now - timedelta(days=days)
         obj_is_manager = obj.has_role(Role.MANAGER)
 
-        active_task_statuses = [TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]
-        task_filter = Q(status__in=active_task_statuses) | Q(updated_at__gte=start_date)
+        task_filter = (
+                Q(status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS, TaskStatus.OVERDUE]) |
+                Q(updated_at__gte=start_date)
+        )
         t_common_kwargs = {
             'is_active': True,
             'is_deleted': False,
             'project__is_hidden': False,
             'project__is_active': True,
-            'project__is_deleted': False
+            'project__is_deleted': False,
+            'project__status__in': [
+                ProjectStatus.ACTIVE,
+                ProjectStatus.OVERDUE,
+                ProjectStatus.COMPLETED,
+            ]
         }
 
         if obj_is_manager:
@@ -364,8 +432,10 @@ class UserEfficiencySerializer(serializers.Serializer):
         ) if total_meetings > 0 else 0.0
 
         if obj_is_manager:
-            active_project_statuses = [ProjectStatus.PLANNING, ProjectStatus.ACTIVE, ProjectStatus.OVERDUE]
-            project_filter = Q(status__in=active_project_statuses) | Q(updated_at__gte=start_date)
+            project_filter = (
+                    Q(status__in=[ProjectStatus.ACTIVE, ProjectStatus.OVERDUE, ProjectStatus.COMPLETED]) |
+                    Q(updated_at__gte=start_date)
+            )
 
             managed_projects = obj.manager_projects.filter(
                 project_filter,
@@ -386,19 +456,19 @@ class UserEfficiencySerializer(serializers.Serializer):
             task_timeliness = 100.0 * (total_tasks - overdue_tasks) / total_tasks if total_tasks > 0 else 0.0
 
             if total_p > 0 and total_tasks > 0:
-                project_score = (project_timeliness * 0.5) + (task_timeliness * 0.5)
+                supervision_score = (project_timeliness * 0.4) + (task_timeliness * 0.6)
             elif total_p > 0:
-                project_score = project_timeliness
+                supervision_score = project_timeliness
             elif total_tasks > 0:
-                project_score = task_timeliness
+                supervision_score = task_timeliness
             else:
-                project_score = 0.0
+                supervision_score = 0.0
 
             earned_score = 0.0
             total_weight = 0.0
 
             if total_p > 0 or total_tasks > 0:
-                earned_score += project_score * 0.70
+                earned_score += supervision_score * 0.70
                 total_weight += 0.70
 
             if total_meetings > 0:
@@ -407,18 +477,15 @@ class UserEfficiencySerializer(serializers.Serializer):
 
             overall_efficiency = round(earned_score / total_weight, 1) if total_weight > 0 else 0.0
 
-            return {
+            result = {
                 "overall_efficiency": overall_efficiency,
-                "project_score": round(project_score, 1),
-                "task_score": 0.0,
+                "supervision_score": round(supervision_score, 1),
                 "meeting_score": meeting_score,
                 "metrics": {
                     "total_projects": total_p,
                     "overdue_projects": overdue_p,
                     "total_tasks": total_tasks,
                     "overdue_tasks": overdue_tasks,
-                    "rejected_tasks": rejected_tasks,
-                    "total_reopened_actions": t_stats['total_reopened'] or 0,
                     "total_meetings": total_meetings,
                     "unexcused_meetings": unexcused_meetings
                 }
@@ -445,10 +512,9 @@ class UserEfficiencySerializer(serializers.Serializer):
 
             overall_efficiency = round(earned_score / total_weight, 1) if total_weight > 0 else 0.0
 
-            return {
+            result = {
                 "overall_efficiency": overall_efficiency,
                 "task_score": round(task_score, 1),
-                "project_score": 0.0,
                 "meeting_score": meeting_score,
                 "metrics": {
                     "total_tasks": total_tasks,
@@ -459,6 +525,9 @@ class UserEfficiencySerializer(serializers.Serializer):
                     "unexcused_meetings": unexcused_meetings
                 }
             }
+
+        result["insights"] = self._generate_insights(result, obj_is_manager)
+        return result
 
 
 class UserShortSerializer(serializers.ModelSerializer):

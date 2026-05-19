@@ -8,7 +8,7 @@ from unfold.admin import ModelAdmin
 
 @admin.register(AuditLog)
 class AuditLogAdmin(ModelAdmin):
-    list_display = ('id', 'created_at_formatted', 'user', 'action_colored', 'table_name', 'record_id', 'ip_address')
+    list_display = ('id', 'created_at_formatted', 'user', 'action_colored', 'table_name', 'record_id', 'ip_address', 'is_active')
     list_display_links = ('id', 'created_at_formatted')
 
     list_filter = ('action', 'table_name', 'created_at')
@@ -19,13 +19,17 @@ class AuditLogAdmin(ModelAdmin):
 
     fieldsets = (
         ('Foydalanuvchi va so\'rov haqida ma\'lumot', {
-            'fields': ('created_at', 'user', 'ip_address')
+            'fields': ('user', 'ip_address')
         }),
         ('Harakat tafsilotlari', {
             'fields': ('action', 'table_name', 'record_id')
         }),
         ('Ma\'lumotlar o\'zgarishi', {
             'fields': ('pretty_old_values', 'pretty_new_values'),
+        }),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'is_active'),
+            'classes': ('collapse',),
         }),
     )
 

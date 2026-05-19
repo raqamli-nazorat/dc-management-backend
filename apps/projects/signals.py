@@ -107,19 +107,19 @@ def handle_project_testers_change(sender, instance, action, pk_set, **kwargs):
     if action in ["pre_add", "pre_remove"]:
         if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
             raise ValidationError(
-                f"Loyiha {instance.get_status_display()} holatida. Sinovchilarni tahrirlash taqiqlanadi!")
+                f"Loyiha {instance.get_status_display()} holatida. "
+                f"Xodimlar va sinovchilarni tahrirlash taqiqlanadi!")
 
     if action == "post_add" and pk_set:
-        if instance.status not in [ProjectStatus.PLANNING]:
-            users = User.objects.filter(id__in=pk_set)
-            for user in users:
-                send_system_notification(
-                    user=user,
-                    title="Siz loyihaga qo'shildingiz",
-                    message=f"Siz {instance.title} loyihasiga sinovchi sifatida qo'shildingiz.",
-                    action='project_assigned',
-                    project_id=instance.id
-                )
+        users = User.objects.filter(id__in=pk_set)
+        for user in users:
+            send_system_notification(
+                user=user,
+                title="Siz loyihaga qo'shildingiz",
+                message=f"Siz {instance.title} loyihasiga sinovchi sifatida qo'shildingiz.",
+                action='project_assigned',
+                project_id=instance.id
+            )
 
     elif action == "post_remove" and pk_set:
         users = User.objects.filter(id__in=pk_set)
