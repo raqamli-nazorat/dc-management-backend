@@ -42,7 +42,7 @@ class ExpenseRequestAdmin(ModelAdmin):
             'fields': ('status', 'paid_at', 'confirmed_at', 'cancelled_at')
         }),
         ('Tizim haqida ma\'lumot', {
-            'fields': ('created_at', 'updated_at'),
+            'fields': ('created_at', 'updated_at', 'is_active'),
             'classes': ('collapse',),
         }),
     )
@@ -113,7 +113,7 @@ class PayrollAdmin(ModelAdmin):
             'fields': ('accountant', 'confirmed_at', 'is_confirmed'),
         }),
         ('Tizim haqida ma\'lumot', {
-            'fields': ('created_at', 'updated_at'),
+            'fields': ('created_at', 'updated_at', 'is_active'),
             'classes': ('collapse',),
         }),
     )
