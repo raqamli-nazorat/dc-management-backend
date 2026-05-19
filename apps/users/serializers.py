@@ -352,7 +352,14 @@ class UserEfficiencySerializer(serializers.Serializer):
                     insights.append(f"Loyihalarning {round(overdue_p_pct)}%i kechikmoqda.")
 
         if not insights:
-            insights.append("Hamma ko'rsatkichlar yaxshi darajada.")
+            has_data = total_tasks > 0 or total_meetings > 0
+            if obj_is_manager:
+                has_data = has_data or metrics.get('total_projects', 0) > 0
+
+            if not has_data:
+                insights.append("Ma'lumot yetarli emas.")
+            else:
+                insights.append("Hamma ko'rsatkichlar yaxshi darajada.")
 
         return insights
 
