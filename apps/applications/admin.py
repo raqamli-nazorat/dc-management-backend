@@ -23,7 +23,7 @@ class DistrictAdmin(ModelAdmin):
 
 @admin.register(Position)
 class PositionAdmin(ModelAdmin):
-    list_display = ('id', 'name', 'created_at')
+    list_display = ('id', 'name', 'created_at', 'is_active')
     list_display_links = ('id', 'name')
     search_fields = ('name',)
 
@@ -54,6 +54,10 @@ class ApplicationAdmin(ModelAdmin):
         }),
         ("Ariza holati", {
             'fields': ('status', 'conclusion', 'reviewed_by', 'reviewed_at')
+        }),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'is_active'),
+            'classes': ('collapse',),
         }),
     )
 

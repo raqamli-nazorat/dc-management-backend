@@ -35,8 +35,8 @@ class TodoAdmin(ModelAdmin):
         ('Asosiy ma\'lumotlar', {
             'fields': ('user', 'title', 'color', 'is_done'),
         }),
-        ('Vaqt ko\'rsatkichlari', {
-            'fields': ('created_at', 'updated_at'),
+        ('Tizim haqida ma\'lumot', {
+            'fields': ('created_at', 'updated_at', 'is_active'),
             'classes': ('collapse',),
         }),
     )
