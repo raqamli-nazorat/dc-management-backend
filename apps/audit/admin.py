@@ -8,11 +8,11 @@ from unfold.admin import ModelAdmin
 
 @admin.register(AuditLog)
 class AuditLogAdmin(ModelAdmin):
-    list_display = ('id', 'created_at_formatted', 'user', 'action_colored', 'table_name', 'record_id', 'ip_address', 'is_active')
+    list_display = ('id', 'created_at_formatted', 'user', 'action_colored', 'object_name', 'ip_address', 'is_active')
     list_display_links = ('id', 'created_at_formatted')
 
     list_filter = ('action', 'table_name', 'created_at')
-    search_fields = ('table_name', 'record_id', 'user__username', 'user__first_name', 'user__last_name', 'ip_address')
+    search_fields = ('object_name', 'table_name', 'record_id', 'user__username', 'user__first_name', 'user__last_name', 'ip_address')
 
     readonly_fields = ('user', 'action', 'ip_address', 'table_name', 'record_id',
                        'pretty_old_values', 'pretty_new_values', 'created_at')
@@ -22,7 +22,7 @@ class AuditLogAdmin(ModelAdmin):
             'fields': ('user', 'ip_address')
         }),
         ('Harakat tafsilotlari', {
-            'fields': ('action', 'table_name', 'record_id')
+            'fields': ('action', 'object_name', 'table_name', 'record_id')
         }),
         ('Ma\'lumotlar o\'zgarishi', {
             'fields': ('pretty_old_values', 'pretty_new_values'),
