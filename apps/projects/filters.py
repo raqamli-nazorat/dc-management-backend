@@ -15,7 +15,7 @@ class CharInFilter(filters.BaseInFilter, filters.CharFilter):
 
 class TaskFilter(filters.FilterSet):
     project = NumberInFilter(field_name='project_id', lookup_expr='in', label="Loyihalar")
-    created_by = NumberInFilter(field_name='created_by_id', method='filter_created_by', label="Yaratuvchilar")
+    created_by = NumberInFilter(field_name='created_by_id', lookup_expr='in', label="Yaratuvchilar")
     assignee = NumberInFilter(field_name='assignee_id', lookup_expr='in', label="Topshiruvchilar")
     status = CharInFilter(field_name='status', lookup_expr='in', label="Holatlar")
     priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajalar")
@@ -35,14 +35,6 @@ class TaskFilter(filters.FilterSet):
     class Meta:
         model = Task
         fields = ['status', 'priority', 'type', 'project', 'created_by', 'position', 'sprint']
-
-    def filter_created_by(self, queryset, name, value):
-        user = self.request.user
-
-        if user.has_role(Role.EMPLOYEE):
-            value = [user.id]
-
-        return queryset.filter(created_by_id__in=value)
 
 
 class ProjectFilter(filters.FilterSet):
