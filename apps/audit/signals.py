@@ -93,6 +93,8 @@ def audit_post_save(sender, instance, created, **kwargs):
         new_values = serialize_data(model_to_dict(instance))
         old_values = serialize_data(getattr(instance, '_old_values', {}))
 
+        verbose_name = (sender._meta.verbose_name or sender.__name__).capitalize()
+
         if not created:
             changes = {k: v for k, v in new_values.items() if v != old_values.get(k)}
             if not changes:
@@ -105,6 +107,7 @@ def audit_post_save(sender, instance, created, **kwargs):
             action=action,
             ip_address=get_client_ip(request) if request else None,
             table_name=sender._meta.db_table,
+            object_name=f"{verbose_name}: {str(instance)}",
             record_id=instance.pk,
             old_values=old_values,
             new_values=new_values
@@ -120,11 +123,14 @@ def audit_post_delete(sender, instance, **kwargs):
 
     request = get_current_request()
 
+    verbose_name = (sender._meta.verbose_name or sender.__name__).capitalize()
+
     AuditLog.objects.create(
         user=request.user if request and request.user.is_authenticated else None,
         action=ActionType.DELETE,
         ip_address=get_client_ip(request) if request else None,
         table_name=sender._meta.db_table,
+        object_name=f"{verbose_name} (O'chirildi): {str(instance)}",
         record_id=instance.pk,
         old_values=serialize_data(model_to_dict(instance)),
         new_values=None
