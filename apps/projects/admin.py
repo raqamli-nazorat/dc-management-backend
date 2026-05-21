@@ -39,6 +39,8 @@ class ProjectAdmin(ModelAdmin):
     filter_horizontal = ('employees', 'testers')
     exclude = ('payroll_processed',)
 
+    readonly_fields = ('created_at', 'updated_at')
+
     inlines = [ProjectDocumentInline]
 
     fieldsets = (
@@ -81,6 +83,8 @@ class TaskAdmin(ModelAdmin):
     search_fields = ('title', 'description', 'project__title', 'assignee__username')
     exclude = ('payroll_processed',)
 
+    readonly_fields = ('created_at', 'updated_at')
+
     inlines = [TaskAttachmentInline, TaskRejectionFileInline]
 
     fieldsets = (
@@ -114,6 +118,8 @@ class MeetingAdmin(ModelAdmin):
     list_display_links = ('uid', 'title')
     list_filter = ('is_completed', 'start_time', 'project', 'organizer')
     search_fields = ('title', 'description', 'project__title', 'organizer__username')
+
+    readonly_fields = ('created_at', 'updated_at')
 
     inlines = [MeetingAttendanceInline]
 
