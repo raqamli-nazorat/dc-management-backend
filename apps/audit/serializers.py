@@ -10,6 +10,6 @@ class AuditLogSerializer(serializers.ModelSerializer):
         model = AuditLog
         fields = (
             'id', 'user_info', 'action', 'ip_address',
-            'table_name', 'record_id', 'old_values', 'new_values',
+            'object_name', 'table_name', 'record_id', 'old_values', 'new_values',
             'created_at'
         )

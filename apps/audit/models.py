@@ -26,6 +26,8 @@ class AuditLog(BaseModel):
     old_values = models.JSONField(null=True, blank=True, verbose_name='Eski qiymati')
     new_values = models.JSONField(null=True, blank=True, verbose_name='Yangi qiymati')
 
+    object_name = models.CharField(max_length=255, null=True, blank=True, verbose_name="Obyekt nomi")
+
     class Meta:
         verbose_name = 'Tarix yozuvi '
         verbose_name_plural = 'Tarix yozuvlari'
