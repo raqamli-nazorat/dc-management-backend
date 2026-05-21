@@ -21,7 +21,7 @@ jobs:
           port: 22
           script: |
             set -e
-            cd /home/dc-management/dc-management-backend
+            cd /var/www/backend/dc-management-backend
             
             echo "1. Kodni yangilash (Production)"
             git fetch origin production
