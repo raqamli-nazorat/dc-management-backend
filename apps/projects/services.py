@@ -51,29 +51,29 @@ class TaskService:
 
         now = timezone.now()
 
-        if user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user:
-            return cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
+        if new_status in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
+            if user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user:
+                return cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
 
-        is_tester = task.project.testers.filter(id=user.id).exists()
-        if is_tester:
-            if task.assignee_id == user.id and new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
-                raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
-
-            if new_status in [TaskStatus.REJECTED, TaskStatus.CHECKED]:
+            is_tester = task.project.testers.filter(id=user.id).exists()
+            if is_tester:
+                if task.assignee_id == user.id:
+                    raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
                 return cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
 
-        if task.assignee == user:
-            return cls._handle_assignee_logic(task, user, new_status, now)
+        else:
+            if task.assignee == user:
+                return cls._handle_assignee_logic(task, user, new_status, now)
 
-        if task.assignee is None and task.project.employees.filter(id=user.id).exists():
-            return cls._handle_claim_logic(task, user, new_status, now)
+            if task.assignee is None and task.project.employees.filter(id=user.id).exists():
+                return cls._handle_claim_logic(task, user, new_status, now)
 
-        raise PermissionDenied("Sizda ushbu vazifani statusini o'zgartirish huquqi yo'q.")
+        raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
 
     @classmethod
     def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
         if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-            raise PermissionDenied("Faqat ishga tushurilgan vazifalarni tekshirish mumkin.")
+            raise PermissionDenied("Menejer va adminlar faqat vazifani tekshirish yoki rad etish huquqiga ega.")
 
         if new_status == TaskStatus.REJECTED:
             return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
