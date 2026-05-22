@@ -85,11 +85,6 @@ class TaskService:
 
     @classmethod
     def _handle_tester_logic(cls, task, user, new_status, rejection_reason, now):
-        if task.position_id and user.position_id != task.position_id:
-            raise PermissionDenied(
-                f"Siz faqat o'z lavozimingizga mos vazifalarni tekshira olasiz."
-            )
-
         if task.status != TaskStatus.PRODUCTION:
             raise PermissionDenied("Faqat ishga tushurilgan vazifalarni tekshirish mumkin.")
 
