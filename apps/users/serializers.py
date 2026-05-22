@@ -311,20 +311,20 @@ class UserEfficiencySerializer(serializers.Serializer):
             if overdue_pct >= 50:
                 if obj_is_manager:
                     insights.append(
-                        f"Loyihalaridagi vazifalarning {round(overdue_pct)}%i muddati o'tib ketgan — nazorat yetarli emas.")
+                        f"Loyihalaridagi vazifalarning {round(overdue_pct)}% qismi muddati o'tib ketgan — nazorat yetarli emas.")
                 else:
-                    insights.append(f"Vazifalarning {round(overdue_pct)}%i muddati o'tib ketgan.")
+                    insights.append(f"Vazifalarning {round(overdue_pct)}% qismi muddati o'tib ketgan.")
             elif overdue_pct >= 20:
                 if obj_is_manager:
-                    insights.append(f"Loyihalaridagi vazifalarning {round(overdue_pct)}%i kechikmoqda.")
+                    insights.append(f"Loyihalaridagi vazifalarning {round(overdue_pct)}% qismi kechikmoqda.")
                 else:
-                    insights.append(f"Vazifalarning {round(overdue_pct)}%i kechikmoqda.")
+                    insights.append(f"Vazifalarning {round(overdue_pct)}% qismi kechikmoqda.")
 
             if not obj_is_manager:
                 if rejected_pct >= 30:
-                    insights.append(f"Vazifalarning {round(rejected_pct)}%i qayta ochilgan — sifat past.")
+                    insights.append(f"Vazifalarning {round(rejected_pct)}% qismi qayta ochilgan — sifat past.")
                 elif rejected_pct >= 10:
-                    insights.append(f"Vazifalarning {round(rejected_pct)}%i bir marta qaytarilgan.")
+                    insights.append(f"Vazifalarning {round(rejected_pct)}% qismi kamida bir marta qayta ochilgan (rad etilgan).")
 
                 if total_reopened > total_tasks:
                     insights.append(
@@ -336,9 +336,9 @@ class UserEfficiencySerializer(serializers.Serializer):
         if total_meetings > 0:
             unexcused_pct = unexcused_meetings / total_meetings * 100
             if unexcused_pct >= 50:
-                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}%i sababsiz o'tkazib yuborilgan.")
+                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}% qismi sababsiz o'tkazib yuborilgan.")
             elif unexcused_pct >= 20:
-                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}%i qatnashilmagan.")
+                insights.append(f"Uchrashuvlarning {round(unexcused_pct)}% qismida qatnashilmagan.")
 
         if obj_is_manager:
             total_projects = metrics.get('total_projects', 0)
@@ -347,9 +347,9 @@ class UserEfficiencySerializer(serializers.Serializer):
             if total_projects > 0:
                 overdue_p_pct = overdue_projects / total_projects * 100
                 if overdue_p_pct >= 50:
-                    insights.append(f"Loyihalarning {round(overdue_p_pct)}%i muddati o'tib ketgan.")
+                    insights.append(f"Loyihalarning {round(overdue_p_pct)}% qismi muddati o'tib ketgan.")
                 elif overdue_p_pct >= 20:
-                    insights.append(f"Loyihalarning {round(overdue_p_pct)}%i kechikmoqda.")
+                    insights.append(f"Loyihalarning {round(overdue_p_pct)}% qismi kechikmoqda.")
 
         if not insights:
             has_data = total_tasks > 0 or total_meetings > 0

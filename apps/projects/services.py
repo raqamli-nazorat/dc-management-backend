@@ -72,6 +72,9 @@ class TaskService:
 
     @classmethod
     def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
+        if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
+            raise PermissionDenied("Faqat ishga tushurilgan vazifalarni tekshirish mumkin.")
+
         if new_status == TaskStatus.REJECTED:
             return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
 
