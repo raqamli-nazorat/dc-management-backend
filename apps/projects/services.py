@@ -1,6 +1,8 @@
-from rest_framework.exceptions import ValidationError, PermissionDenied
-from django.db import transaction
+from datetime import timedelta
+
 from django.utils import timezone
+from django.db import transaction
+from rest_framework.exceptions import ValidationError, PermissionDenied
 
 from .models import TaskStatus, MeetingAttendance, Meeting, Task
 from apps.notifications.models import Notification, NotificationType
@@ -24,7 +26,7 @@ class TaskService:
 
         if task.assignee and task.assignee != user:
             deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
-            cls.send_task_notification(
+            cls._send_task_notification(
                 task.assignee,
                 task,
                 "Yangi vazifa biriktirildi",
@@ -33,7 +35,7 @@ class TaskService:
 
         manager = task.project.manager
         if manager and manager != user:
-            cls.send_task_notification(
+            cls._send_task_notification(
                 manager,
                 task,
                 "Yangi vazifa yaratildi",
@@ -83,7 +85,7 @@ class TaskService:
 
         cls._update_task_time_and_status(task, new_status, now)
         if new_status == TaskStatus.CHECKED:
-            cls.send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
+            cls._send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
         return task
 
     @classmethod
@@ -97,7 +99,8 @@ class TaskService:
         if new_status == TaskStatus.CHECKED:
             task.status = TaskStatus.CHECKED
             task.save()
-            cls.send_task_notification(task.assignee, task, "Topshirilgan vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
+            cls._send_task_notification(task.assignee, task, "Topshirilgan vazifa tasdiqlandi",
+                                        "Siz topshirgan vazifa tasdiqlandi.")
             return task
 
     @classmethod
@@ -165,11 +168,11 @@ class TaskService:
         task.started_at = now
         task.save()
 
-        cls.send_task_notification(task.assignee, task, title, f"Sabab: {reason}")
+        cls._send_task_notification(task.assignee, task, title, f"Sabab: {reason}")
         return task
 
     @staticmethod
-    def send_task_notification(user, task, title, message):
+    def _send_task_notification(user, task, title, message):
         if user:
             Notification.objects.create(
                 user=user,
@@ -182,7 +185,24 @@ class TaskService:
 
 class MeetingService:
     @staticmethod
-    def _send_meeting_notifications(meeting, members, organizer_id, title="Yangi yig'ilish belgilandi", msg_template=None):
+    def _schedule_end_notification(meeting):
+        from .tasks import notify_meeting_end
+
+        eta = meeting.start_time + timedelta(minutes=meeting.duration_minutes)
+
+        Meeting.objects.filter(id=meeting.id).update(
+            notification_eta=eta,
+            notification_sent=False
+        )
+
+        notify_meeting_end.apply_async(
+            args=[meeting.id, eta.isoformat()],
+            eta=eta
+        )
+
+    @staticmethod
+    def _send_meeting_notifications(meeting, members, organizer_id, title="Yangi yig'ilish belgilandi",
+                                    msg_template=None):
         notifications_to_bulk = []
         broadcast_data = []
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
@@ -226,7 +246,7 @@ class MeetingService:
         current_attendees = MeetingAttendance.objects.filter(meeting=meeting).select_related('user')
         current_attendee_ids = {a.user_id for a in current_attendees}
         new_participant_ids = {p.id for p in participants}
-        
+
         if organizer_id not in new_participant_ids:
             new_participant_ids.add(organizer_id)
 
@@ -235,9 +255,9 @@ class MeetingService:
             removed_users = [a.user for a in to_remove_attendees]
             MeetingAttendance.objects.filter(id__in=[a.id for a in to_remove_attendees]).delete()
             cls._send_meeting_notifications(
-                meeting, 
-                removed_users, 
-                organizer_id, 
+                meeting,
+                removed_users,
+                organizer_id,
                 title="Yig'ilishdan chiqarildingiz",
                 msg_template=f"Siz '{meeting.title}' yig'ilishi qatnashchilari ro'yxatidan chiqarildingiz."
             )
@@ -264,11 +284,7 @@ class MeetingService:
         cls.handle_participants(meeting, participants, organizer.id)
 
         if meeting.duration_minutes > 0:
-            from .tasks import notify_meeting_end
-            transaction.on_commit(lambda: notify_meeting_end.apply_async(
-                args=[meeting.id],
-                eta=meeting.start_time + timezone.timedelta(minutes=meeting.duration_minutes)
-            ))
+            transaction.on_commit(lambda: cls._schedule_end_notification(meeting))
 
         return meeting
 
@@ -326,12 +342,12 @@ class MeetingService:
     def notify_time_change(cls, meeting):
         participants = meeting.participants.all()
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
-        
+
         notifications_to_bulk = []
         broadcast_data = []
-        
+
         msg = f"'{meeting.title}' yig'ilishi vaqti o'zgardi. Yangi vaqt: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
-        
+
         for member in participants:
             if member.id != meeting.organizer_id:
                 notifications_to_bulk.append(Notification(
@@ -340,7 +356,7 @@ class MeetingService:
                     message=msg,
                     type=NotificationType.MEETING
                 ))
-                
+
                 broadcast_data.append({
                     "user_id": member.id,
                     "title": "Yig'ilish vaqti o'zgardi",
@@ -352,7 +368,7 @@ class MeetingService:
                         "project_id": meeting.project_id
                     }
                 })
-        
+
         if notifications_to_bulk:
             Notification.objects.bulk_create(notifications_to_bulk)
             from apps.notifications.tasks import mass_notification_sender

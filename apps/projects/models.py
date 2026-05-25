@@ -434,6 +434,9 @@ class Meeting(BaseModel):
     completed_at = models.DateTimeField(null=True, blank=True, verbose_name='Tugallangan vaqt')
     is_deleted = models.BooleanField(default=False, db_index=True, verbose_name="O'chirilganmi?")
 
+    notification_sent = models.BooleanField(default=False, verbose_name="Bildirishnoma yuborildi")
+    notification_eta = models.DateTimeField(null=True, blank=True, verbose_name="Rejalashtirilgan eta")
+
     participants = models.ManyToManyField(User, through='MeetingAttendance', related_name='meeting_participants',
                                           verbose_name='Qatnashuvchilar')
 

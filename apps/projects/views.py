@@ -438,26 +438,25 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
         participants = serializer.validated_data.pop('participants', None)
 
-        time_changed = False
-        if meeting._old_start_time and meeting.start_time != meeting._old_start_time:
-            time_changed = True
-        if meeting._old_duration_minutes and meeting.duration_minutes != meeting._old_duration_minutes:
-            time_changed = True
+        old_start_time = meeting._old_start_time
+        old_duration_minutes = meeting._old_duration_minutes
 
         meeting = serializer.save()
 
         MeetingService.handle_participants(meeting, participants, user.id)
 
+        time_changed = (
+                (old_start_time and meeting.start_time != old_start_time) or
+                (old_duration_minutes and meeting.duration_minutes != old_duration_minutes)
+        )
+
         if time_changed:
             MeetingService.notify_time_change(meeting)
 
             if meeting.duration_minutes > 0:
-                from .tasks import notify_meeting_end
-
-                transaction.on_commit(lambda: notify_meeting_end.apply_async(
-                    args=[meeting.id],
-                    eta=meeting.start_time + timedelta(minutes=meeting.duration_minutes)
-                ))
+                transaction.on_commit(
+                    lambda: MeetingService._schedule_end_notification(meeting)
+                )
 
     def perform_destroy(self, instance):
         user = self.request.user
