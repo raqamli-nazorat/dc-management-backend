@@ -208,7 +208,7 @@ class MeetingService:
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
 
         if msg_template is None:
-            msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
+            msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa.\n\n{meeting.link}"
 
         for member in members:
             if member.id != organizer_id:
