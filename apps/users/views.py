@@ -146,6 +146,19 @@ class MyTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [CustomScopedRateThrottle]
     throttle_scope = 'login'
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+
+        for throttle in self.get_throttles():
+            if hasattr(throttle, 'get_cache_key') and hasattr(throttle, 'cache'):
+                if hasattr(throttle, 'scope_attr'):
+                    throttle.scope = getattr(self, throttle.scope_attr, None)
+                cache_key = throttle.get_cache_key(request, view=self)
+                if cache_key:
+                    throttle.cache.delete(cache_key)
+
+        return response
+
 
 @extend_schema(tags=["Authorization"])
 class MyTokenRefreshView(TokenRefreshView):
