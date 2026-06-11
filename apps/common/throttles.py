@@ -32,7 +32,7 @@ class CustomScopedRateThrottle(ScopedRateThrottle):
             return None
 
         if self.scope == 'login':
-            ident = request.data.get('full_name') or self.get_ident(request)
+            ident = request.data.get('username') or self.get_ident(request)
         else:
             if request.user and request.user.is_authenticated:
                 ident = request.user.pk
