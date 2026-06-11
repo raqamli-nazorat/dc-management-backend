@@ -22,5 +22,24 @@ class CustomScopedRateThrottle(ScopedRateThrottle):
         except (ValueError, KeyError):
             pass
             
-        raise ValueError(f"Throttling rate formati noto'g'ri: {rate}. "
-                         f"To'g'ri format: 'son/birlik' yoki 'son/Xbirlik' (masalan: '3/3m')")
+        raise ValueError(f"Throttling rate format not valid: {rate}. Correct format: 'count/unit' or 'count/Xunit' (e.g., '3/3m')")
+
+    def get_cache_key(self, request, view):
+        if hasattr(self, 'scope_attr'):
+            self.scope = getattr(view, self.scope_attr, None)
+
+        if not self.scope:
+            return None
+
+        if self.scope == 'login':
+            ident = request.data.get('username') or self.get_ident(request)
+        else:
+            if request.user and request.user.is_authenticated:
+                ident = request.user.pk
+            else:
+                ident = self.get_ident(request)
+
+        return self.cache_format % {
+            'scope': self.scope,
+            'ident': ident
+        }
