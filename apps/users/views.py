@@ -8,7 +8,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
-from apps.common.throttles import CustomScopedRateThrottle
+from apps.common.throttles import CustomScopedRateThrottle, ThrottleExceptionHandlerMixin
 from apps.common.mixins import SoftDeleteMixin
 
 from .filters import UserFilter
@@ -141,7 +141,7 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 
 @extend_schema(tags=["Authorization"])
-class MyTokenObtainPairView(TokenObtainPairView):
+class MyTokenObtainPairView(ThrottleExceptionHandlerMixin, TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
     throttle_classes = [CustomScopedRateThrottle]
     throttle_scope = 'login'

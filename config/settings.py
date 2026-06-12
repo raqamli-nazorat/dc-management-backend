@@ -36,9 +36,11 @@ cred = credentials.Certificate(cred_path)
 firebase_admin.initialize_app(cred)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
+
+APPEND_SLASH = False
 
 # CSRF trusted origins
 CSRF_TRUSTED_ORIGINS = []
