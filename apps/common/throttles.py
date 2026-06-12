@@ -53,10 +53,10 @@ class CustomScopedRateThrottle(ScopedRateThrottle):
 
     def _login_ident(self, request):
         try:
-            full_name = str(request.data.get("full_name") or "").strip().lower()
+            username = str(request.data.get("username") or "").strip().lower()
         except Exception:
-            full_name = ""
-        return f"login:{self.get_ident(request)}:{full_name}"
+            username = ""
+        return f"login:{self.get_ident(request)}:{username}"
 
 
 class ThrottleExceptionHandlerMixin:
