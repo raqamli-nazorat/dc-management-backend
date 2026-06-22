@@ -236,12 +236,14 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         user = self.request.user
         task = self.get_object()
 
-        if not task.status in [TaskStatus.TODO, TaskStatus.OVERDUE]:
+        is_admin = user.is_superuser or user.has_role(Role.ADMIN)
+
+        if not is_admin and task.status not in [TaskStatus.TODO, TaskStatus.OVERDUE]:
             raise PermissionDenied(
                 "Vazifa jarayonga tushgan yoki yakunlangan. Uni endi tahrirlab bo'lmaydi."
             )
 
-        is_admin_or_manager = user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user
+        is_admin_or_manager = is_admin or task.project.manager == user
         is_creator = task.created_by == user
 
         if is_admin_or_manager or is_creator:
