@@ -96,6 +96,10 @@ class UserSerializer(serializers.ModelSerializer):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
+        if 'roles' in validated_data and 'active_role' not in validated_data:
+            if instance.active_role and instance.active_role not in instance.roles:
+                instance.active_role = instance.roles[0] if instance.roles else None
+
         if password:
             instance.set_password(password)
 
