@@ -203,12 +203,15 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
             ).exclude(Q(assignee=user) & ~Q(project__employees=user))
 
         if user.has_role(Role.EMPLOYEE):
+            unassigned_tasks_q = Q(project__employees=user, assignee__isnull=True) & (
+                Q(position=user.position) | Q(position__isnull=True)
+            )
             return queryset.filter(
                 active_projects_filter,
                 Q(assignee=user) |
                 Q(created_by=user) |
                 Q(project__testers=user, status__in=[TaskStatus.PRODUCTION, TaskStatus.CHECKED]) |
-                Q(project__employees=user, assignee__isnull=True)
+                unassigned_tasks_q
             ).distinct()
 
         return queryset.none()
