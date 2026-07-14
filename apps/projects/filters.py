@@ -17,7 +17,7 @@ class TaskFilter(filters.FilterSet):
     project = NumberInFilter(field_name='project_id', lookup_expr='in', label="Loyihalar")
     created_by = NumberInFilter(field_name='created_by_id', lookup_expr='in', label="Yaratuvchilar")
     assignee = NumberInFilter(field_name='assignee_id', lookup_expr='in', label="Topshiruvchilar")
-    status = CharInFilter(field_name='status', lookup_expr='in', label="Holatlar")
+    status = CharInFilter(method='filter_status', label="Holatlar")
     priority = CharInFilter(field_name='priority', lookup_expr='in', label="Darajalar")
     type = CharInFilter(field_name='type', lookup_expr='in', label="Turlar")
     position = NumberInFilter(field_name='position_id', lookup_expr='in', label="Lavozimlar")
@@ -35,6 +35,19 @@ class TaskFilter(filters.FilterSet):
     class Meta:
         model = Task
         fields = ['status', 'priority', 'type', 'project', 'created_by', 'position', 'sprint']
+
+    def filter_status(self, queryset, name, value):
+        if not value:
+            return queryset
+
+        q_objects = Q()
+        for val in value:
+            if val == 'rejected':
+                q_objects |= Q(reopened_count__gt=0)
+            else:
+                q_objects |= Q(status=val)
+
+        return queryset.filter(q_objects)
 
 
 class ProjectFilter(filters.FilterSet):
