@@ -261,8 +261,8 @@ REST_FRAMEWORK = {
         'apps.common.throttles.CustomScopedRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '60/minute',
-        'user': '60/minute',
+        'anon': '30/minute',
+        'user': '90/minute',
         'login': '3/3m',
     }
 }
