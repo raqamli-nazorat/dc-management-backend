@@ -3,6 +3,7 @@ import logging
 from dataclasses import dataclass, field, asdict
 from typing import Any
 
+import firebase_admin
 from celery import shared_task, group
 from firebase_admin import messaging
 from .models import UserDevice
@@ -26,15 +27,16 @@ class NotificationPayload:
             raise ValueError(f"Majburiy maydonlar yo'q: {missing}")
 
     def to_dict(self):
-        return asdict(self) 
+        return asdict(self)
 
     @classmethod
     def from_dict(cls, data):
+        nt = data.get("notification_type") or data.get("type") or "system"
         return cls(
-            user_id=data["user_id"],
-            title=data["title"],
-            message=data["message"],
-            notification_type=data.get("notification_type", "system"),
+            user_id=int(data["user_id"]),
+            title=str(data["title"]),
+            message=str(data["message"]),
+            notification_type=str(nt),
             extra_data=data.get("extra_data") or {},
         )
 
@@ -64,7 +66,8 @@ def send_single_notification_task(self, raw):
     try:
         p = NotificationPayload.from_dict(raw)
     except Exception as e:
-        raise self.retry(exc=e, max_retries=0)
+        logger.error("Notification payload xatosi: %s | %s", raw, e)
+        return f"Xato payload: {e}"
 
     group(
         send_websocket_notification.s(raw),
@@ -90,6 +93,10 @@ def send_websocket_notification(self, data):
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_backoff_max=600, max_retries=3)
 def send_push_notification_task(self, user_id, title, message, notification_type="system", extra_data=None):
+    if not firebase_admin._apps:
+        logger.info("FCM: Firebase ilovasi initsializatsiya qilinmagan, push yuborilmadi.")
+        return "FCM sozlanmagan."
+
     tokens = list(
         UserDevice.objects
         .filter(user_id=user_id)
@@ -101,22 +108,31 @@ def send_push_notification_task(self, user_id, title, message, notification_type
     if not tokens:
         return f"User {user_id} uchun tokenlar yo'q."
 
-    fcm_data = {"payload": json.dumps(extra_data or {}), "type": notification_type}
+    fcm_data = {
+        "payload": json.dumps(extra_data or {}, default=str),
+        "type": str(notification_type)
+    }
     success = failure = 0
     invalid_tokens = []
 
     for i in range(0, len(tokens), FCM_BATCH_SIZE):
         batch = tokens[i:i + FCM_BATCH_SIZE]
-        response = messaging.send_multicast(
-            messaging.MulticastMessage(
+        try:
+            multicast_msg = messaging.MulticastMessage(
                 notification=messaging.Notification(title=title, body=message),
                 data=fcm_data,
                 tokens=batch,
             )
-        )
-        success += response.success_count
-        failure += response.failure_count
-        invalid_tokens += [batch[j] for j, r in enumerate(response.responses) if not r.success]
+            if hasattr(messaging, 'send_each_for_multicast'):
+                response = messaging.send_each_for_multicast(multicast_msg)
+            else:
+                response = messaging.send_multicast(multicast_msg)
+
+            success += response.success_count
+            failure += response.failure_count
+            invalid_tokens += [batch[j] for j, r in enumerate(response.responses) if not r.success]
+        except Exception as e:
+            logger.error("FCM send_multicast xatosi (user=%s): %s", user_id, e)
 
     if invalid_tokens:
         deleted, _ = UserDevice.objects.filter(fcm_token__in=invalid_tokens).delete()

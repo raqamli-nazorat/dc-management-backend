@@ -14,8 +14,8 @@ def post_save_handler(sender, instance, created, **kwargs):
             "id": instance.id,
             "title": instance.title,
             "message": instance.message,
-            "type": instance.type,
-            "extra_data": instance.extra_data,
+            "type": str(instance.type),
+            "extra_data": instance.extra_data or {},
             "created_at": instance.created_at.isoformat()
         }
 
