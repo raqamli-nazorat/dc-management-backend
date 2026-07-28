@@ -30,10 +30,15 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env('SECRET_KEY')
 
-# SECURITY WARNING: keep the secret key used in production secret!
 cred_path = os.path.join(BASE_DIR, 'firebase-key.json')
-cred = credentials.Certificate(cred_path)
-firebase_admin.initialize_app(cred)
+if os.path.exists(cred_path):
+    try:
+        if not firebase_admin._apps:
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred)
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("Firebase init failed: %s", e)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -152,9 +157,9 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # Celery beat
 CELERY_BEAT_SCHEDULE = {
-    'check-deadlines-every-min': {
+    'check-deadlines-every-15-min': {
         'task': 'apps.projects.tasks.update_overdue_status_and_notify',
-        'schedule': crontab(minute='*'),
+        'schedule': crontab(minute='*/15'),
     },
 
     'morning-task-reminders': {
