@@ -127,10 +127,9 @@ def send_morning_reminders():
     broadcast_data = []
 
     remind_tasks = Task.objects.filter(
-        Q(deadline__date=today) | Q(status=TaskStatus.OVERDUE),
-        assignee__isnull=False
-    ).exclude(
-        status__in=[TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]
+        deadline__date=today,
+        assignee__isnull=False,
+        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS]
     ).only('id', 'title', 'assignee_id')
 
     user_tasks = defaultdict(list)
