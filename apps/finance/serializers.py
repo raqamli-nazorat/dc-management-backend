@@ -135,7 +135,7 @@ class PayrollSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'user_info', 'accountant_info', 'month', 'month_display',
             'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
-            'tasks_completed', 'deadline_missed', 'bug_count',
+            'tasks_completed', 'deadline_missed', 'bug_count', 'missed_meetings_count', 'reason',
             'is_confirmed', 'confirmed_at', 'created_at'
         )
 
