@@ -47,7 +47,7 @@ def _send_accountant_notifications(month_label):
         logger.info("%d ta hisobchiga bildirishnoma yuborildi.", len(notifications))
 
 
-def _calc_meeting_penalty(user) -> Decimal:
+def _calc_meeting_penalty(user):
     missed_qs = list(
         MeetingAttendance.objects
         .filter(
@@ -63,18 +63,21 @@ def _calc_meeting_penalty(user) -> Decimal:
     )
 
     total_penalty = Decimal("0.00")
+    reasons = []
     processed_atts = []
 
     for att in missed_qs:
         processed_atts.append(att.id)
         pct = att.meeting.penalty_percentage
         if pct > 0 and user.fixed_salary > 0:
-            total_penalty += _round((user.fixed_salary * Decimal(str(pct))) / 100)
+            penalty = _round((user.fixed_salary * Decimal(str(pct))) / 100)
+            total_penalty += penalty
+            reasons.append(f'"{att.meeting.title}" meetga sababsiz kirmaganingiz uchun {pct}% ({penalty} so\'m) minus bo\'lgan')
 
     if processed_atts:
         MeetingAttendance.objects.filter(id__in=processed_atts).update(payroll_processed=True)
 
-    return total_penalty
+    return total_penalty, reasons, len(missed_qs)
 
 
 def _calc_manager_kpi(user):
@@ -90,6 +93,7 @@ def _calc_manager_kpi(user):
 
     kpi_bonus = Decimal("0.00")
     total_penalty = Decimal("0.00")
+    reasons = []
     processed_project_ids = []
 
     for project in completed_projects:
@@ -100,6 +104,7 @@ def _calc_manager_kpi(user):
         if project.was_overdue and penalty_base > 0:
             penalty = _round((penalty_base * project.penalty_percentage) / 100)
             total_penalty += penalty
+            reasons.append(f'"{project.title}" loyihasi uchun muddat qo\'shilgan {project.penalty_percentage}% ({penalty} so\'m) minus bo\'lgan')
             logger.debug("Manager %s | Loyiha '%s' kechikkan. Jarima: %s", user.username, project.title, penalty)
 
         kpi_bonus += gross
@@ -107,7 +112,7 @@ def _calc_manager_kpi(user):
     if processed_project_ids:
         Project.objects.filter(id__in=processed_project_ids).update(payroll_processed=True)
 
-    return kpi_bonus, total_penalty
+    return kpi_bonus, total_penalty, reasons
 
 
 def _calc_employee_kpi(user):
@@ -124,6 +129,7 @@ def _calc_employee_kpi(user):
     kpi_bonus = Decimal("0.00")
     total_penalty = Decimal("0.00")
     bugs_count = 0
+    reasons = []
     processed_task_ids = []
     missed_deadlines_count = 0
 
@@ -139,11 +145,14 @@ def _calc_employee_kpi(user):
             if task.reopened_count > 0:
                 reopen_penalty = _round((penalty_base * task.penalty_percentage) / 100) * task.reopened_count
                 current_task_penalty += reopen_penalty
+                total_reopen_pct = task.penalty_percentage * task.reopened_count
+                reasons.append(f'"{task.title}" task {task.reopened_count} marta qayta ochilgani uchun {total_reopen_pct}% ({reopen_penalty} so\'m) minus bo\'lgan')
 
             if task.was_overdue:
                 missed_deadlines_count += 1
                 overdue_penalty = _round((penalty_base * task.penalty_percentage) / 100)
                 current_task_penalty += overdue_penalty
+                reasons.append(f'"{task.title}" task uchun muddat qo\'shilgan {task.penalty_percentage}% ({overdue_penalty} so\'m) minus bo\'lgan')
                 logger.debug("Employee %s | Task '%s' kechikkan. Jarima: %s", user.username, task.title,
                              overdue_penalty)
 
@@ -157,7 +166,7 @@ def _calc_employee_kpi(user):
     if processed_task_ids:
         Task.objects.filter(id__in=processed_task_ids).update(payroll_processed=True)
 
-    return kpi_bonus, total_penalty, len(completed_tasks), missed_deadlines_count, bugs_count
+    return kpi_bonus, total_penalty, len(completed_tasks), missed_deadlines_count, bugs_count, reasons
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
@@ -199,19 +208,26 @@ def _process_user(user: User, month_start, month_end):
     with transaction.atomic():
         kpi_bonus = Decimal("0.00")
         total_penalty = Decimal("0.00")
-        tasks_done = missed_deadlines = bugs_count = 0
+        tasks_done = missed_deadlines = bugs_count = missed_meetings_count = 0
+        reasons = []
 
         if user.has_any_role(Role.MANAGER):
-            mgr_kpi, proj_penalty = _calc_manager_kpi(user)
+            mgr_kpi, proj_penalty, mgr_reasons = _calc_manager_kpi(user)
             kpi_bonus += mgr_kpi
             total_penalty += proj_penalty
+            reasons.extend(mgr_reasons)
 
         if user.has_any_role(Role.EMPLOYEE):
-            total_penalty += _calc_meeting_penalty(user)
+            meet_penalty, meet_reasons, missed_meetings_count = _calc_meeting_penalty(user)
+            total_penalty += meet_penalty
+            reasons.extend(meet_reasons)
 
-            emp_kpi, task_penalty, tasks_done, missed_deadlines, bugs_count = _calc_employee_kpi(user)
+            emp_kpi, task_penalty, tasks_done, missed_deadlines, bugs_count, emp_reasons = _calc_employee_kpi(user)
             kpi_bonus += emp_kpi
             total_penalty += task_penalty
+            reasons.extend(emp_reasons)
+
+        reason_text = "\n".join(reasons) if reasons else None
 
         Payroll.objects.update_or_create(
             user=user,
@@ -224,6 +240,8 @@ def _process_user(user: User, month_start, month_end):
                 "tasks_completed": tasks_done,
                 "deadline_missed": missed_deadlines,
                 "bug_count": bugs_count,
+                "missed_meetings_count": missed_meetings_count,
+                "reason": reason_text,
                 "is_confirmed": False,
             }
         )
