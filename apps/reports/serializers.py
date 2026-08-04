@@ -295,6 +295,7 @@ class PayrollReportSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'user', 'accountant', 'month',
             'fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount',
+            'tasks_completed', 'deadline_missed', 'bug_count', 'missed_meetings_count', 'reason',
             'status', 'created_at', 'confirmed_at'
         )
 

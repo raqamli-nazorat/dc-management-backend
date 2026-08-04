@@ -203,6 +203,8 @@ class Payroll(BaseModel):
     tasks_completed = models.PositiveIntegerField(default=0, verbose_name='Bajarilgan vazifalar')
     deadline_missed = models.PositiveIntegerField(default=0, verbose_name='Muddatdan o\'tkazib yuborilganlar')
     bug_count = models.PositiveIntegerField(default=0, verbose_name='Xatolar')
+    missed_meetings_count = models.PositiveIntegerField(default=0, verbose_name='Qatnashilmagan majlislar soni')
+    reason = models.TextField(null=True, blank=True, verbose_name='Sababi')
 
     accountant = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
                                    related_name='confirmed_payrolls',

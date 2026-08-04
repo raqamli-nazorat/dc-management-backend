@@ -107,7 +107,7 @@ class PayrollAdmin(ModelAdmin):
             'fields': ('fixed_salary', 'kpi_bonus', 'penalty_amount', 'total_amount')
         }),
         ('Ishlash ko\'rsatkichlari', {
-            'fields': ('tasks_completed', 'deadline_missed', 'bug_count')
+            'fields': ('tasks_completed', 'deadline_missed', 'bug_count', 'missed_meetings_count', 'reason')
         }),
         ('Tasdiqlash ma\'lumotlari', {
             'fields': ('accountant', 'confirmed_at', 'is_confirmed'),
