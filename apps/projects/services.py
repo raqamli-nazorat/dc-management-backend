@@ -52,25 +52,58 @@ class TaskService:
             return task
 
         now = timezone.now()
+        updated_task = None
 
         if new_status in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
             if user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user:
-                return cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
-
-            is_tester = task.project.testers.filter(id=user.id).exists()
-            if is_tester:
-                if task.assignee_id == user.id:
-                    raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
-                return cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
+                updated_task = cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
+            else:
+                is_tester = task.project.testers.filter(id=user.id).exists()
+                if is_tester:
+                    if task.assignee_id == user.id:
+                        raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
+                    updated_task = cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
+                else:
+                    raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
 
         else:
             if task.assignee == user:
-                return cls._handle_assignee_logic(task, user, new_status, now)
+                updated_task = cls._handle_assignee_logic(task, user, new_status, now)
+            elif task.assignee is None and task.project.employees.filter(id=user.id).exists():
+                updated_task = cls._handle_claim_logic(task, user, new_status, now)
+            else:
+                raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
 
-            if task.assignee is None and task.project.employees.filter(id=user.id).exists():
-                return cls._handle_claim_logic(task, user, new_status, now)
+        if updated_task:
+            recipients = set()
 
-        raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
+            if updated_task.created_by:
+                recipients.add(updated_task.created_by)
+
+            if updated_task.project:
+                if updated_task.project.created_by:
+                    recipients.add(updated_task.project.created_by)
+                if updated_task.project.manager:
+                    recipients.add(updated_task.project.manager)
+
+            recipients = [r for r in recipients if r != user]
+
+            if recipients:
+                status_display = updated_task.get_status_display()
+                for recipient in recipients:
+                    cls._send_task_notification(
+                        recipient,
+                        updated_task,
+                        "Vazifa holati o'zgardi",
+                        f"'{updated_task.title}' vazifasining holati '{status_display}' ga o'zgartirildi.",
+                        extra_data={
+                            'action': 'task_status_changed',
+                            'old_status': current_status,
+                            'new_status': updated_task.status
+                        }
+                    )
+
+        return updated_task
 
     @classmethod
     def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
@@ -172,14 +205,18 @@ class TaskService:
         return task
 
     @staticmethod
-    def _send_task_notification(user, task, title, message):
+    def _send_task_notification(user, task, title, message, extra_data=None):
         if user:
+            payload = {'task_id': task.id, 'action': 'open_task', 'project_id': task.project_id}
+            if extra_data:
+                payload.update(extra_data)
+
             Notification.objects.create(
                 user=user,
                 title=title,
                 message=message,
                 type=NotificationType.TASK,
-                extra_data={'task_id': task.id}
+                extra_data=payload
             )
 
 
