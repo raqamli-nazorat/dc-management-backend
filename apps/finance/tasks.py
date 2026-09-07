@@ -7,6 +7,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.finance.models import Payroll
+from apps.finance.utils import get_month_range, get_month_display_name
 from apps.notifications.models import Notification, NotificationType
 from apps.projects.models import MeetingAttendance, Project, ProjectStatus, Task, TaskStatus
 from apps.users.models import Role, User
@@ -18,13 +19,6 @@ TWO_PLACES = Decimal("0.01")
 
 def _round(value: Decimal) -> Decimal:
     return value.quantize(TWO_PLACES, rounding=ROUND_HALF_UP)
-
-
-def _get_month_range(now):
-    first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    last_of_prev_month = first_of_this_month - timedelta(seconds=1)
-    first_of_prev_month = last_of_prev_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    return first_of_prev_month, last_of_prev_month
 
 
 def _send_accountant_notifications(month_label):
@@ -170,42 +164,92 @@ def _calc_employee_kpi(user):
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def calculate_monthly_salaries(self):
-    now = timezone.now()
-    month_start, month_end = _get_month_range(now)
-    month_label = month_start.strftime("%Y-%m")
+def calculate_monthly_salaries(self=None, target_month=None, user_id=None, notify_accountants=True):
+    month_start, month_end, target_date = get_month_range(target_month)
+    month_label = target_date.strftime("%Y-%m")
+    display_name = get_month_display_name(target_date)
 
-    logger.info("Oylik hisob-kitob boshlandi: %s", month_label)
+    logger.info("Oylik hisob-kitob boshlandi: %s (%s)", month_label, display_name)
+
+    users_qs = User.objects.filter(is_active=True)
+    if user_id:
+        users_qs = users_qs.filter(id=user_id)
 
     users_qs = (
-        User.objects
-        .filter(is_active=True)
+        users_qs
         .only("id", "username", "roles", "fixed_salary", "balance")
         .iterator(chunk_size=500)
     )
 
-    processed = errors = 0
+    stats = {
+        "month": month_label,
+        "display_name": display_name,
+        "processed": 0,
+        "created": 0,
+        "updated": 0,
+        "skipped_confirmed": 0,
+        "errors": 0,
+        "total_amount": Decimal("0.00"),
+        "details": []
+    }
 
     for user in users_qs:
         try:
-            _process_user(user, month_start, month_end)
-            processed += 1
+            payroll, created, status = _process_user(user, month_start, month_end, target_date)
+            stats["processed"] += 1
+            if status == "confirmed":
+                stats["skipped_confirmed"] += 1
+                stats["details"].append({
+                    "user": user,
+                    "status": "confirmed",
+                    "payroll": payroll,
+                })
+            else:
+                if created:
+                    stats["created"] += 1
+                else:
+                    stats["updated"] += 1
+                stats["total_amount"] += payroll.total_amount
+                stats["details"].append({
+                    "user": user,
+                    "status": "created" if created else "updated",
+                    "payroll": payroll,
+                })
         except Exception as exc:
-            errors += 1
+            stats["errors"] += 1
+            stats["details"].append({
+                "user": user,
+                "status": "error",
+                "error": str(exc)
+            })
             logger.error("Foydalanuvchi %s (%s) uchun hisoblashda xato: %s", user.username, user.pk, exc, exc_info=True)
 
-    try:
-        _send_accountant_notifications(month_label)
-    except Exception as e:
-        logger.error("Hisobchilarga xabar yuborishda xatolik: %s", e)
+    if notify_accountants:
+        try:
+            _send_accountant_notifications(month_label)
+        except Exception as e:
+            logger.error("Hisobchilarga xabar yuborishda xatolik: %s", e)
 
-    result = f"{month_label} oyi | muvaffaqiyatli: {processed} | xato: {errors}"
-    logger.info("Oylik hisob-kitob yakunlandi: %s", result)
-    return result
+    result_msg = (
+        f"{month_label} oyi | jami: {stats['processed']} | "
+        f"yaratildi: {stats['created']} | yangilandi: {stats['updated']} | "
+        f"tasdiqlangan (o'tkazildi): {stats['skipped_confirmed']} | xato: {stats['errors']}"
+    )
+    logger.info("Oylik hisob-kitob yakunlandi: %s", result_msg)
+    stats["summary_message"] = result_msg
+    return stats
 
 
-def _process_user(user: User, month_start, month_end):
+def _process_user(user: User, month_start, month_end, target_date=None):
+    if target_date is None:
+        target_date = month_start.date() if hasattr(month_start, 'date') else month_start
+
     with transaction.atomic():
+        existing = Payroll.objects.filter(user=user, month=target_date).first()
+        if existing and existing.is_confirmed:
+            logger.info("Foydalanuvchi %s uchun %s oyi maoshi allaqachon tasdiqlangan, o'tkazib yuborildi.", user.username, target_date)
+            return existing, False, "confirmed"
+
         kpi_bonus = Decimal("0.00")
         total_penalty = Decimal("0.00")
         tasks_done = missed_deadlines = bugs_count = missed_meetings_count = 0
@@ -229,9 +273,9 @@ def _process_user(user: User, month_start, month_end):
 
         reason_text = "\n".join(reasons) if reasons else None
 
-        Payroll.objects.update_or_create(
+        payroll, created = Payroll.objects.update_or_create(
             user=user,
-            month=month_start.date(),
+            month=target_date,
             defaults={
                 "fixed_salary": user.fixed_salary,
                 "kpi_bonus": kpi_bonus,
@@ -245,3 +289,4 @@ def _process_user(user: User, month_start, month_end):
                 "is_confirmed": False,
             }
         )
+        return payroll, created, "created" if created else "updated"
