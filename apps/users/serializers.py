@@ -235,7 +235,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
 
         if is_privileged:
             filtered_meeting_qs = Meeting.objects.filter(
-                m_date_or_active, meeting_project_filter,
+                m_date_or_active,
                 is_active=True, is_deleted=False,
             )
         elif is_manager:
@@ -268,7 +268,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
 
         if is_privileged:
             filtered_attendances = MeetingAttendance.objects.filter(
-                m_att_date_or_active, m_project_filter, **m_base_filter
+                m_att_date_or_active, **m_base_filter
             ).distinct()
         elif is_manager:
             m_manager_filter = (
