@@ -76,7 +76,8 @@ class UserComprehensiveReportSerializer(serializers.ModelSerializer):
                 user=OuterRef('pk'),
                 is_active=True,
                 meeting__is_active=True,
-                meeting__is_deleted=False
+                meeting__is_deleted=False,
+                meeting__is_completed=True
             )
             if attended is not None:
                 qs = qs.filter(is_attended=attended)

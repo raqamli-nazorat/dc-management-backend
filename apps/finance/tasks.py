@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from celery import shared_task
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.finance.models import Payroll
@@ -42,15 +43,19 @@ def _send_accountant_notifications(month_label):
 
 
 def _calc_meeting_penalty(user):
-    missed_qs = list(
+    unexcused_qs = list(
         MeetingAttendance.objects
         .filter(
             user=user,
-            is_attended=False,
             payroll_processed=False,
             is_excused=False,
             is_active=True,
             meeting__is_active=True,
+            meeting__is_deleted=False,
+            meeting__is_completed=True,
+        )
+        .filter(
+            Q(is_attended=False) | Q(is_attended=True, late_minutes__gt=5)
         )
         .exclude(meeting__organizer=user)
         .select_related("meeting")
@@ -60,18 +65,29 @@ def _calc_meeting_penalty(user):
     reasons = []
     processed_atts = []
 
-    for att in missed_qs:
+    for att in unexcused_qs:
         processed_atts.append(att.id)
-        pct = att.meeting.penalty_percentage
+        if not att.is_attended:
+            pct = att.meeting.penalty_percentage
+            desc = f'"{att.meeting.title}" meetga sababsiz kirmaganingiz uchun'
+        else:
+            if att.late_minutes <= 15:
+                pct = Decimal("0.1")
+            elif att.late_minutes <= 25:
+                pct = Decimal("0.5")
+            else:
+                pct = Decimal("1.0")
+            desc = f'"{att.meeting.title}" meetga {att.late_minutes} daqiqa sababsiz kechikib kirganingiz uchun'
+
         if pct > 0 and user.fixed_salary > 0:
             penalty = _round((user.fixed_salary * Decimal(str(pct))) / 100)
             total_penalty += penalty
-            reasons.append(f'"{att.meeting.title}" meetga sababsiz kirmaganingiz uchun {pct}% ({penalty} so\'m) minus bo\'lgan')
+            reasons.append(f"{desc} {pct}% ({penalty} so'm) minus bo'lgan")
 
     if processed_atts:
         MeetingAttendance.objects.filter(id__in=processed_atts).update(payroll_processed=True)
 
-    return total_penalty, reasons, len(missed_qs)
+    return total_penalty, reasons, len(unexcused_qs)
 
 
 def _calc_manager_kpi(user):

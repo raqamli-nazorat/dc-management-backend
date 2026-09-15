@@ -74,7 +74,8 @@ def handle_project_post_save(sender, instance, created, **kwargs):
 @receiver(m2m_changed, sender=Project.employees.through)
 def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
     if action in ["pre_add", "pre_remove"]:
-        if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+        is_superuser = instance._is_current_user_superuser() if hasattr(instance, '_is_current_user_superuser') else False
+        if instance.status == ProjectStatus.CANCELLED or (instance.status == ProjectStatus.COMPLETED and not is_superuser):
             raise ValidationError(
                 f"Loyiha {instance.get_status_display()} holatida. Xodimlarni tahrirlash taqiqlanadi!")
 
@@ -105,7 +106,8 @@ def handle_project_employees_change(sender, instance, action, pk_set, **kwargs):
 @receiver(m2m_changed, sender=Project.testers.through)
 def handle_project_testers_change(sender, instance, action, pk_set, **kwargs):
     if action in ["pre_add", "pre_remove"]:
-        if instance.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+        is_superuser = instance._is_current_user_superuser() if hasattr(instance, '_is_current_user_superuser') else False
+        if instance.status == ProjectStatus.CANCELLED or (instance.status == ProjectStatus.COMPLETED and not is_superuser):
             raise ValidationError(
                 f"Loyiha {instance.get_status_display()} holatida. "
                 f"Xodimlar va sinovchilarni tahrirlash taqiqlanadi!")

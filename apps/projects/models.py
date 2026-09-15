@@ -3,15 +3,15 @@ from datetime import timedelta
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator, MinLengthValidator
-from django.db import models, transaction
+from django.db import models
 from django.utils import timezone
 
 from apps.common.utils import generate_unique_id
-from apps.common.validators import validate_file_size, validate_file_extension
+from apps.common.validators import validate_file_size
 from apps.common.models import BaseModel
 from apps.users.models import Role
 from apps.applications.models import Position
-from apps.notifications.models import Notification, NotificationType
+from apps.notifications.models import Notification
 
 User = get_user_model()
 
@@ -143,6 +143,15 @@ class Project(BaseModel):
         else:
             self._old_is_hidden = None
 
+    def _is_current_user_superuser(self):
+        user = getattr(self, '_current_user', None)
+        if user is None:
+            from apps.audit.middleware import get_current_request
+            request = get_current_request()
+            if request and hasattr(request, 'user'):
+                user = request.user
+        return bool(user and user.is_authenticated and user.is_superuser)
+
     def clean(self):
         super().clean()
 
@@ -155,24 +164,34 @@ class Project(BaseModel):
             is_soft_delete_action = (self.is_active != old_project.is_active) or (
                     self.is_deleted != old_project.is_deleted)
 
+            is_superuser = self._is_current_user_superuser()
+
             if old_project.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED] and not is_soft_delete_action:
-                raise ValidationError(
-                    f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
+                if not (old_project.status == ProjectStatus.COMPLETED and is_superuser):
+                    raise ValidationError(
+                        f"Loyiha {old_project.get_status_display()} holatida. Uni tahrirlash taqiqlanadi!")
 
             old_status = old_project.status
             new_status = self.status
 
             if old_status != new_status:
                 if old_status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
-                    raise ValidationError({
-                        'status': f"Loyiha {old_project.get_status_display()} holatida. Uning statusini qayta o'zgartirib bo'lmaydi!"
-                    })
+                    if not (old_status == ProjectStatus.COMPLETED and is_superuser):
+                        raise ValidationError({
+                            'status': f"Loyiha {old_project.get_status_display()} holatida. Uning statusini qayta o'zgartirib bo'lmaydi!"
+                        })
 
                 valid_transitions = {
                     ProjectStatus.PLANNING: [ProjectStatus.ACTIVE, ProjectStatus.CANCELLED],
                     ProjectStatus.ACTIVE: [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED],
                     ProjectStatus.OVERDUE: [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED],
                 }
+                if is_superuser:
+                    valid_transitions[ProjectStatus.COMPLETED] = [
+                        ProjectStatus.ACTIVE,
+                        ProjectStatus.PLANNING,
+                        ProjectStatus.CANCELLED,
+                    ]
 
                 allowed_next_states = valid_transitions.get(old_status, [])
                 if new_status not in allowed_next_states:
@@ -191,7 +210,7 @@ class Project(BaseModel):
         self.full_clean()
 
         if not self.uid:
-            self.uid = generate_unique_id('PR', Project)
+            self.uid = generate_unique_id('PR-', Project)
 
         if not is_new:
             if self.is_hidden and not self._old_is_hidden:
@@ -224,16 +243,20 @@ class Project(BaseModel):
                 if self.deadline > timezone.now() and self.status == ProjectStatus.OVERDUE:
                     self.status = ProjectStatus.ACTIVE
 
-            if self.status != self._old_status:
-                if self.status == ProjectStatus.COMPLETED:
+            if self.status == ProjectStatus.COMPLETED:
+                if not self.completed_at:
                     self.completed_at = timezone.now()
-                elif self._old_status == ProjectStatus.COMPLETED:
-                    self.completed_at = None
+            else:
+                self.completed_at = None
 
             if self.status == ProjectStatus.OVERDUE:
                 self.was_overdue = True
 
-        return super().save(*args, **kwargs)
+        result = super().save(*args, **kwargs)
+        self._old_status = self.status
+        self._old_deadline = self.deadline
+        self._old_is_hidden = getattr(self, 'is_hidden', None)
+        return result
 
 
 class ProjectDocument(BaseModel):
@@ -317,21 +340,36 @@ class Task(BaseModel):
         else:
             self._old_deadline = None
 
+    def _is_current_user_admin(self):
+        user = getattr(self, '_current_user', None)
+        if user is None:
+            from apps.audit.middleware import get_current_request
+            request = get_current_request()
+            if request and hasattr(request, 'user'):
+                user = request.user
+        return bool(user and user.is_authenticated and (user.is_superuser or user.has_role(Role.ADMIN)))
+
     def clean(self):
         super().clean()
+
+        is_admin = self._is_current_user_admin()
 
         if not self.pk and self.project_id:
             p_status = self.project.status
             if p_status in [ProjectStatus.PLANNING, ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
-                raise ValidationError({
-                    'project': f"Loyiha {self.project.get_status_display()} holatida. Yangi vazifa qo'shish taqiqlanadi!"
-                })
+                if not (p_status == ProjectStatus.COMPLETED and is_admin):
+                    raise ValidationError({
+                        'project': f"Loyiha {self.project.get_status_display()} holatida. Yangi vazifa qo'shish taqiqlanadi!"
+                    })
 
         if self.assignee and self.position:
             if self.assignee.position != self.position:
-                raise ValidationError({
-                    'assignee': f"Ushbu vazifa {self.position} lavozimi uchun. Tanlangan xodim esa {self.assignee.position}."
-                })
+                if is_admin:
+                    self.position = self.assignee.position
+                else:
+                    raise ValidationError({
+                        'assignee': f"Ushbu vazifa {self.position} lavozimi uchun. Tanlangan xodim esa {self.assignee.position}."
+                    })
 
         if self.pk:
             try:
@@ -347,7 +385,7 @@ class Task(BaseModel):
                 TaskStatus.PRODUCTION, TaskStatus.CHECKED,
                 TaskStatus.REJECTED, TaskStatus.OVERDUE
             ]
-            if old_task.status in locked_statuses and old_task.assignee_id != self.assignee_id:
+            if not is_admin and old_task.status in locked_statuses and old_task.assignee_id != self.assignee_id:
                 raise ValidationError({
                     'assignee': f"Vazifa {old_task.get_status_display()} holatida. Mas'ul xodimni o'zgartirib bo'lmaydi!"
                 })
@@ -371,16 +409,24 @@ class Task(BaseModel):
                 if self.deadline > timezone.now() and self.status == TaskStatus.OVERDUE:
                     self.status = TaskStatus.IN_PROGRESS
 
-            if self.status != self._old_status:
-                if self.status == TaskStatus.CHECKED:
+            if self.status == TaskStatus.CHECKED:
+                if not self.completed_at:
                     self.completed_at = timezone.now()
-                elif self._old_status == TaskStatus.CHECKED:
-                    self.completed_at = None
+            else:
+                self.completed_at = None
+
+            if self.status == TaskStatus.IN_PROGRESS and not self.started_at:
+                self.started_at = timezone.now()
+            elif self.status != TaskStatus.IN_PROGRESS:
+                self.started_at = None
 
             if self.status == TaskStatus.OVERDUE:
                 self.was_overdue = True
 
-        return super().save(*args, **kwargs)
+        result = super().save(*args, **kwargs)
+        self._old_status = self.status
+        self._old_deadline = self.deadline
+        return result
 
     def __str__(self):
         return self.title
@@ -416,14 +462,15 @@ class TaskRejectionFile(BaseModel):
 
 class Meeting(BaseModel):
     uid = models.CharField(max_length=20, unique=True, editable=False, verbose_name="UID")
-    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, related_name='meetings',
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True, blank=True, related_name='meetings',
                                 verbose_name='Loyiha')
     organizer = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='organized_meetings',
                                   verbose_name="Tashkilotchi")
 
     title = models.CharField(max_length=255, verbose_name='Nomi')
-    description = models.TextField(verbose_name='Tavfsifi')
-    link = models.URLField(verbose_name='Havolasi')
+    description = models.TextField(null=True, blank=True, verbose_name='Tavfsifi')
+    recording_url = models.URLField(null=True, blank=True, verbose_name='Yozuv havolasi')
+    requires_approval = models.BooleanField(default=False, verbose_name="Mezbon tasdig'i talab qilinsinmi?")
     penalty_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.00,
                                              validators=[MinValueValidator(0), MaxValueValidator(100)],
                                              verbose_name='Jarima foizi (%)')
@@ -464,6 +511,11 @@ class Meeting(BaseModel):
         else:
             self._old_duration_minutes = None
 
+        if 'requires_approval' not in deferred_fields:
+            self._old_requires_approval = self.requires_approval
+        else:
+            self._old_requires_approval = None
+
     def clean(self):
         super().clean()
 
@@ -484,10 +536,14 @@ class Meeting(BaseModel):
         self.full_clean()
 
         if not self.uid:
-            prefix = f"{self.project.prefix}-M-" if self.project else "MT"
+            prefix = f"{self.project.prefix}-M-" if self.project else "MT-"
             self.uid = generate_unique_id(prefix, Meeting)
 
         super().save(*args, **kwargs)
+
+    @property
+    def room_name(self):
+        return self.uid
 
     def __str__(self):
         return self.title
@@ -497,11 +553,15 @@ class MeetingAttendance(BaseModel):
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='attendances',
                              verbose_name='Foydalanuvchi')
     meeting = models.ForeignKey(Meeting, on_delete=models.SET_NULL, null=True, related_name='attendances',
-                                verbose_name='Uchrashuv')
+                                verbose_name='Yig\'ilish')
 
-    is_attended = models.BooleanField(default=True, db_index=True, verbose_name='Qatnashdimi?')
+    is_attended = models.BooleanField(default=False, db_index=True, verbose_name='Qatnashdimi?')
     is_excused = models.BooleanField(default=False, db_index=True, verbose_name="Sabablimi?")
     payroll_processed = models.BooleanField(default=False, verbose_name="Oylikda hisoblandimi?")
+    joined_at = models.DateTimeField(null=True, blank=True, verbose_name='Kirgan vaqti')
+    left_at = models.DateTimeField(null=True, blank=True, verbose_name='Chiqgan vaqti')
+    duration_minutes = models.PositiveIntegerField(default=0, verbose_name='Qatnashgan vaqti (daqiqa)')
+    late_minutes = models.PositiveIntegerField(default=0, verbose_name='Kechikkan vaqti (daqiqa)')
     absence_reason = models.TextField(
         null=True, blank=True,
         validators=[MinLengthValidator(10)],

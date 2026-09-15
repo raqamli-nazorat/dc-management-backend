@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.contrib.auth import get_user_model
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Q, Sum, Case, When, F, IntegerField
 from django.utils import timezone
 
 from rest_framework import serializers
@@ -243,8 +243,13 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                 m_project_filter, **m_base_filter
             ).distinct()
         elif is_manager:
+            m_manager_filter = (
+                Q(meeting__project__manager=user) |
+                Q(meeting__organizer=user) |
+                Q(user=user)
+            ) & m_project_filter
             filtered_meetings = MeetingAttendance.objects.filter(
-                meeting__project__manager=user, **m_base_filter
+                m_manager_filter, **m_base_filter
             ).distinct()
         else:
             filtered_meetings = MeetingAttendance.objects.filter(
@@ -256,25 +261,33 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             attended=Count('id', filter=Q(is_attended=True)),
             missed=Count('id', filter=Q(is_attended=False)),
             with_reason=Count('id', filter=Q(is_attended=False) & Q(is_excused=True)),
-            total_duration=Sum('meeting__duration_minutes', filter=Q(is_attended=True)),
+            total_duration=Sum(
+                Case(
+                    When(duration_minutes__gt=0, then=F('duration_minutes')),
+                    default=F('meeting__duration_minutes'),
+                    output_field=IntegerField()
+                ),
+                filter=Q(is_attended=True)
+            ),
             unique_participants=Count('user', distinct=True),
             unique_meetings=Count('meeting', distinct=True)
         )
 
-        m_total = m_stats['total'] or 0
+        m_total_attendances = m_stats['total'] or 0
+        m_total_meetings = m_stats['unique_meetings'] or 0
         m_attended = m_stats['attended'] or 0
         m_missed = m_stats['missed'] or 0
 
         meetings_data = {
-            "total": m_total,
+            "total": m_total_meetings,
             "attended": m_attended,
             "missed": m_missed,
             "with_reason": m_stats['with_reason'] or 0,
             "unexcused": m_missed - (m_stats['with_reason'] or 0),
             "total_duration_minutes": m_stats['total_duration'] or 0,
             "unique_participants": m_stats['unique_participants'] or 0,
-            "unique_meetings": m_stats['unique_meetings'] or 0,
-            "attendance_rate": round((m_attended / m_total * 100), 1) if m_total > 0 else 0.0
+            "unique_meetings": m_total_meetings,
+            "attendance_rate": round((m_attended / m_total_attendances * 100), 1) if m_total_attendances > 0 else 0.0
         }
 
         return {
@@ -414,17 +427,18 @@ class UserEfficiencySerializer(serializers.Serializer):
             'is_active': True,
             'meeting__is_active': True,
             'meeting__is_deleted': False,
+            'meeting__is_completed': True,
         }
+        meeting_project_filter = Q(meeting__project__isnull=True) | Q(meeting__project__is_hidden=False)
 
         if obj_is_manager:
-            filtered_meetings = MeetingAttendance.objects.filter(
-                meeting__project__manager=obj,
-                meeting__project__is_hidden=False,
+            filtered_meetings = obj.attendances.filter(
+                meeting_project_filter,
                 **meeting_base_filter
             ).exclude(meeting__organizer=obj)
         else:
             filtered_meetings = obj.attendances.filter(
-                Q(meeting__project__isnull=True) | Q(meeting__project__is_hidden=False),
+                meeting_project_filter,
                 **meeting_base_filter
             )
 

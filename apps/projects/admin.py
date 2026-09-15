@@ -26,7 +26,7 @@ class TaskRejectionFileInline(admin.TabularInline):
 class MeetingAttendanceInline(admin.TabularInline):
     model = MeetingAttendance
     extra = 0
-    fields = ('user', 'is_attended', 'absence_reason')
+    fields = ('user', 'is_attended', 'joined_at', 'left_at', 'duration_minutes', 'absence_reason')
     can_delete = False
 
 
@@ -74,6 +74,14 @@ class ProjectAdmin(ModelAdmin):
         return format_html('<span style="color: {}; font-weight: bold;">{}</span>',
                            colors.get(obj.status, 'black'), obj.get_status_display())
 
+    def save_model(self, request, obj, form, change):
+        obj._current_user = request.user
+        super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        form.instance._current_user = request.user
+        super().save_related(request, form, formsets, change)
+
 
 @admin.register(Task)
 class TaskAdmin(ModelAdmin):
@@ -84,6 +92,10 @@ class TaskAdmin(ModelAdmin):
     exclude = ('payroll_processed',)
 
     readonly_fields = ('created_at', 'updated_at')
+
+    def save_model(self, request, obj, form, change):
+        obj._current_user = request.user
+        super().save_model(request, obj, form, change)
 
     inlines = [TaskAttachmentInline, TaskRejectionFileInline]
 
@@ -125,7 +137,7 @@ class MeetingAdmin(ModelAdmin):
 
     fieldsets = (
         ('Asosiy', {
-            'fields': ('project', 'organizer', 'title', 'description', 'link', 'penalty_percentage')
+            'fields': ('project', 'organizer', 'title', 'description', 'requires_approval', 'penalty_percentage')
         }),
         ('Vaqtni kuzatish & Holat', {
             'fields': ('start_time', 'duration_minutes', 'is_completed', 'is_deleted')

@@ -14,7 +14,7 @@ def get_user_and_cache_key(ticket):
 
     if user_id:
         try:
-            user = User.objects.only('id', 'username').get(pk=user_id)
+            user = User.objects.get(pk=user_id)
             return user, cache_key
         except User.DoesNotExist:
             return AnonymousUser(), None

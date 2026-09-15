@@ -1,8 +1,11 @@
+import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.utils import timezone
 from django.db import transaction
 from rest_framework.exceptions import ValidationError, PermissionDenied
+from livekit import api
 
 from .models import TaskStatus, MeetingAttendance, Meeting, Task
 from apps.notifications.models import Notification, NotificationType
@@ -54,9 +57,13 @@ class TaskService:
         now = timezone.now()
         updated_task = None
 
-        if new_status in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-            if user.is_superuser or user.has_role(Role.ADMIN) or task.project.manager == user:
-                updated_task = cls._handle_admin_manager_logic(task, user, new_status, rejection_reason, now)
+        is_admin = user.is_superuser or user.has_role(Role.ADMIN)
+
+        if is_admin:
+            updated_task = cls._handle_admin_full_control(task, user, new_status, rejection_reason, now)
+        elif new_status in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
+            if task.project.manager == user:
+                updated_task = cls._handle_manager_logic(task, user, new_status, rejection_reason, now)
             else:
                 is_tester = task.project.testers.filter(id=user.id).exists()
                 if is_tester:
@@ -86,6 +93,9 @@ class TaskService:
                 if updated_task.project.manager:
                     recipients.add(updated_task.project.manager)
 
+            if updated_task.assignee:
+                recipients.add(updated_task.assignee)
+
             recipients = [r for r in recipients if r != user]
 
             if recipients:
@@ -106,9 +116,26 @@ class TaskService:
         return updated_task
 
     @classmethod
-    def _handle_admin_manager_logic(cls, task, user, new_status, rejection_reason, now):
+    def _handle_admin_full_control(cls, task, user, new_status, rejection_reason, now):
+        task._current_user = user
+
+        if new_status == TaskStatus.REJECTED:
+            if rejection_reason and rejection_reason.strip():
+                return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
+            task.status = TaskStatus.REJECTED
+            task.started_at = None
+            task.save()
+            return task
+
+        cls._update_task_time_and_status(task, new_status, now)
+        if new_status == TaskStatus.CHECKED:
+            cls._send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
+        return task
+
+    @classmethod
+    def _handle_manager_logic(cls, task, user, new_status, rejection_reason, now):
         if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-            raise PermissionDenied("Menejer va adminlar faqat vazifani tekshirish yoki rad etish huquqiga ega.")
+            raise PermissionDenied("Menejer faqat vazifani tekshirish yoki rad etish huquqiga ega.")
 
         if new_status == TaskStatus.REJECTED:
             return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
@@ -169,7 +196,7 @@ class TaskService:
 
     @classmethod
     def _update_task_time_and_status(cls, task, new_status, now):
-        if new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION] and task.started_at:
+        if new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED] and task.started_at:
             diff_seconds = (now - task.started_at).total_seconds()
 
             if diff_seconds >= 60:
@@ -181,7 +208,10 @@ class TaskService:
         task.status = new_status
 
         if new_status == TaskStatus.IN_PROGRESS:
-            task.started_at = now
+            if not task.started_at:
+                task.started_at = now
+        else:
+            task.started_at = None
 
         task.save()
 
@@ -222,22 +252,6 @@ class TaskService:
 
 class MeetingService:
     @staticmethod
-    def _schedule_end_notification(meeting):
-        from .tasks import notify_meeting_end
-
-        eta = meeting.start_time + timedelta(minutes=meeting.duration_minutes)
-
-        Meeting.objects.filter(id=meeting.id).update(
-            notification_eta=eta,
-            notification_sent=False
-        )
-
-        notify_meeting_end.apply_async(
-            args=[meeting.id, eta.isoformat()],
-            eta=eta
-        )
-
-    @staticmethod
     def _send_meeting_notifications(meeting, members, organizer_id, title="Yangi yig'ilish belgilandi",
                                     msg_template=None):
         notifications_to_bulk = []
@@ -245,7 +259,7 @@ class MeetingService:
         start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
 
         if msg_template is None:
-            msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa.\n\n{meeting.link}"
+            msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
 
         for member in members:
             if member.id != organizer_id:
@@ -319,10 +333,6 @@ class MeetingService:
         participants = validated_data.pop('participants', [])
         meeting = Meeting.objects.create(organizer=organizer, **validated_data)
         cls.handle_participants(meeting, participants, organizer.id)
-
-        if meeting.duration_minutes > 0:
-            transaction.on_commit(lambda: cls._schedule_end_notification(meeting))
-
         return meeting
 
     @classmethod
@@ -334,6 +344,36 @@ class MeetingService:
         meeting.is_completed = True
         meeting.completed_at = timezone.now()
         meeting.save()
+
+        active_attendances = MeetingAttendance.objects.filter(
+            meeting=meeting,
+            is_attended=True,
+            joined_at__isnull=False,
+            left_at__isnull=True
+        )
+        for att in active_attendances:
+            att.left_at = meeting.completed_at
+            duration_secs = (meeting.completed_at - att.joined_at).total_seconds()
+            att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
+            att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
+
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"meeting_{meeting.id}",
+                {
+                    "type": "meeting_broadcast",
+                    "data": {
+                        "type": "meeting_ended",
+                        "meeting_id": meeting.id,
+                        "message": "Yig'ilish tugatildi."
+                    }
+                }
+            )
+
+        LiveKitService.delete_room(meeting.uid)
 
         absent_attendances = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False).select_related('user')
 
@@ -410,3 +450,241 @@ class MeetingService:
             Notification.objects.bulk_create(notifications_to_bulk)
             from apps.notifications.tasks import mass_notification_sender
             transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+    @classmethod
+    def notify_meeting_started(cls, meeting):
+        from channels.layers import get_channel_layer
+        from asgiref.sync import async_to_sync
+        from apps.notifications.models import Notification, NotificationType
+        from apps.notifications.tasks import mass_notification_sender
+
+        attended_user_ids = set(
+            MeetingAttendance.objects.filter(
+                meeting=meeting,
+                is_attended=True,
+                left_at__isnull=True
+            ).values_list('user_id', flat=True)
+        )
+        attended_user_ids.add(meeting.organizer_id)
+
+        unattended_participants = meeting.participants.exclude(id__in=attended_user_ids)
+
+        notifications_to_create = []
+        broadcast_data = []
+        msg = f"'{meeting.title}' yig'ilishi boshlandi. Yig'ilishga kirishingiz mumkin."
+        title = "Yig'ilish boshlandi"
+
+        for participant in unattended_participants:
+            extra = {
+                "meeting_id": meeting.id,
+                "room_name": meeting.uid,
+                "action": "join_meeting"
+            }
+            notifications_to_create.append(
+                Notification(
+                    user=participant,
+                    title=title,
+                    message=msg,
+                    type=NotificationType.MEETING,
+                    extra_data=extra
+                )
+            )
+            broadcast_data.append({
+                "user_id": participant.id,
+                "title": title,
+                "message": msg,
+                "type": "meeting",
+                "extra_data": extra
+            })
+
+        if notifications_to_create:
+            Notification.objects.bulk_create(notifications_to_create)
+            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+        channel_layer = get_channel_layer()
+        if channel_layer:
+            async_to_sync(channel_layer.group_send)(
+                f"meeting_{meeting.id}",
+                {
+                    "type": "meeting_broadcast",
+                    "data": {
+                        "type": "organizer_joined",
+                        "meeting_id": meeting.id,
+                        "message": "Tashkilotchi yig'ilishga kirdi."
+                    }
+                }
+            )
+
+    @classmethod
+    def notify_participant_late(cls, meeting, user, late_minutes):
+        from apps.notifications.tasks import mass_notification_sender
+
+        msg = f"Siz '{meeting.title}' yig'ilishiga {late_minutes} daqiqa kechikib kirdingiz. 24 soat ichida kechikish sababini ko'rsatishingiz so'raladi."
+        title = "Yig'ilishga kechikib kirdingiz"
+
+        Notification.objects.create(
+            user=user,
+            title=title,
+            message=msg,
+            type=NotificationType.MEETING,
+            extra_data={
+                "meeting_id": meeting.id,
+                "action": "open_meeting",
+                "late_minutes": late_minutes
+            }
+        )
+
+        broadcast_data = [{
+            "user_id": user.id,
+            "title": title,
+            "message": msg,
+            "type": "meeting",
+            "extra_data": {
+                "meeting_id": meeting.id,
+                "action": "open_meeting",
+                "late_minutes": late_minutes
+            }
+        }]
+        transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+
+class LiveKitService:
+    @staticmethod
+    def generate_token(user, meeting):
+        api_key = settings.LIVEKIT_API_KEY
+        api_secret = settings.LIVEKIT_API_SECRET
+
+        is_organizer = (meeting.organizer_id == user.id)
+        is_participant = meeting.participants.filter(id=user.id).exists()
+        is_cohost = is_participant and (
+            user.is_superuser or
+            user.has_role(Role.ADMIN) or
+            (meeting.project and meeting.project.manager_id == user.id)
+        )
+        has_admin_grants = is_organizer or is_cohost
+
+        grants = api.VideoGrants(
+            room_join=True,
+            room=meeting.uid,
+            can_publish=True,
+            can_subscribe=True,
+            can_publish_data=True,
+            room_create=has_admin_grants,
+            room_admin=has_admin_grants,
+            room_record=has_admin_grants
+        )
+
+        token = (
+            api.AccessToken(api_key, api_secret)
+            .with_identity(str(user.id))
+            .with_name(user.username)
+            .with_metadata(json.dumps({
+                "user_id": user.id,
+                "username": user.username,
+                "is_organizer": is_organizer
+            }))
+            .with_grants(grants)
+            .with_ttl(timedelta(hours=12))
+        )
+
+        return token.to_jwt()
+
+    @classmethod
+    def delete_room(cls, room_name):
+        from asgiref.sync import async_to_sync
+
+        http_url = getattr(settings, 'LIVEKIT_INTERNAL_URL', 'http://127.0.0.1:7880')
+
+        async def _delete():
+            try:
+                async with api.LiveKitAPI(http_url, settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET) as lk:
+                    await lk.room.delete_room(api.DeleteRoomRequest(room=room_name))
+            except Exception:
+                pass
+
+        try:
+            async_to_sync(_delete)()
+        except Exception:
+            pass
+
+    @staticmethod
+    def handle_webhook(body_str, auth_header):
+        api_key = settings.LIVEKIT_API_KEY
+        api_secret = settings.LIVEKIT_API_SECRET
+
+        verifier = api.TokenVerifier(api_key, api_secret)
+        receiver = api.WebhookReceiver(verifier)
+        event = receiver.receive(body_str, auth_header)
+
+        event_type = event.event
+        room = event.room
+        participant = event.participant
+
+        if not room or not room.name:
+            return
+
+        meeting = Meeting.objects.filter(uid=room.name, is_active=True).first()
+        if not meeting:
+            return
+
+        if event_type == "participant_joined" and participant:
+            user_id = participant.identity
+            att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
+            was_attended = att.is_attended if att else False
+            now = timezone.now()
+            is_organizer = (str(meeting.organizer_id) == str(user_id))
+
+            calc_late_minutes = 0
+            if not is_organizer:
+                org_att = MeetingAttendance.objects.filter(meeting=meeting, user_id=meeting.organizer_id).first()
+                org_joined_at = org_att.joined_at if org_att else None
+                base_start_time = meeting.start_time
+                if org_joined_at and meeting.start_time:
+                    base_start_time = max(meeting.start_time, org_joined_at)
+                elif org_joined_at:
+                    base_start_time = org_joined_at
+
+                if base_start_time and now > base_start_time:
+                    delay_minutes = int((now - base_start_time).total_seconds() // 60)
+                    if delay_minutes > 5:
+                        calc_late_minutes = delay_minutes
+
+            if att:
+                att.is_attended = True
+                if not att.joined_at:
+                    att.joined_at = now
+                    att.late_minutes = calc_late_minutes
+                att.save(update_fields=['is_attended', 'joined_at', 'late_minutes', 'updated_at'])
+            else:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                target_user = User.objects.filter(id=user_id).first()
+                if target_user:
+                    att = MeetingAttendance.objects.create(
+                        meeting=meeting,
+                        user=target_user,
+                        is_attended=True,
+                        joined_at=now,
+                        late_minutes=calc_late_minutes
+                    )
+
+            if att and att.late_minutes > 5 and not was_attended and not is_organizer:
+                MeetingService.notify_participant_late(meeting, att.user, att.late_minutes)
+
+            if is_organizer and not was_attended:
+                MeetingService.notify_meeting_started(meeting)
+
+        elif event_type == "participant_left" and participant:
+            user_id = participant.identity
+            att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
+            if att:
+                now = timezone.now()
+                att.left_at = now
+                if att.joined_at:
+                    duration_secs = (now - att.joined_at).total_seconds()
+                    att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
+                att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
+
+        elif event_type == "room_finished":
+            if not meeting.is_completed:
+                MeetingService.close_meeting(meeting)

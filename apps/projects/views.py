@@ -4,8 +4,13 @@ from django.db import transaction
 from drf_spectacular.utils import extend_schema
 from django_filters.rest_framework import DjangoFilterBackend
 
+from django.conf import settings
+from django.core.cache import cache
 from django.db.models import Q
-from rest_framework import viewsets, filters, permissions, parsers
+from django.contrib.auth import get_user_model
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from rest_framework import viewsets, filters, permissions, parsers, status, views
 from rest_framework.decorators import action
 from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
@@ -14,7 +19,7 @@ from apps.users.models import Role
 from apps.users.permissions import IsAdmin, IsManager, IsEmployee
 from apps.common.mixins import SoftDeleteMixin, RoleBasedQuerySetMixin, TrashMixin
 
-from .services import TaskService, MeetingService
+from .services import TaskService, MeetingService, LiveKitService
 from .filters import TaskFilter, ProjectFilter, MeetingFilter
 from .models import Project, ProjectStatus, ProjectDocument, Task, TaskAttachment, TaskStatus, Meeting, \
     MeetingAttendance, \
@@ -22,7 +27,7 @@ from .models import Project, ProjectStatus, ProjectDocument, Task, TaskAttachmen
 from .serializers import (ProjectShortSerializer, ProjectSerializer, ProjectDocumentSerializer, TaskSerializer,
                           TaskAttachmentSerializer, \
                           TaskStatusUpdateSerializer, MeetingSerializer, MeetingAttendanceSerializer,
-                          TaskRejectionFileSerializer)
+                          TaskRejectionFileSerializer, MeetingAdmitSerializer)
 
 
 @extend_schema(tags=['Project Shorts'])
@@ -117,6 +122,10 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
+
+    def perform_update(self, serializer):
+        serializer.instance._current_user = self.request.user
+        serializer.save()
 
     def perform_destroy(self, instance):
         user = self.request.user
@@ -222,11 +231,13 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         user = self.request.user
-        if instance.created_by != user:
+        is_admin = user.is_superuser or user.has_role(Role.ADMIN)
+
+        if not is_admin and instance.created_by != user:
             raise PermissionDenied(
                 "Sizda bu vazifani o'chirish huquqi yo'q. Faqat vazifa yaratuvchisi uni o'chira oladi.")
 
-        if instance.status != TaskStatus.TODO:
+        if not is_admin and instance.status != TaskStatus.TODO:
             raise ValidationError({
                 "detail": f"Vazifani {instance.get_status_display()} holatida o'chirib bo'lmaydi. Faqat 'Qilinishi kerak' holatidagilarni o'chirish mumkin."
             })
@@ -250,6 +261,7 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         is_creator = task.created_by == user
 
         if is_admin_or_manager or is_creator:
+            serializer.instance._current_user = user
             serializer.save()
         else:
             raise PermissionDenied("Sizda ushbu vazifani tahrirlash huquqi yo'q.")
@@ -314,7 +326,10 @@ class TaskAttachmentViewSet(SoftDeleteMixin, RoleBasedQuerySetMixin, viewsets.Mo
             TaskStatus.PRODUCTION
         ]
 
-        if task.status in locked_statuses:
+        user = self.request.user
+        is_admin = user.is_superuser or user.has_role(Role.ADMIN)
+
+        if not is_admin and task.status in locked_statuses:
             raise ValidationError(
                 f"Vazifa {task.get_status_display()} holatida bo'lgani uchun unga fayl biriktira olmaysiz."
             )
@@ -401,19 +416,19 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         return queryset.filter(is_deleted=False, is_active=True)
 
     def get_role_based_queryset(self, queryset, user):
-        active_project_filter = Q(
-            project__is_hidden=False
-        ) & ~Q(project__status=ProjectStatus.PLANNING)
+        visible_project_filter = Q(project__isnull=True) | (
+            Q(project__is_hidden=False) & ~Q(project__status=ProjectStatus.PLANNING)
+        )
 
         if user.has_role(Role.MANAGER):
             return queryset.filter(
-                active_project_filter,
-                project__manager=user
+                visible_project_filter,
+                Q(project__manager=user) | Q(organizer=user) | Q(participants=user)
             ).distinct()
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
-                active_project_filter,
+                visible_project_filter,
                 Q(participants=user) | Q(organizer=user)
             ).distinct()
 
@@ -436,7 +451,7 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
             raise PermissionDenied("Tugatilgan yig'ilishni tahrirlash mumkin emas.")
 
         is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                        meeting.project.manager == user
+                        (meeting.project and meeting.project.manager == user)
 
         if not is_privileged and meeting.organizer != user:
             raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni tahrirlay olasiz.")
@@ -445,6 +460,7 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
 
         old_start_time = meeting._old_start_time
         old_duration_minutes = meeting._old_duration_minutes
+        old_requires_approval = getattr(meeting, '_old_requires_approval', None)
 
         meeting = serializer.save()
 
@@ -458,15 +474,28 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         if time_changed:
             MeetingService.notify_time_change(meeting)
 
-            if meeting.duration_minutes > 0:
-                transaction.on_commit(
-                    lambda: MeetingService._schedule_end_notification(meeting)
+        if old_requires_approval is not None and meeting.requires_approval != old_requires_approval:
+            channel_layer = get_channel_layer()
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    f"meeting_{meeting.id}",
+                    {
+                        "type": "meeting_broadcast",
+                        "data": {
+                            "type": "approval_policy_changed",
+                            "meeting_id": meeting.id,
+                            "requires_approval": meeting.requires_approval
+                        }
+                    }
                 )
 
     def perform_destroy(self, instance):
         user = self.request.user
 
-        if not instance.organizer != user:
+        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
+                        (instance.project and instance.project.manager == user)
+
+        if not is_privileged and instance.organizer != user:
             raise PermissionDenied("Siz faqat o'zingiz yaratgan yig'ilishni o'chira olasiz.")
 
         if instance.is_completed:
@@ -482,16 +511,92 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         meeting = self.get_object()
         user = self.request.user
 
-        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                        meeting.organizer == user or \
-                        meeting.project.manager == user
+        is_organizer = (meeting.organizer_id == user.id)
+        is_participant = meeting.participants.filter(id=user.id).exists()
+        is_cohost = is_participant and (
+            user.is_superuser or
+            user.has_role(Role.ADMIN) or
+            (meeting.project and meeting.project.manager_id == user.id)
+        )
 
-        if not is_privileged:
-            raise PermissionDenied("Faqat tashkilotchi yoki menejer yig'ilishni yopa oladi.")
+        if not (user.is_superuser or is_organizer or is_cohost):
+            raise PermissionDenied("Faqat tashkilotchi yoki mezbon yig'ilishni yopa oladi.")
 
         MeetingService.close_meeting(meeting)
 
         return Response({"message": "Yig'ilish muvaffaqiyatli yopildi."})
+
+
+
+    @extend_schema(request=MeetingAdmitSerializer)
+    @action(detail=True, methods=['post'], url_path='admit')
+    def admit_participant(self, request, pk=None):
+        meeting = self.get_object()
+        user = self.request.user
+
+        is_organizer = (meeting.organizer_id == user.id)
+        is_participant = meeting.participants.filter(id=user.id).exists()
+        is_cohost = is_participant and (
+            user.is_superuser or
+            user.has_role(Role.ADMIN) or
+            (meeting.project and meeting.project.manager_id == user.id)
+        )
+        is_host = is_organizer or is_cohost
+
+        if not is_host:
+            raise PermissionDenied("Faqat yig'ilish mezboni ruxsat bera oladi.")
+
+        serializer = MeetingAdmitSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        target_user_id = serializer.validated_data['user_id']
+        decision = serializer.validated_data['decision']
+
+        User = get_user_model()
+        target_user = User.objects.filter(id=target_user_id).first()
+        if not target_user:
+            return Response({"error": "Foydalanuvchi topilmadi."}, status=status.HTTP_404_NOT_FOUND)
+
+        channel_layer = get_channel_layer()
+        target_group = f"meeting_{meeting.id}_user_{target_user_id}"
+
+        if decision == 'approve':
+            cache.set(f"meeting_{meeting.id}_approved_{target_user_id}", True, timeout=86400)
+            token = LiveKitService.generate_token(target_user, meeting)
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    target_group,
+                    {
+                        "type": "knock_response",
+                        "data": {
+                            "type": "knock_response",
+                            "status": "approved",
+                            "server_url": settings.LIVEKIT_URL,
+                            "room_name": meeting.uid,
+                            "token": token
+                        }
+                    }
+                )
+            return Response({
+                "message": "Foydalanuvchiga ruxsat berildi.",
+                "token": token,
+                "server_url": settings.LIVEKIT_URL,
+                "room_name": meeting.uid
+            })
+        else:
+            if channel_layer:
+                async_to_sync(channel_layer.group_send)(
+                    target_group,
+                    {
+                        "type": "knock_response",
+                        "data": {
+                            "type": "knock_response",
+                            "status": "rejected",
+                            "message": "Mezbon yig'ilishga kirishingizni rad etdi."
+                        }
+                    }
+                )
+            return Response({"message": "Foydalanuvchi so'rovi rad etildi."})
 
 
 @extend_schema(tags=['Meeting Attendance'])
@@ -506,21 +611,21 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
     full_access_roles = [Role.ADMIN, Role.AUDITOR]
 
     def get_role_based_queryset(self, queryset, user):
-        active_project_q = Q(
-            meeting__project__is_hidden=False,
-            meeting__project__is_active=True
-        ) & ~Q(meeting__project__status=ProjectStatus.PLANNING)
+        visible_project_q = Q(meeting__project__isnull=True) | (
+            Q(meeting__project__is_hidden=False, meeting__project__is_active=True) &
+            ~Q(meeting__project__status=ProjectStatus.PLANNING)
+        )
 
         if user.has_role(Role.MANAGER):
             return queryset.filter(
-                active_project_q,
-                meeting__project__manager=user
+                visible_project_q,
+                Q(meeting__project__manager=user) | Q(meeting__organizer=user) | Q(meeting__participants=user)
             ).distinct()
 
         if user.has_role(Role.EMPLOYEE):
             return queryset.filter(
-                active_project_q,
-                Q(user=user) | Q(meeting__organizer=user)
+                visible_project_q,
+                Q(user=user) | Q(meeting__organizer=user) | Q(meeting__participants=user)
             ).distinct()
 
         return queryset.none()
@@ -530,14 +635,19 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
         user = self.request.user
         meeting = attendance.meeting
 
-        if attendance.user == user and meeting.organizer and meeting.organizer != user:
-            from apps.notifications.models import Notification, NotificationType
+        from apps.notifications.models import Notification, NotificationType
 
-            msg = f"{user.username} {meeting.title} yig'ilishiga qatnasha olmaganiga sabab yozdi."
+        if attendance.user == user and meeting.organizer and meeting.organizer != user and attendance.absence_reason:
+            if attendance.late_minutes > 5:
+                title = "Yig'ilishga kechikish sababi"
+                msg = f"{user.username} '{meeting.title}' yig'ilishiga kechikib kirganlik sababini yozdi."
+            else:
+                title = "Yig'ilishga qatnashmaslik sababi"
+                msg = f"{user.username} '{meeting.title}' yig'ilishiga qatnasha olmaganiga sabab yozdi."
 
             Notification.objects.create(
                 user=meeting.organizer,
-                title="Yig'ilishga qatnashmaslik sababi",
+                title=title,
                 message=msg,
                 type=NotificationType.MEETING,
                 extra_data={
@@ -546,3 +656,40 @@ class MeetingAttendanceViewSet(RoleBasedQuerySetMixin, SoftDeleteMixin, viewsets
                     "action": "open_attendance"
                 }
             )
+
+        if 'is_excused' in serializer.validated_data and attendance.user != user:
+            status_text = "qabul qilindi (Sababli)" if attendance.is_excused else "rad etildi (Sababsiz)"
+            reason_type = "kechikish" if attendance.late_minutes > 5 else "qatnashmaslik"
+            msg = f"Sizning '{meeting.title}' yig'ilishi bo'yicha {reason_type} sababingiz {status_text} deb belgilandi."
+
+            Notification.objects.create(
+                user=attendance.user,
+                title="Yig'ilish sababi ko'rib chiqildi",
+                message=msg,
+                type=NotificationType.MEETING,
+                extra_data={
+                    "meeting_id": meeting.id,
+                    "attendance_id": attendance.id,
+                    "is_excused": attendance.is_excused,
+                    "action": "open_meeting"
+                }
+            )
+
+
+@extend_schema(tags=['Meetings'])
+class LiveKitWebhookView(views.APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, *args, **kwargs):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return Response({"detail": "Authorization header missing"}, status=status.HTTP_401_UNAUTHORIZED)
+
+        body_str = request.body.decode("utf-8")
+
+        try:
+            LiveKitService.handle_webhook(body_str, auth_header)
+        except Exception as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)

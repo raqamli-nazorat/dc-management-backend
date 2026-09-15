@@ -321,3 +321,7 @@ AWS_STORAGE_BUCKET_NAME = env.str('AWS_STORAGE_BUCKET_NAME')
 AWS_S3_ENDPOINT_URL = env.str('AWS_S3_ENDPOINT_URL')
 AWS_S3_REGION_NAME = env.str('AWS_S3_REGION_NAME', default='us-east-1')
 AWS_S3_ADDRESSING_STYLE = env.str('AWS_S3_ADDRESSING_STYLE', default='path')
+
+LIVEKIT_URL = env.str('LIVEKIT_URL', default='wss://livekit.example.com')
+LIVEKIT_API_KEY = env.str('LIVEKIT_API_KEY', default='devkey')
+LIVEKIT_API_SECRET = env.str('LIVEKIT_API_SECRET', default='secret')

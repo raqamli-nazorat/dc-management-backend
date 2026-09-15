@@ -128,7 +128,13 @@ class UserReportFilter(filters.FilterSet):
     def filter_meetings_count(self, queryset, name, value):
         status = self.data.get('meetings_status')
 
-        filters_q = Q(user=OuterRef('pk'), is_active=True)
+        filters_q = Q(
+            user=OuterRef('pk'),
+            is_active=True,
+            meeting__is_active=True,
+            meeting__is_deleted=False,
+            meeting__is_completed=True
+        )
 
         if status:
             if status == 'attended':

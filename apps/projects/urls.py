@@ -3,7 +3,8 @@ from rest_framework.routers import SimpleRouter
 
 from .views import (ProjectShortViewSet, ProjectViewSet, TaskViewSet,
                     TaskAttachmentViewSet,
-                    MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet, ProjectDocumentViewSet)
+                    MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet, ProjectDocumentViewSet,
+                    LiveKitWebhookView)
 
 router = SimpleRouter()
 
@@ -19,5 +20,6 @@ router.register('meetings', MeetingViewSet, basename='meetings')
 router.register('meeting-attendance', MeetingAttendanceViewSet, basename='meeting-attendance')
 
 urlpatterns = [
+    path('meetings/livekit/webhook/', LiveKitWebhookView.as_view(), name='livekit-webhook'),
     path('', include(router.urls))
 ]

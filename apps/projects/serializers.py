@@ -1,4 +1,3 @@
-from django.core.exceptions import ValidationError as DjangoValidationError
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 
@@ -62,12 +61,17 @@ class ProjectSerializer(serializers.ModelSerializer):
         m2m_fields = ['testers', 'employees']
         model_data = {k: v for k, v in data.items() if k not in m2m_fields}
 
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+
         if self.instance:
+            self.instance._current_user = user
             for attr, value in model_data.items():
                 setattr(self.instance, attr, value)
             instance = self.instance
         else:
             instance = Project(**model_data)
+            instance._current_user = user
 
         instance.clean()
 
@@ -81,7 +85,15 @@ class ProjectDocumentSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_at')
 
     def validate_project(self, value):
-        if value.status in [ProjectStatus.COMPLETED, ProjectStatus.CANCELLED]:
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user:
+            from apps.audit.middleware import get_current_request
+            req = get_current_request()
+            if req and hasattr(req, 'user'):
+                user = req.user
+        is_superuser = bool(user and user.is_authenticated and user.is_superuser)
+        if value.status == ProjectStatus.CANCELLED or (value.status == ProjectStatus.COMPLETED and not is_superuser):
             raise serializers.ValidationError(
                 f"Loyiha '{value.get_status_display()}' holatida. Hujjat qo'shish mumkin emas."
             )
@@ -140,6 +152,18 @@ class TaskSerializer(serializers.ModelSerializer):
             'estimated_minutes', 'actual_minutes'
         )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+        if not user:
+            from apps.audit.middleware import get_current_request
+            req = get_current_request()
+            if req and hasattr(req, 'user'):
+                user = req.user
+        if user and (user.is_superuser or user.has_role(Role.ADMIN)):
+            self.fields['status'].read_only = False
+
     def validate_task_price(self, value):
         user = self.context['request'].user
         if user.has_role(Role.EMPLOYEE) and value > 0:
@@ -172,12 +196,17 @@ class TaskSerializer(serializers.ModelSerializer):
             m = minutes or 0
             attrs['estimated_minutes'] = (h * 60) + m
 
+        request = self.context.get('request')
+        user = getattr(request, 'user', None)
+
         if self.instance:
             instance = self.instance
+            instance._current_user = user
             for attr, value in attrs.items():
                 setattr(instance, attr, value)
         else:
             instance = Task(**attrs)
+            instance._current_user = user
 
         instance.clean()
 
@@ -201,11 +230,11 @@ class MeetingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meeting
         fields = (
-            'id', 'uid', 'project', 'organizer', 'title', 'description',
-            'link', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
+            'id', 'uid', 'room_name', 'project', 'organizer', 'title', 'description',
+            'recording_url', 'requires_approval', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
             'participants', 'participants_info',
         )
-        read_only_fields = ('id', 'uid', 'organizer', 'participants_info', 'is_completed')
+        read_only_fields = ('id', 'uid', 'room_name', 'organizer', 'participants_info', 'is_completed')
 
     def validate(self, attrs):
         instance = self.instance
@@ -283,8 +312,11 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MeetingAttendance
-        fields = ('id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'is_excused', 'absence_reason')
-        read_only_fields = ('id', 'user_info', 'meeting')
+        fields = (
+            'id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'is_excused',
+            'joined_at', 'left_at', 'duration_minutes', 'late_minutes', 'absence_reason'
+        )
+        read_only_fields = ('id', 'user_info', 'meeting', 'joined_at', 'left_at', 'duration_minutes', 'late_minutes')
 
     def validate(self, attrs):
         user = self.request_user
@@ -305,17 +337,26 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
                 )
 
         if is_owner and not is_privileged:
-            if instance.is_attended:
+            if instance.is_attended and instance.late_minutes <= 5:
                 raise serializers.ValidationError(
-                    {"detail": "Qatnashgan deb belgilangan majlisga sabab yozib bo'lmaydi."}
+                    {"detail": "Siz yig'ilishga o'z vaqtida qatnashgansiz, sabab yozish talab etilmaydi."}
                 )
 
-            if instance.meeting.is_completed and instance.meeting.completed_at:
-                from django.utils import timezone
-                from datetime import timedelta
-                if timezone.now() > instance.meeting.completed_at + timedelta(hours=24):
+            from django.utils import timezone
+            from datetime import timedelta
+            now = timezone.now()
+
+            if instance.is_attended:
+                ref_time = instance.joined_at or instance.meeting.start_time
+                if ref_time and now > ref_time + timedelta(hours=24):
                     raise serializers.ValidationError(
-                        {"detail": "Yig'ilish yopilganidan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
+                        {"detail": "Kechikib kirgandan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
+                    )
+            else:
+                ref_time = instance.meeting.completed_at or instance.meeting.start_time
+                if ref_time and now > ref_time + timedelta(hours=24):
+                    raise serializers.ValidationError(
+                        {"detail": "24 soat o'tib sabab yozib bo'lmaydi."}
                     )
 
             if instance.absence_reason and 'absence_reason' in attrs:
@@ -327,17 +368,17 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."}
             )
-        new_is_attended = attrs.get('is_attended', instance.is_attended)
-        new_absence_reason = attrs.get('absence_reason', instance.absence_reason)
 
-        if new_is_attended is True:
+        if is_owner and not is_privileged and 'absence_reason' in attrs:
+            reason = attrs.get('absence_reason')
+            if not reason or len(reason.strip()) < 10:
+                raise serializers.ValidationError(
+                    {"absence_reason": "Sabab kamida 10 ta belgidan iborat bo'lishi kerak."}
+                )
+
+        if 'is_attended' in attrs and attrs['is_attended'] is True and instance.late_minutes <= 5:
             attrs['absence_reason'] = None
             attrs['is_excused'] = False
-        else:
-            if not new_absence_reason and not is_privileged:
-                raise serializers.ValidationError(
-                    {"absence_reason": "Qatnashmaganlik sababini ko'rsatish shart."}
-                )
 
         for attr, value in attrs.items():
             setattr(instance, attr, value)
@@ -349,3 +390,9 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
     @property
     def request_user(self):
         return self.context['request'].user
+
+
+class MeetingAdmitSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    decision = serializers.ChoiceField(choices=['approve', 'reject'])
+
