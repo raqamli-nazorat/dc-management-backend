@@ -230,17 +230,13 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             "completion_rate": t_rate
         }
 
-        # Meeting filter (to'g'ri soni Meeting modelidan hisoblanadi)
-        meeting_base_qs_kwargs = {
-            'created_at__gte': start_date,
-            'is_active': True,
-            'is_deleted': False,
-        }
+        m_date_or_active = Q(start_time__gte=start_date) | Q(is_completed=False)
         meeting_project_filter = Q(project__isnull=True) | Q(project__is_hidden=False)
 
         if is_privileged:
             filtered_meeting_qs = Meeting.objects.filter(
-                meeting_project_filter, **meeting_base_qs_kwargs
+                m_date_or_active, meeting_project_filter,
+                is_active=True, is_deleted=False,
             )
         elif is_manager:
             m_meeting_manager_filter = (
@@ -249,20 +245,21 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                 Q(participants=user)
             ) & meeting_project_filter
             filtered_meeting_qs = Meeting.objects.filter(
-                m_meeting_manager_filter, **meeting_base_qs_kwargs
+                m_date_or_active, m_meeting_manager_filter,
+                is_active=True, is_deleted=False,
             ).distinct()
         else:
             filtered_meeting_qs = Meeting.objects.filter(
+                m_date_or_active,
                 meeting_project_filter,
                 Q(participants=user) | Q(organizer=user),
-                **meeting_base_qs_kwargs
+                is_active=True, is_deleted=False,
             ).distinct()
 
         m_total_meetings = filtered_meeting_qs.count()
 
-        # Attendance stats (attended, missed, duration va h.k.) MeetingAttendance orqali hisoblanadi
+        m_att_date_or_active = Q(meeting__start_time__gte=start_date) | Q(meeting__is_completed=False)
         m_base_filter = {
-            'created_at__gte': start_date,
             'is_active': True,
             'meeting__is_active': True,
             'meeting__is_deleted': False,
@@ -271,7 +268,7 @@ class UserPeriodStatsSerializer(serializers.Serializer):
 
         if is_privileged:
             filtered_attendances = MeetingAttendance.objects.filter(
-                m_project_filter, **m_base_filter
+                m_att_date_or_active, m_project_filter, **m_base_filter
             ).distinct()
         elif is_manager:
             m_manager_filter = (
@@ -280,11 +277,11 @@ class UserPeriodStatsSerializer(serializers.Serializer):
                 Q(user=user)
             ) & m_project_filter
             filtered_attendances = MeetingAttendance.objects.filter(
-                m_manager_filter, **m_base_filter
+                m_att_date_or_active, m_manager_filter, **m_base_filter
             ).distinct()
         else:
             filtered_attendances = MeetingAttendance.objects.filter(
-                m_project_filter, user=user, **m_base_filter
+                m_att_date_or_active, m_project_filter, user=user, **m_base_filter
             ).distinct()
 
         m_stats = filtered_attendances.aggregate(
