@@ -1,7 +1,9 @@
 import json
+import uuid
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 from django.db import transaction
 from rest_framework.exceptions import ValidationError, PermissionDenied
@@ -550,7 +552,7 @@ class MeetingService:
 
 class LiveKitService:
     @staticmethod
-    def generate_token(user, meeting):
+    def generate_token(user, meeting, device_id=None, device_name=None):
         api_key = settings.LIVEKIT_API_KEY
         api_secret = settings.LIVEKIT_API_SECRET
 
@@ -574,15 +576,28 @@ class LiveKitService:
             room_record=has_admin_grants
         )
 
+        unique_suffix = str(device_id).strip() if device_id else uuid.uuid4().hex[:6]
+        participant_identity = f"{user.id}_{unique_suffix}"
+
+        base_name = user.get_full_name() or user.username
+        clean_device_name = str(device_name).strip() if device_name else None
+        participant_name = f"{base_name} ({clean_device_name})" if clean_device_name else base_name
+
+        metadata = {
+            "user_id": user.id,
+            "username": user.username,
+            "full_name": base_name,
+            "device_id": unique_suffix,
+            "is_organizer": is_organizer
+        }
+        if clean_device_name:
+            metadata["device_name"] = clean_device_name
+
         token = (
             api.AccessToken(api_key, api_secret)
-            .with_identity(str(user.id))
-            .with_name(user.username)
-            .with_metadata(json.dumps({
-                "user_id": user.id,
-                "username": user.username,
-                "is_organizer": is_organizer
-            }))
+            .with_identity(participant_identity)
+            .with_name(participant_name)
+            .with_metadata(json.dumps(metadata))
             .with_grants(grants)
             .with_ttl(timedelta(hours=12))
         )
@@ -628,7 +643,27 @@ class LiveKitService:
             return
 
         if event_type == "participant_joined" and participant:
-            user_id = participant.identity
+            raw_identity = participant.identity or ""
+            raw_user_id = raw_identity.split('_')[0] if raw_identity else None
+            if not raw_user_id and participant.metadata:
+                try:
+                    raw_user_id = json.loads(participant.metadata).get("user_id")
+                except Exception:
+                    raw_user_id = None
+
+            try:
+                user_id = int(raw_user_id)
+            except (ValueError, TypeError):
+                user_id = None
+
+            if not user_id:
+                return
+
+            devices_cache_key = f"meeting_{meeting.id}_user_{user_id}_active_devices"
+            active_devices = cache.get(devices_cache_key) or set()
+            active_devices.add(raw_identity)
+            cache.set(devices_cache_key, active_devices, timeout=86400)
+
             att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
             was_attended = att.is_attended if att else False
             now = timezone.now()
@@ -643,6 +678,14 @@ class LiveKitService:
                     base_start_time = max(meeting.start_time, org_joined_at)
                 elif org_joined_at:
                     base_start_time = org_joined_at
+
+                if att and att.created_at:
+                    if base_start_time:
+                        base_start_time = max(base_start_time, att.created_at)
+                    else:
+                        base_start_time = att.created_at
+                elif not att:
+                    base_start_time = now
 
                 if base_start_time and now > base_start_time:
                     delay_minutes = int((now - base_start_time).total_seconds() // 60)
@@ -675,15 +718,36 @@ class LiveKitService:
                 MeetingService.notify_meeting_started(meeting)
 
         elif event_type == "participant_left" and participant:
-            user_id = participant.identity
-            att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
-            if att:
-                now = timezone.now()
-                att.left_at = now
-                if att.joined_at:
-                    duration_secs = (now - att.joined_at).total_seconds()
-                    att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
-                att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
+            raw_identity = participant.identity or ""
+            raw_user_id = raw_identity.split('_')[0] if raw_identity else None
+            if not raw_user_id and participant.metadata:
+                try:
+                    raw_user_id = json.loads(participant.metadata).get("user_id")
+                except Exception:
+                    raw_user_id = None
+
+            try:
+                user_id = int(raw_user_id)
+            except (ValueError, TypeError):
+                user_id = None
+
+            if not user_id:
+                return
+
+            devices_cache_key = f"meeting_{meeting.id}_user_{user_id}_active_devices"
+            active_devices = cache.get(devices_cache_key) or set()
+            active_devices.discard(raw_identity)
+            cache.set(devices_cache_key, active_devices, timeout=86400)
+
+            if len(active_devices) == 0:
+                att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
+                if att:
+                    now = timezone.now()
+                    att.left_at = now
+                    if att.joined_at:
+                        duration_secs = (now - att.joined_at).total_seconds()
+                        att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
+                    att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
 
         elif event_type == "room_finished":
             if not meeting.is_completed:

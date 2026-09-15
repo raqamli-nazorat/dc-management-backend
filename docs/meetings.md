@@ -243,9 +243,21 @@ Frontend ushbu `token` va `server_url` orqali to'g'ridan-to'g'ri LiveKit xonasig
 
 ---
 
-## 8. LiveKit Tokenini Olish (`get_token`)
+## 8. LiveKit Tokenini Olish (`get_token`) va Bir nechta Qurilmadan Kirish (Multi-Device)
 
-Agar foydalanuvchi tasdiqlangan bo'lsa yoki tasdiq talab etilmasa, istalgan paytda tokenni qayta so'rash mumkin:
+Agar foydalanuvchi tasdiqlangan bo'lsa yoki tasdiq talab etilmasa, istalgan paytda tokenni so'rash mumkin.
+Google Meet kabi bitta akkauntdan bir vaqtning o'zida **bir nechta kompyuter yoki qurilmadan** (masalan, bittasidan mikrofon/kamera, ikkinchisidan taqdimot/ekran ulashish) xonaga kirish to'liq qo'llab-quvvatlanadi. 
+
+Har bir qurilma uchun avtomatik unikal sessiya yaratiladi va ular bir-birini uzib yubormaydi. Ixtiyoriy ravishda qurilmani farqlash uchun `device_id` va `device_name` yuborish mumkin:
+
+```json
+{
+  "action": "get_token",
+  "device_id": "laptop_screen", // ixtiyoriy (unikal qurilma id)
+  "device_name": "Taqdimot"    // ixtiyoriy (xona a'zolariga "Ism Familiya (Taqdimot)" shaklida ko'rinadi)
+}
+```
+Oddiy holatda parametrlarsiz ham yuborish mumkin:
 ```json
 {
   "action": "get_token"
@@ -430,7 +442,7 @@ Yig'ilish tugaganidan keyin yoki davomida qatnashuvchilar davomatini olish uchun
 
 ### Davomat va Sabab Kiritish Qoidalari:
 > [!NOTE]
-> **Adolatli kechikish hisobi:** Kechikish daqiqasi `max(meeting.start_time, organizer_joined_at)` (rejalashtirilgan vaqt yoki tashkilotchi kirgan vaqtning kattasi)ga nisbatan o'lchanadi. Agar tashkilotchi yig'ilishga kechikib kirsa, qatnashchilar uchun boshlanish vaqti tashkilotchi kirgan paytdan hisoblanadi (xodimlar asossiz kechikkan hisoblanmaydi).
+> **Adolatli kechikish hisobi:** Kechikish daqiqasi `max(meeting.start_time, organizer_joined_at, attendance.created_at)` (rejalashtirilgan vaqt, tashkilotchi kirgan vaqt yoki xodim yig'ilishga biriktirilgan vaqtning eng kattasi)ga nisbatan o'lchanadi. Agar xodim yig'ilish ketayotgan paytda (masalan, 20-daqiqada) ro'yxatga qo'shilsa, uning kechikish hisobi aynan u yig'ilishga biriktirilgan vaqtdan boshlab hisoblanadi va unga ham 5 daqiqa ruxsat etilgan norma beriladi (asossiz kechikkan hisoblanmaydi). Ro'yxatda bo'lmay eshik qoqib (knock/admit) kirganlarga esa kechikish hisoblanmaydi (0 daqiqa).
 
 1. **O'z vaqtida kirganlar (`is_attended: true` va `late_minutes <= 5`)**:
    - Jarima yo'q (0%), sabab kiritish talab etilmaydi.

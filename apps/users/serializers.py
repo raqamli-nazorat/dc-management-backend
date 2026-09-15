@@ -264,10 +264,11 @@ class UserPeriodStatsSerializer(serializers.Serializer):
             total_duration=Sum(
                 Case(
                     When(duration_minutes__gt=0, then=F('duration_minutes')),
-                    default=F('meeting__duration_minutes'),
+                    When(joined_at__isnull=True, then=F('meeting__duration_minutes')),
+                    default=0,
                     output_field=IntegerField()
                 ),
-                filter=Q(is_attended=True)
+                filter=Q(is_attended=True, user=user)
             ),
             unique_participants=Count('user', distinct=True),
             unique_meetings=Count('meeting', distinct=True)

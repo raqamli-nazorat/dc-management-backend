@@ -93,9 +93,9 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
         elif action == 'admit':
             await self.handle_admit(content)
         elif action == 'get_token':
-            await self.handle_get_token()
+            await self.handle_get_token(content)
 
-    async def handle_get_token(self):
+    async def handle_get_token(self, content=None):
         fresh_meeting = await self.get_meeting(self.meeting_id)
         if fresh_meeting:
             self.meeting = fresh_meeting
@@ -120,7 +120,13 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
                     })
                     return
 
-        token = await self.get_livekit_token(self.user.id, self.meeting)
+        device_id = None
+        device_name = None
+        if content and isinstance(content, dict):
+            device_id = content.get('device_id') or content.get('session_id')
+            device_name = content.get('device_name')
+
+        token = await self.get_livekit_token(self.user.id, self.meeting, device_id=device_id, device_name=device_name)
         await self.send_json({
             "type": "token_response",
             "status": "joined",
@@ -260,11 +266,11 @@ class MeetingConsumer(AsyncJsonWebsocketConsumer):
         return bool(cache.get(f"meeting_{meeting_id}_approved_{user_id}"))
 
     @database_sync_to_async
-    def get_livekit_token(self, user_id, meeting):
+    def get_livekit_token(self, user_id, meeting, device_id=None, device_name=None):
         from django.contrib.auth import get_user_model
         User = get_user_model()
         target_user = User.objects.get(id=user_id)
-        return LiveKitService.generate_token(target_user, meeting)
+        return LiveKitService.generate_token(target_user, meeting, device_id=device_id, device_name=device_name)
 
     @database_sync_to_async
     def set_approval_cache(self, meeting_id, user_id):
