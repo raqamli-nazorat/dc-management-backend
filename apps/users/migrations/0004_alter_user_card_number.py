@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0003_alter_user_active_role'),
+        ("users", "0003_alter_user_active_role"),
     ]
 
     operations = [
@@ -22,15 +22,16 @@ class Migration(migrations.Migration):
             reverse_sql="""
                 ALTER TABLE users_user 
                 ALTER COLUMN card_number TYPE varchar(16);
-            """
+            """,
         ),
-
         migrations.SeparateDatabaseAndState(
             state_operations=[
                 migrations.AlterField(
-                    model_name='user',
-                    name='card_number',
-                    field=models.JSONField(blank=True, default=dict, verbose_name='Karta raqami'),
+                    model_name="user",
+                    name="card_number",
+                    field=models.JSONField(
+                        blank=True, default=dict, verbose_name="Karta raqami"
+                    ),
                 ),
             ]
         ),

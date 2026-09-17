@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
+
 import os
 import environ
 from celery.schedules import crontab
@@ -22,15 +23,15 @@ from firebase_admin import credentials
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 env = environ.Env(DEBUG=(bool, False))
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env("SECRET_KEY")
 
-cred_path = os.path.join(BASE_DIR, 'firebase-key.json')
+cred_path = os.path.join(BASE_DIR, "firebase-key.json")
 if os.path.exists(cred_path):
     try:
         if not firebase_admin._apps:
@@ -38,12 +39,13 @@ if os.path.exists(cred_path):
             firebase_admin.initialize_app(cred)
     except Exception as e:
         import logging
+
         logging.getLogger(__name__).warning("Firebase init failed: %s", e)
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ["*"]
 
 APPEND_SLASH = False
 
@@ -54,76 +56,71 @@ CSRF_TRUSTED_ORIGINS = []
 CORS_ALLOW_ALL_ORIGINS = True
 
 # Force HTTPS for absolute URLs
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Application definition
 
 INSTALLED_APPS = [
-    'daphne',
-
-    'unfold',
-    'unfold.contrib.filters',
-    'unfold.contrib.forms',
-    'unfold.contrib.inlines',
-    'unfold.contrib.import_export',
-    'unfold.contrib.guardian',
-    'unfold.contrib.simple_history',
-    'unfold.contrib.location_field',
-    'unfold.contrib.constance',
-
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.postgres',
-
-    'storages',
-
-    'rest_framework',
-    'rest_framework_simplejwt',
-    'django_celery_beat',
-    'drf_spectacular',
-    'django_filters',
-    'corsheaders',
-
-    'apps.common.apps.CommonConfig',
-    'apps.users.apps.UsersConfig',
-    'apps.finance.apps.FinanceConfig',
-    'apps.projects.apps.ProjectsConfig',
-    'apps.applications.apps.ApplicationsConfig',
-    'apps.notifications.apps.NotificationsConfig',
-    'apps.reports.apps.ReportsConfig',
-    'apps.todos.apps.TodosConfig',
-    'apps.audit.apps.AuditConfig',
+    "daphne",
+    "unfold",
+    "unfold.contrib.filters",
+    "unfold.contrib.forms",
+    "unfold.contrib.inlines",
+    "unfold.contrib.import_export",
+    "unfold.contrib.guardian",
+    "unfold.contrib.simple_history",
+    "unfold.contrib.location_field",
+    "unfold.contrib.constance",
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "django.contrib.postgres",
+    "storages",
+    "rest_framework",
+    "rest_framework_simplejwt",
+    "django_celery_beat",
+    "drf_spectacular",
+    "django_filters",
+    "corsheaders",
+    "apps.common.apps.CommonConfig",
+    "apps.users.apps.UsersConfig",
+    "apps.finance.apps.FinanceConfig",
+    "apps.projects.apps.ProjectsConfig",
+    "apps.applications.apps.ApplicationsConfig",
+    "apps.notifications.apps.NotificationsConfig",
+    "apps.reports.apps.ReportsConfig",
+    "apps.todos.apps.TodosConfig",
+    "apps.audit.apps.AuditConfig",
 ]
 
 MIDDLEWARE = [
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',
-    'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'apps.audit.middleware.AuditLogMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.audit.middleware.AuditLogMiddleware",
 ]
 
-AUTH_USER_MODEL = 'users.User'
-ROOT_URLCONF = 'config.urls'
+AUTH_USER_MODEL = "users.User"
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
-        'APP_DIRS': True,
-        'OPTIONS': {
-            'context_processors': [
-                'django.template.context_processors.request',
-                'django.contrib.auth.context_processors.auth',
-                'django.contrib.messages.context_processors.messages',
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
             ],
         },
     },
@@ -139,16 +136,16 @@ CHANNEL_LAYERS = {
     }
 }
 
-ASGI_APPLICATION = 'config.asgi.application'
-WSGI_APPLICATION = 'config.wsgi.application'
+ASGI_APPLICATION = "config.asgi.application"
+WSGI_APPLICATION = "config.wsgi.application"
 
 # Redis
-CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
-CELERY_RESULT_BACKEND = 'redis://127.0.0.1:6379/0'
+CELERY_BROKER_URL = "redis://127.0.0.1:6379/0"
+CELERY_RESULT_BACKEND = "redis://127.0.0.1:6379/0"
 
 # Celery
 CELERY_TASK_DEFAULT_QUEUE = "raqamli_nazorat"
-CELERY_TIMEZONE = 'Asia/Tashkent'
+CELERY_TIMEZONE = "Asia/Tashkent"
 CELERY_ENABLE_UTC = False
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
@@ -158,19 +155,17 @@ CELERY_TASK_REJECT_ON_WORKER_LOST = True
 
 # Celery beat
 CELERY_BEAT_SCHEDULE = {
-    'check-deadlines-every-15-min': {
-        'task': 'apps.projects.tasks.update_overdue_status_and_notify',
-        'schedule': crontab(minute='*/15'),
+    "check-deadlines-every-15-min": {
+        "task": "apps.projects.tasks.update_overdue_status_and_notify",
+        "schedule": crontab(minute="*/15"),
     },
-
-    'morning-task-reminders': {
-        'task': 'apps.projects.tasks.send_morning_reminders',
-        'schedule': crontab(hour=9, minute=0),
+    "morning-task-reminders": {
+        "task": "apps.projects.tasks.send_morning_reminders",
+        "schedule": crontab(hour=9, minute=0),
     },
-
-    'calculate-monthly-salaries-on-4th': {
-        'task': 'apps.finance.tasks.calculate_monthly_salaries',
-        'schedule': crontab(day_of_month=4, hour=0, minute=1),
+    "calculate-monthly-salaries-on-4th": {
+        "task": "apps.finance.tasks.calculate_monthly_salaries",
+        "schedule": crontab(day_of_month=4, hour=0, minute=1),
     },
 }
 
@@ -178,16 +173,16 @@ CELERY_BEAT_SCHEDULE = {
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': env('DB_NAME'),
-        'USER': env('DB_USER'),
-        'PASSWORD': env('DB_PASSWORD'),
-        'HOST': env('DB_HOST'),
-        'PORT': env('DB_PORT'),
-        'OPTIONS': {
-            'client_encoding': 'UTF8',
-        }
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": env("DB_NAME"),
+        "USER": env("DB_USER"),
+        "PASSWORD": env("DB_PASSWORD"),
+        "HOST": env("DB_HOST"),
+        "PORT": env("DB_PORT"),
+        "OPTIONS": {
+            "client_encoding": "UTF8",
+        },
     }
 }
 
@@ -198,7 +193,7 @@ CACHES = {
         "LOCATION": "redis://127.0.0.1:6379/2",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+        },
     }
 }
 
@@ -223,9 +218,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
 
-LANGUAGE_CODE = 'uz'
+LANGUAGE_CODE = "uz"
 
-TIME_ZONE = 'Asia/Tashkent'
+TIME_ZONE = "Asia/Tashkent"
 
 USE_I18N = True
 
@@ -234,67 +229,64 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
-STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Django Rest Framework
 # https://www.django-rest-framework.org/
 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
-    'EXCEPTION_HANDLER': 'apps.common.exceptions.exception_handler',
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    "EXCEPTION_HANDLER": "apps.common.exceptions.exception_handler",
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
-
-    'DEFAULT_RENDERER_CLASSES': [
-        'apps.common.renderers.ResponseRenderer',
+    "DEFAULT_RENDERER_CLASSES": [
+        "apps.common.renderers.ResponseRenderer",
     ],
-    'DEFAULT_PARSER_CLASSES': [
-        'rest_framework.parsers.JSONParser',
+    "DEFAULT_PARSER_CLASSES": [
+        "rest_framework.parsers.JSONParser",
     ],
-
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-
-    'DEFAULT_THROTTLE_CLASSES': [
-        'rest_framework.throttling.AnonRateThrottle',
-        'rest_framework.throttling.UserRateThrottle',
-        'apps.common.throttles.CustomScopedRateThrottle',
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 20,
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "apps.common.throttles.CustomScopedRateThrottle",
     ],
-    'DEFAULT_THROTTLE_RATES': {
-        'anon': '30/minute',
-        'user': '90/minute',
-        'login': '3/25m',
-    }
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "30/minute",
+        "user": "90/minute",
+        "login": "3/25m",
+    },
 }
 
 # Simple JWT
 # https://django-rest-framework-simplejwt.readthedocs.io/en/latest/
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
+    "ACCESS_TOKEN_LIFETIME": timedelta(days=1),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=30),
 }
 
 # Django Rest Framework Spectacular
 # https://drf-spectacular.readthedocs.io/en/latest/readme.html
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Raqamli Nazorat API',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,
+    "TITLE": "Raqamli Nazorat API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
 }
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # S3 storage settings
 
-USE_S3 = env.bool('USE_S3', False)
+USE_S3 = env.bool("USE_S3", False)
 
 if USE_S3:
     STORAGES = {
@@ -315,13 +307,13 @@ else:
         },
     }
 
-AWS_ACCESS_KEY_ID = env.str('AWS_ACCESS_KEY_ID')
-AWS_SECRET_ACCESS_KEY = env.str('AWS_SECRET_ACCESS_KEY')
-AWS_STORAGE_BUCKET_NAME = env.str('AWS_STORAGE_BUCKET_NAME')
-AWS_S3_ENDPOINT_URL = env.str('AWS_S3_ENDPOINT_URL')
-AWS_S3_REGION_NAME = env.str('AWS_S3_REGION_NAME', default='us-east-1')
-AWS_S3_ADDRESSING_STYLE = env.str('AWS_S3_ADDRESSING_STYLE', default='path')
+AWS_ACCESS_KEY_ID = env.str("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env.str("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = env.str("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_ENDPOINT_URL = env.str("AWS_S3_ENDPOINT_URL")
+AWS_S3_REGION_NAME = env.str("AWS_S3_REGION_NAME", default="us-east-1")
+AWS_S3_ADDRESSING_STYLE = env.str("AWS_S3_ADDRESSING_STYLE", default="path")
 
-LIVEKIT_URL = env.str('LIVEKIT_URL', default='wss://livekit.example.com')
-LIVEKIT_API_KEY = env.str('LIVEKIT_API_KEY', default='devkey')
-LIVEKIT_API_SECRET = env.str('LIVEKIT_API_SECRET', default='secret')
+LIVEKIT_URL = env.str("LIVEKIT_URL", default="wss://livekit.example.com")
+LIVEKIT_API_KEY = env.str("LIVEKIT_API_KEY", default="devkey")
+LIVEKIT_API_SECRET = env.str("LIVEKIT_API_SECRET", default="secret")

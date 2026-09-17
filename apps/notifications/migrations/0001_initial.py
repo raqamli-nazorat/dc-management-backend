@@ -7,37 +7,97 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Notification',
+            name="Notification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('title', models.CharField(max_length=255, verbose_name='Sarlavha')),
-                ('message', models.TextField(verbose_name='Xabar matni')),
-                ('type', models.CharField(choices=[('task', 'Vazifa'), ('finance', 'Moliya'), ('meeting', "Yig'ilish"), ('system', 'Tizim xabari'), ('alert', 'Ogohlantirish')], default='system', max_length=20, verbose_name='Turi')),
-                ('extra_data', models.JSONField(blank=True, null=True, verbose_name="Qo'shimcha ma'lumot")),
-                ('is_read', models.BooleanField(default=False, verbose_name="O'qildimi?")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Sarlavha")),
+                ("message", models.TextField(verbose_name="Xabar matni")),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("task", "Vazifa"),
+                            ("finance", "Moliya"),
+                            ("meeting", "Yig'ilish"),
+                            ("system", "Tizim xabari"),
+                            ("alert", "Ogohlantirish"),
+                        ],
+                        default="system",
+                        max_length=20,
+                        verbose_name="Turi",
+                    ),
+                ),
+                (
+                    "extra_data",
+                    models.JSONField(
+                        blank=True, null=True, verbose_name="Qo'shimcha ma'lumot"
+                    ),
+                ),
+                (
+                    "is_read",
+                    models.BooleanField(default=False, verbose_name="O'qildimi?"),
+                ),
             ],
             options={
-                'verbose_name': 'Bildirishnoma ',
-                'verbose_name_plural': 'Bildirishnomalar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Bildirishnoma ",
+                "verbose_name_plural": "Bildirishnomalar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='UserDevice',
+            name="UserDevice",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('fcm_token', models.TextField(unique=True)),
-                ('device_type', models.CharField(choices=[('ios', 'iOS'), ('android', 'Android'), ('web', 'Web')], max_length=50)),
-                ('device_id', models.CharField(max_length=255, unique=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("fcm_token", models.TextField(unique=True)),
+                (
+                    "device_type",
+                    models.CharField(
+                        choices=[
+                            ("ios", "iOS"),
+                            ("android", "Android"),
+                            ("web", "Web"),
+                        ],
+                        max_length=50,
+                    ),
+                ),
+                ("device_id", models.CharField(max_length=255, unique=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),
     ]

@@ -8,7 +8,10 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.notifications.models import NotificationType, Notification
-from apps.notifications.tasks import mass_notification_sender, send_single_notification_task
+from apps.notifications.tasks import (
+    mass_notification_sender,
+    send_single_notification_task,
+)
 from .models import Project, ProjectStatus, Task, TaskStatus, Meeting
 
 logger = logging.getLogger(__name__)
@@ -34,7 +37,9 @@ def update_project_tasks_on_unlock(project_id, working_seconds):
                 task.was_overdue = False
 
         with transaction.atomic():
-            Task.objects.bulk_update(tasks, ['deadline', 'status', 'was_overdue'], batch_size=500)
+            Task.objects.bulk_update(
+                tasks, ["deadline", "status", "was_overdue"], batch_size=500
+            )
 
         return f"Loyiha (ID: {project_id}) uchun {len(tasks)} ta vazifa yangilandi."
 
@@ -48,13 +53,15 @@ def update_overdue_status_and_notify():
     notifications_to_create = []
     broadcast_data = []
 
-    overdue_projects = list(Project.objects.filter(
-        status=ProjectStatus.ACTIVE,
-        is_hidden=False,
-        is_deleted=False,
-        is_active=True,
-        deadline__lt=now
-    ).only('id', 'title', 'manager_id', 'status', 'was_overdue'))
+    overdue_projects = list(
+        Project.objects.filter(
+            status=ProjectStatus.ACTIVE,
+            is_hidden=False,
+            is_deleted=False,
+            is_active=True,
+            deadline__lt=now,
+        ).only("id", "title", "manager_id", "status", "was_overdue")
+    )
 
     for project in overdue_projects:
         project.status = ProjectStatus.OVERDUE
@@ -63,28 +70,36 @@ def update_overdue_status_and_notify():
         if project.manager_id:
             msg = f"'{project.title}' loyihasi rejadagidan kechikmoqda."
 
-            notifications_to_create.append(Notification(
-                user_id=project.manager_id,
-                title="Loyiha muddati o'tdi",
-                message=msg,
-                type=NotificationType.ALERT
-            ))
+            notifications_to_create.append(
+                Notification(
+                    user_id=project.manager_id,
+                    title="Loyiha muddati o'tdi",
+                    message=msg,
+                    type=NotificationType.ALERT,
+                )
+            )
 
-            broadcast_data.append({
-                "user_id": project.manager_id,
-                "title": "Loyiha muddati o'tdi",
-                "message": msg,
-                "type": NotificationType.ALERT,
-                "extra_data": {"project_id": project.id, "action": "open_project"}
-            })
+            broadcast_data.append(
+                {
+                    "user_id": project.manager_id,
+                    "title": "Loyiha muddati o'tdi",
+                    "message": msg,
+                    "type": NotificationType.ALERT,
+                    "extra_data": {"project_id": project.id, "action": "open_project"},
+                }
+            )
 
-    overdue_tasks = list(Task.objects.filter(
-        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
-        is_deleted=False,
-        is_active=True,
-        project__status=ProjectStatus.ACTIVE,
-        deadline__lt=now
-    ).select_related('project').only('id', 'title', 'project__manager_id', 'status', 'was_overdue'))
+    overdue_tasks = list(
+        Task.objects.filter(
+            status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
+            is_deleted=False,
+            is_active=True,
+            project__status=ProjectStatus.ACTIVE,
+            deadline__lt=now,
+        )
+        .select_related("project")
+        .only("id", "title", "project__manager_id", "status", "was_overdue")
+    )
 
     for task in overdue_tasks:
         task.status = TaskStatus.OVERDUE
@@ -93,25 +108,33 @@ def update_overdue_status_and_notify():
         if task.project and task.project.manager_id:
             msg = f"'{task.title}' vazifasi belgilangan muddatdan kechikdi."
 
-            notifications_to_create.append(Notification(
-                user_id=task.project.manager_id,
-                title="Vazifa muddati o'tdi",
-                message=msg,
-                type=NotificationType.ALERT
-            ))
-            broadcast_data.append({
-                "user_id": task.project.manager_id,
-                "title": "Vazifa muddati o'tdi",
-                "message": msg,
-                "type": NotificationType.ALERT,
-                "extra_data": {"task_id": task.id, "action": "open_task"}
-            })
+            notifications_to_create.append(
+                Notification(
+                    user_id=task.project.manager_id,
+                    title="Vazifa muddati o'tdi",
+                    message=msg,
+                    type=NotificationType.ALERT,
+                )
+            )
+            broadcast_data.append(
+                {
+                    "user_id": task.project.manager_id,
+                    "title": "Vazifa muddati o'tdi",
+                    "message": msg,
+                    "type": NotificationType.ALERT,
+                    "extra_data": {"task_id": task.id, "action": "open_task"},
+                }
+            )
 
     if overdue_projects:
-        Project.objects.bulk_update(overdue_projects, ['status', 'was_overdue'], batch_size=500)
+        Project.objects.bulk_update(
+            overdue_projects, ["status", "was_overdue"], batch_size=500
+        )
 
     if overdue_tasks:
-        Task.objects.bulk_update(overdue_tasks, ['status', 'was_overdue'], batch_size=500)
+        Task.objects.bulk_update(
+            overdue_tasks, ["status", "was_overdue"], batch_size=500
+        )
 
     if notifications_to_create:
         Notification.objects.bulk_create(notifications_to_create, batch_size=500)
@@ -129,8 +152,8 @@ def send_morning_reminders():
     remind_tasks = Task.objects.filter(
         deadline__date=today,
         assignee__isnull=False,
-        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS]
-    ).only('id', 'title', 'assignee_id')
+        status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
+    ).only("id", "title", "assignee_id")
 
     user_tasks = defaultdict(list)
     for task in remind_tasks.iterator(chunk_size=1000):
@@ -139,23 +162,30 @@ def send_morning_reminders():
     for user_id, tasks in user_tasks.items():
         task_count = len(tasks)
         title = "Ertalabki vazifalar"
-        message = (f"'{tasks[0]}' vazifasini bugun yakunlash shart!" if task_count == 1
-                   else f"Bugun sizda {task_count} ta muhim vazifa bor.")
+        message = (
+            f"'{tasks[0]}' vazifasini bugun yakunlash shart!"
+            if task_count == 1
+            else f"Bugun sizda {task_count} ta muhim vazifa bor."
+        )
 
-        notifications_to_create.append(Notification(
-            user_id=user_id,
-            title=title,
-            message=message,
-            type=NotificationType.SYSTEM
-        ))
+        notifications_to_create.append(
+            Notification(
+                user_id=user_id,
+                title=title,
+                message=message,
+                type=NotificationType.SYSTEM,
+            )
+        )
 
-        broadcast_data.append({
-            "user_id": user_id,
-            "title": title,
-            "message": message,
-            "type": NotificationType.SYSTEM,
-            "extra_data": {"filter": "today_tasks"}
-        })
+        broadcast_data.append(
+            {
+                "user_id": user_id,
+                "title": title,
+                "message": message,
+                "type": NotificationType.SYSTEM,
+                "extra_data": {"filter": "today_tasks"},
+            }
+        )
 
     if notifications_to_create:
         Notification.objects.bulk_create(notifications_to_create, batch_size=500)

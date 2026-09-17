@@ -6,8 +6,18 @@ from apps.applications.serializers import PositionSerializer
 from apps.users.serializers import UserShortSerializer
 from apps.users.models import Role
 
-from .models import (Project, ProjectDocument, Task, TaskAttachment, TaskStatus,
-                     Meeting, MeetingAttendance, TaskRejectionFile, ProjectStatus)
+from .models import (
+    Project,
+    ProjectDocument,
+    Task,
+    TaskAttachment,
+    TaskStatus,
+    Meeting,
+    MeetingAttendance,
+    TaskRejectionFile,
+    ProjectStatus,
+)
+from ..common.mixins import ModelCleanMixin
 
 User = get_user_model()
 
@@ -16,84 +26,99 @@ class ProjectShortSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = (
-            'id', 'uid', 'prefix', 'title', 'description', 'status', 'deadline', 'created_at'
+            "id",
+            "uid",
+            "prefix",
+            "title",
+            "description",
+            "status",
+            "deadline",
+            "created_at",
         )
 
 
-class ProjectSerializer(serializers.ModelSerializer):
-    manager_info = UserShortSerializer(source='manager', read_only=True)
-    created_by_info = UserShortSerializer(source='created_by', read_only=True)
-    employees_info = UserShortSerializer(source='employees', many=True, read_only=True)
-    testers_info = UserShortSerializer(source='testers', many=True, read_only=True)
+class ProjectSerializer(ModelCleanMixin, serializers.ModelSerializer):
+    manager_info = UserShortSerializer(source="manager", read_only=True)
+    created_by_info = UserShortSerializer(source="created_by", read_only=True)
+    employees_info = UserShortSerializer(source="employees", many=True, read_only=True)
+    testers_info = UserShortSerializer(source="testers", many=True, read_only=True)
 
-    manager = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, write_only=True)
-    testers = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True,
-                                                 write_only=True)
-    employees = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False, many=True,
-                                                   write_only=True)
+    manager = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, write_only=True
+    )
+    testers = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, many=True, write_only=True
+    )
+    employees = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.all(), required=False, many=True, write_only=True
+    )
 
     completion_percentage = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = (
-            'id', 'uid', 'prefix', 'title', 'description', 'manager', 'manager_info',
-            'created_by_info', 'testers', 'testers_info',
-            'project_price', 'penalty_percentage',
-            'employees', 'employees_info', 'deadline', 'status', 'is_hidden',
-            'created_at', 'updated_at', 'completion_percentage'
+            "id",
+            "uid",
+            "prefix",
+            "title",
+            "description",
+            "manager",
+            "manager_info",
+            "created_by_info",
+            "testers",
+            "testers_info",
+            "project_price",
+            "penalty_percentage",
+            "employees",
+            "employees_info",
+            "deadline",
+            "status",
+            "is_hidden",
+            "created_at",
+            "updated_at",
+            "completion_percentage",
         )
-        read_only_fields = ('id', 'uid', 'created_at', 'updated_at')
+        read_only_fields = ("id", "uid", "created_at", "updated_at")
 
     def get_completion_percentage(self, obj):
+        if hasattr(obj, "total_tasks_count") and hasattr(obj, "completed_tasks_count"):
+            total = obj.total_tasks_count
+            completed = obj.completed_tasks_count
+            return round((completed / total) * 100, 1) if total > 0 else 0.0
+
         total_tasks = obj.tasks.count()
         if total_tasks == 0:
             return 0.0
 
-        completed_statuses = [TaskStatus.DONE, TaskStatus.CHECKED, TaskStatus.PRODUCTION]
+        completed_statuses = [
+            TaskStatus.DONE,
+            TaskStatus.CHECKED,
+            TaskStatus.PRODUCTION,
+        ]
         completed_tasks = obj.tasks.filter(status__in=completed_statuses).count()
-
         return round((completed_tasks / total_tasks) * 100, 1)
-
-    def validate(self, attrs):
-        data = super().validate(attrs)
-
-        m2m_fields = ['testers', 'employees']
-        model_data = {k: v for k, v in data.items() if k not in m2m_fields}
-
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-
-        if self.instance:
-            self.instance._current_user = user
-            for attr, value in model_data.items():
-                setattr(self.instance, attr, value)
-            instance = self.instance
-        else:
-            instance = Project(**model_data)
-            instance._current_user = user
-
-        instance.clean()
-
-        return data
 
 
 class ProjectDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProjectDocument
-        fields = ('id', 'project', 'name', 'value', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ("id", "project", "name", "value", "created_at")
+        read_only_fields = ("id", "created_at")
 
     def validate_project(self, value):
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
         if not user:
             from apps.audit.middleware import get_current_request
+
             req = get_current_request()
-            if req and hasattr(req, 'user'):
+            if req and hasattr(req, "user"):
                 user = req.user
         is_superuser = bool(user and user.is_authenticated and user.is_superuser)
-        if value.status == ProjectStatus.CANCELLED or (value.status == ProjectStatus.COMPLETED and not is_superuser):
+        if value.status == ProjectStatus.CANCELLED or (
+            value.status == ProjectStatus.COMPLETED and not is_superuser
+        ):
             raise serializers.ValidationError(
                 f"Loyiha '{value.get_status_display()}' holatida. Hujjat qo'shish mumkin emas."
             )
@@ -103,75 +128,113 @@ class ProjectDocumentSerializer(serializers.ModelSerializer):
 class TaskAttachmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskAttachment
-        fields = ('id', 'task', 'file', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ("id", "task", "file", "created_at")
+        read_only_fields = ("id", "created_at")
 
 
 class TaskRejectionFileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TaskRejectionFile
-        fields = ('id', 'task', 'file', 'created_at')
-        read_only_fields = ('id', 'created_at')
+        fields = ("id", "task", "file", "created_at")
+        read_only_fields = ("id", "created_at")
 
 
-class TaskSerializer(serializers.ModelSerializer):
-    assignee_info = UserShortSerializer(source='assignee', read_only=True)
-    created_by_info = UserShortSerializer(source='created_by', read_only=True)
-    position_info = PositionSerializer(source='position', read_only=True)
+class TaskSerializer(ModelCleanMixin, serializers.ModelSerializer):
+    assignee_info = UserShortSerializer(source="assignee", read_only=True)
+    created_by_info = UserShortSerializer(source="created_by", read_only=True)
+    position_info = PositionSerializer(source="position", read_only=True)
 
     rejection_files = TaskRejectionFileSerializer(many=True, read_only=True)
 
-    position = serializers.PrimaryKeyRelatedField(queryset=Position.objects.all(), required=False, write_only=True)
+    position = serializers.PrimaryKeyRelatedField(
+        queryset=Position.objects.all(), required=False, write_only=True
+    )
 
     assignee = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), write_only=True, required=False, allow_null=True
     )
-    project = serializers.PrimaryKeyRelatedField(queryset=Project.objects.all(), write_only=True)
+    project = serializers.PrimaryKeyRelatedField(
+        queryset=Project.objects.all(), write_only=True
+    )
     project_info = serializers.SerializerMethodField(read_only=True)
 
-    estimated_input_hours = serializers.IntegerField(write_only=True, required=False, min_value=0)
-    estimated_input_minutes = serializers.IntegerField(write_only=True, required=False, min_value=0, max_value=59)
+    estimated_input_hours = serializers.IntegerField(
+        write_only=True, required=False, min_value=0
+    )
+    estimated_input_minutes = serializers.IntegerField(
+        write_only=True, required=False, min_value=0, max_value=59
+    )
 
     class Meta:
         model = Task
         fields = (
-            'id', 'uid', 'project', 'project_info', 'title', 'description', 'status', 'priority', 'type',
-            'created_by_info', 'assignee', 'assignee_info', 'deadline', 'task_price', 'penalty_percentage',
-
-            'sprint', 'position', 'position_info',
-
-            'estimated_minutes', 'actual_minutes',
-
-            'estimated_input_hours', 'estimated_input_minutes',
-
-            'reopened_count', 'rejection_reason', 'rejection_files',
-            'created_at', 'updated_at'
+            "id",
+            "uid",
+            "project",
+            "project_info",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "type",
+            "created_by_info",
+            "assignee",
+            "assignee_info",
+            "deadline",
+            "task_price",
+            "penalty_percentage",
+            "sprint",
+            "position",
+            "position_info",
+            "estimated_minutes",
+            "actual_minutes",
+            "estimated_input_hours",
+            "estimated_input_minutes",
+            "reopened_count",
+            "rejection_reason",
+            "rejection_files",
+            "created_at",
+            "updated_at",
         )
         read_only_fields = (
-            'id', 'uid', 'created_by', 'created_at', 'updated_at', 'status', 'reopened_count', 'rejection_reason',
-            'estimated_minutes', 'actual_minutes'
+            "id",
+            "uid",
+            "created_by",
+            "created_at",
+            "updated_at",
+            "status",
+            "reopened_count",
+            "rejection_reason",
+            "estimated_minutes",
+            "actual_minutes",
         )
+
+    def _get_user(self):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user:
+            from apps.audit.middleware import get_current_request
+
+            req = get_current_request()
+            if req and hasattr(req, "user"):
+                user = req.user
+        return user
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-        if not user:
-            from apps.audit.middleware import get_current_request
-            req = get_current_request()
-            if req and hasattr(req, 'user'):
-                user = req.user
+        user = self._get_user()
+
         if user and (user.is_superuser or user.has_role(Role.ADMIN)):
-            self.fields['status'].read_only = False
+            self.fields["status"].read_only = False
 
     def validate_task_price(self, value):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.has_role(Role.EMPLOYEE) and value > 0:
             return 0.00
         return value
 
     def validate_penalty_percentage(self, value):
-        user = self.context['request'].user
+        user = self.context["request"].user
         if user.has_role(Role.EMPLOYEE) and value > 0:
             return 0.00
         return value
@@ -179,36 +242,24 @@ class TaskSerializer(serializers.ModelSerializer):
     def get_project_info(self, obj):
         project = obj.project
         return {
-            'id': project.id,
-            'title': project.title,
-            'description': project.description,
-            'status': project.status,
-            'deadline': project.deadline,
-            'created_at': project.created_at,
+            "id": project.id,
+            "title": project.title,
+            "description": project.description,
+            "status": project.status,
+            "deadline": project.deadline,
+            "created_at": project.created_at,
         }
 
     def validate(self, attrs):
-        hours = attrs.pop('estimated_input_hours', None)
-        minutes = attrs.pop('estimated_input_minutes', None)
+        hours = attrs.pop("estimated_input_hours", None)
+        minutes = attrs.pop("estimated_input_minutes", None)
 
         if hours is not None or minutes is not None:
             h = hours or 0
             m = minutes or 0
-            attrs['estimated_minutes'] = (h * 60) + m
+            attrs["estimated_minutes"] = (h * 60) + m
 
-        request = self.context.get('request')
-        user = getattr(request, 'user', None)
-
-        if self.instance:
-            instance = self.instance
-            instance._current_user = user
-            for attr, value in attrs.items():
-                setattr(instance, attr, value)
-        else:
-            instance = Task(**attrs)
-            instance._current_user = user
-
-        instance.clean()
+        self.clean_model_instance(attrs)
 
         return attrs
 
@@ -218,11 +269,13 @@ class TaskStatusUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Task
-        fields = ('status', 'rejection_reason')
+        fields = ("status", "rejection_reason")
 
 
-class MeetingSerializer(serializers.ModelSerializer):
-    participants_info = UserShortSerializer(source='participants', many=True, read_only=True)
+class MeetingSerializer(ModelCleanMixin, serializers.ModelSerializer):
+    participants_info = UserShortSerializer(
+        source="participants", many=True, read_only=True
+    )
     participants = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(), many=True, write_only=True, required=False
     )
@@ -230,93 +283,140 @@ class MeetingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Meeting
         fields = (
-            'id', 'uid', 'room_name', 'project', 'organizer', 'title', 'description',
-            'recording_url', 'requires_approval', 'penalty_percentage', 'start_time', 'duration_minutes', 'is_completed',
-            'participants', 'participants_info',
+            "id",
+            "uid",
+            "room_name",
+            "project",
+            "organizer",
+            "title",
+            "description",
+            "recording_url",
+            "requires_approval",
+            "penalty_percentage",
+            "start_time",
+            "duration_minutes",
+            "is_completed",
+            "participants",
+            "participants_info",
         )
-        read_only_fields = ('id', 'uid', 'room_name', 'organizer', 'participants_info', 'is_completed')
+        read_only_fields = (
+            "id",
+            "uid",
+            "room_name",
+            "organizer",
+            "participants_info",
+            "is_completed",
+        )
 
     def validate(self, attrs):
-        instance = self.instance
+        instance = self.clean_model_instance(attrs)
 
-        if instance:
-            for attr, value in attrs.items():
-                if attr != 'participants':
-                    setattr(instance, attr, value)
-        else:
-
-            meeting_attrs = {k: v for k, v in attrs.items() if k != 'participants'}
-            instance = Meeting(**meeting_attrs)
-
-        instance.clean()
-
-        participants = attrs.get('participants')
-        project = attrs.get('project') or (instance.project if instance else None)
+        participants = attrs.get("participants")
+        project = attrs.get("project") or (instance.project if instance else None)
 
         if project and participants:
-            member_ids = set(project.employees.values_list('id', flat=True)) | \
-                         set(project.testers.values_list('id', flat=True)) | \
-                         {project.manager_id}
+            member_ids = (
+                set(project.employees.values_list("id", flat=True))
+                | set(project.testers.values_list("id", flat=True))
+                | {project.manager_id}
+            )
 
             invalid_users = [p.username for p in participants if p.id not in member_ids]
 
             if invalid_users:
-                raise serializers.ValidationError({
-                    "participants": f"Quyidagi foydalanuvchilar loyiha a'zosi emas: {', '.join(invalid_users)}"
-                })
+                raise serializers.ValidationError(
+                    {
+                        "participants": f"Quyidagi foydalanuvchilar loyiha a'zosi emas: {', '.join(invalid_users)}"
+                    }
+                )
 
-        start_time = attrs.get('start_time') or (instance.start_time if instance else None)
-        duration = attrs.get('duration_minutes') or (instance.duration_minutes if instance else 0)
+        start_time = attrs.get("start_time") or (
+            instance.start_time if instance else None
+        )
+        duration = attrs.get("duration_minutes") or (
+            instance.duration_minutes if instance else 0
+        )
 
         if start_time and duration:
             from datetime import timedelta
+
             end_time = start_time + timedelta(minutes=duration)
 
             check_user_ids = set()
             if participants is not None:
                 check_user_ids.update([p.id for p in participants])
             elif instance:
-                check_user_ids.update(instance.participants.values_list('id', flat=True))
+                check_user_ids.update(
+                    instance.participants.values_list("id", flat=True)
+                )
 
-            request = self.context.get('request')
-            organizer = instance.organizer if instance else (request.user if request else None)
+            request = self.context.get("request")
+            organizer = (
+                instance.organizer if instance else (request.user if request else None)
+            )
             if organizer:
                 check_user_ids.add(organizer.id)
 
             if check_user_ids:
                 from apps.projects.models import MeetingAttendance
-                conflicts = MeetingAttendance.objects.filter(
-                    user_id__in=check_user_ids,
-                    is_attended=True,
-                    meeting__is_active=True,
-                    meeting__is_completed=False,
-                    meeting__start_time__lt=end_time
-                ).select_related('meeting', 'user').exclude(meeting_id=instance.pk if instance else None)
+
+                conflicts = (
+                    MeetingAttendance.objects.filter(
+                        user_id__in=check_user_ids,
+                        is_attended=True,
+                        meeting__is_active=True,
+                        meeting__is_completed=False,
+                        meeting__start_time__lt=end_time,
+                    )
+                    .select_related("meeting", "user")
+                    .exclude(meeting_id=instance.pk if instance else None)
+                )
 
                 for conflict in conflicts:
                     c_start = conflict.meeting.start_time
-                    c_end = c_start + timedelta(minutes=conflict.meeting.duration_minutes)
+                    c_end = c_start + timedelta(
+                        minutes=conflict.meeting.duration_minutes
+                    )
 
                     if start_time < c_end and end_time > c_start:
-                        raise serializers.ValidationError({
-                            "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band."
-                        })
+                        raise serializers.ValidationError(
+                            {
+                                "start_time": f"Foydalanuvchi {conflict.user.username} bu vaqtda boshqa yig'ilishda band."
+                            }
+                        )
 
         return attrs
 
 
 class MeetingAttendanceSerializer(serializers.ModelSerializer):
-    user_info = UserShortSerializer(source='user', read_only=True)
-    meeting_title = serializers.CharField(source='meeting.title', read_only=True)
+    user_info = UserShortSerializer(source="user", read_only=True)
+    meeting_title = serializers.CharField(source="meeting.title", read_only=True)
     absence_reason = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = MeetingAttendance
         fields = (
-            'id', 'user_info', 'meeting', 'meeting_title', 'is_attended', 'is_excused',
-            'joined_at', 'left_at', 'duration_minutes', 'late_minutes', 'absence_reason'
+            "id",
+            "user_info",
+            "meeting",
+            "meeting_title",
+            "is_attended",
+            "is_excused",
+            "joined_at",
+            "left_at",
+            "duration_minutes",
+            "late_minutes",
+            "absence_reason",
         )
-        read_only_fields = ('id', 'user_info', 'meeting', 'joined_at', 'left_at', 'duration_minutes', 'late_minutes')
+        read_only_fields = (
+            "id",
+            "user_info",
+            "meeting",
+            "joined_at",
+            "left_at",
+            "duration_minutes",
+            "late_minutes",
+        )
 
     def validate(self, attrs):
         user = self.request_user
@@ -325,32 +425,43 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
         if not instance:
             return attrs
 
-        is_organizer = (instance.meeting.organizer == user)
-        is_owner = (instance.user == user)
-        is_privileged = user.is_superuser or user.has_role(Role.ADMIN) or \
-                        is_organizer or (instance.meeting.project and instance.meeting.project.manager == user)
+        is_organizer = instance.meeting.organizer == user
+        is_owner = instance.user == user
+        is_privileged = (
+            user.is_superuser
+            or user.has_role(Role.ADMIN)
+            or is_organizer
+            or (instance.meeting.project and instance.meeting.project.manager == user)
+        )
 
-        for field in ['is_attended', 'is_excused']:
+        for field in ["is_attended", "is_excused"]:
             if field in attrs and not is_privileged:
                 raise serializers.ValidationError(
-                    {field: "Faqat yig'ilish tashkilotchisi yoki mas'ullar bu holatni o'zgartira oladi."}
+                    {
+                        field: "Faqat yig'ilish tashkilotchisi yoki mas'ullar bu holatni o'zgartira oladi."
+                    }
                 )
 
         if is_owner and not is_privileged:
             if instance.is_attended and instance.late_minutes <= 5:
                 raise serializers.ValidationError(
-                    {"detail": "Siz yig'ilishga o'z vaqtida qatnashgansiz, sabab yozish talab etilmaydi."}
+                    {
+                        "detail": "Siz yig'ilishga o'z vaqtida qatnashgansiz, sabab yozish talab etilmaydi."
+                    }
                 )
 
             from django.utils import timezone
             from datetime import timedelta
+
             now = timezone.now()
 
             if instance.is_attended:
                 ref_time = instance.joined_at or instance.meeting.start_time
                 if ref_time and now > ref_time + timedelta(hours=24):
                     raise serializers.ValidationError(
-                        {"detail": "Kechikib kirgandan keyin 24 soat o'tib sabab yozib bo'lmaydi."}
+                        {
+                            "detail": "Kechikib kirgandan keyin 24 soat o'tib sabab yozib bo'lmaydi."
+                        }
                     )
             else:
                 ref_time = instance.meeting.completed_at or instance.meeting.start_time
@@ -359,40 +470,46 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
                         {"detail": "24 soat o'tib sabab yozib bo'lmaydi."}
                     )
 
-            if instance.absence_reason and 'absence_reason' in attrs:
+            if instance.absence_reason and "absence_reason" in attrs:
                 raise serializers.ValidationError(
-                    {"absence_reason": "Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz."}
+                    {
+                        "absence_reason": "Siz allaqachon sabab kiritgansiz va uni o'zgartira olmaysiz."
+                    }
                 )
 
-        if 'absence_reason' in attrs and not (is_owner or is_privileged):
+        if "absence_reason" in attrs and not (is_owner or is_privileged):
             raise serializers.ValidationError(
-                {"absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."}
+                {
+                    "absence_reason": "Bu maydonni faqat xodimning o'zi yoki mas'ullar to'ldirishi mumkin."
+                }
             )
 
-        if is_owner and not is_privileged and 'absence_reason' in attrs:
-            reason = attrs.get('absence_reason')
+        if is_owner and not is_privileged and "absence_reason" in attrs:
+            reason = attrs.get("absence_reason")
             if not reason or len(reason.strip()) < 10:
                 raise serializers.ValidationError(
-                    {"absence_reason": "Sabab kamida 10 ta belgidan iborat bo'lishi kerak."}
+                    {
+                        "absence_reason": "Sabab kamida 10 ta belgidan iborat bo'lishi kerak."
+                    }
                 )
 
-        if 'is_attended' in attrs and attrs['is_attended'] is True and instance.late_minutes <= 5:
-            attrs['absence_reason'] = None
-            attrs['is_excused'] = False
-
-        for attr, value in attrs.items():
-            setattr(instance, attr, value)
-
-        instance.clean()
+        if (
+            "is_attended" in attrs
+            and attrs["is_attended"] is True
+            and instance.late_minutes <= 5
+        ):
+            attrs["absence_reason"] = None
+            attrs["is_excused"] = False
 
         return attrs
 
     @property
     def request_user(self):
-        return self.context['request'].user
+        request = self.context.get("request", None)
+        user = getattr(request, "user", None)
+        return user
 
 
 class MeetingAdmitSerializer(serializers.Serializer):
     user_id = serializers.IntegerField()
-    decision = serializers.ChoiceField(choices=['approve', 'reject'])
-
+    decision = serializers.ChoiceField(choices=["approve", "reject"])

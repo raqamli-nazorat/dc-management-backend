@@ -8,19 +8,32 @@ from .models import AuditLog, ActionType
 from .middleware import get_current_request
 
 AUDITED_MODELS = [
-    'User', 'Project', 'Task', 'TaskAttachment',
-    'ExpenseCategory', 'ExpenseRequest', 'Payroll', 'Ledger',
-    'Meeting', 'MeetingAttendance', 'Application', 'Region', 'Position',
-    'Todo', 'Notification', 'UserDevice'
+    "User",
+    "Project",
+    "Task",
+    "TaskAttachment",
+    "ExpenseCategory",
+    "ExpenseRequest",
+    "Payroll",
+    "Ledger",
+    "Meeting",
+    "MeetingAttendance",
+    "Application",
+    "Region",
+    "Position",
+    "Todo",
+    "Notification",
+    "UserDevice",
 ]
 
 
 class AuditJSONEncoder(DjangoJSONEncoder):
     def default(self, o):
         from django.db.models.fields.files import FieldFile
+
         if isinstance(o, FieldFile):
             return str(o.name) if o else None
-        if hasattr(o, 'pk'):
+        if hasattr(o, "pk"):
             return o.pk
         return super().default(o)
 
@@ -30,16 +43,16 @@ def serialize_data(data):
 
 
 def get_client_ip(request):
-    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
     if x_forwarded_for:
-        ip = x_forwarded_for.split(',')[0].strip()
+        ip = x_forwarded_for.split(",")[0].strip()
         return ip
 
-    real_ip = request.META.get('HTTP_X_REAL_IP')
+    real_ip = request.META.get("HTTP_X_REAL_IP")
     if real_ip:
         return real_ip
 
-    return request.META.get('REMOTE_ADDR')
+    return request.META.get("REMOTE_ADDR")
 
 
 @receiver(pre_save)
@@ -70,28 +83,33 @@ def audit_post_save(sender, instance, created, **kwargs):
         if created:
             action = ActionType.CREATE
         else:
-            old_values_dict = getattr(instance, '_old_values', {})
-            
-            new_is_active = getattr(instance, 'is_active', None)
-            old_is_active = old_values_dict.get('is_active')
-            
-            new_is_deleted = getattr(instance, 'is_deleted', None)
-            old_is_deleted = old_values_dict.get('is_deleted')
+            old_values_dict = getattr(instance, "_old_values", {})
 
-            new_status = getattr(instance, 'status', None)
-            old_status = old_values_dict.get('status')
+            new_is_active = getattr(instance, "is_active", None)
+            old_is_active = old_values_dict.get("is_active")
+
+            new_is_deleted = getattr(instance, "is_deleted", None)
+            old_is_deleted = old_values_dict.get("is_deleted")
+
+            new_status = getattr(instance, "status", None)
+            old_status = old_values_dict.get("status")
 
             if old_is_active is True and new_is_active is False:
                 action = ActionType.DELETE
-            elif hasattr(instance, 'is_deleted') and old_is_deleted is True and new_is_deleted is False and new_is_active is True:
+            elif (
+                hasattr(instance, "is_deleted")
+                and old_is_deleted is True
+                and new_is_deleted is False
+                and new_is_active is True
+            ):
                 action = ActionType.RESTORE
-            elif new_status == 'confirmed' and old_status != 'confirmed':
+            elif new_status == "confirmed" and old_status != "confirmed":
                 action = ActionType.CONFIRM
             else:
                 action = ActionType.UPDATE
 
         new_values = serialize_data(model_to_dict(instance))
-        old_values = serialize_data(getattr(instance, '_old_values', {}))
+        old_values = serialize_data(getattr(instance, "_old_values", {}))
 
         verbose_name = (sender._meta.verbose_name or sender.__name__).capitalize()
 
@@ -110,7 +128,7 @@ def audit_post_save(sender, instance, created, **kwargs):
             object_name=f"{verbose_name}: {str(instance)}",
             record_id=instance.pk,
             old_values=old_values,
-            new_values=new_values
+            new_values=new_values,
         )
 
     transaction.on_commit(create_log)
@@ -133,5 +151,5 @@ def audit_post_delete(sender, instance, **kwargs):
         object_name=f"{verbose_name} (O'chirildi): {str(instance)}",
         record_id=instance.pk,
         old_values=serialize_data(model_to_dict(instance)),
-        new_values=None
+        new_values=None,
     )

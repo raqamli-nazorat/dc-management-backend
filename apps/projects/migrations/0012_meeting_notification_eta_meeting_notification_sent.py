@@ -6,18 +6,22 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0011_remove_projectdocument_url_projectdocument_value_and_more'),
+        ("projects", "0011_remove_projectdocument_url_projectdocument_value_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='meeting',
-            name='notification_eta',
-            field=models.DateTimeField(blank=True, null=True, verbose_name='Rejalashtirilgan eta'),
+            model_name="meeting",
+            name="notification_eta",
+            field=models.DateTimeField(
+                blank=True, null=True, verbose_name="Rejalashtirilgan eta"
+            ),
         ),
         migrations.AddField(
-            model_name='meeting',
-            name='notification_sent',
-            field=models.BooleanField(default=False, verbose_name='Bildirishnoma yuborildi'),
+            model_name="meeting",
+            name="notification_sent",
+            field=models.BooleanField(
+                default=False, verbose_name="Bildirishnoma yuborildi"
+            ),
         ),
     ]

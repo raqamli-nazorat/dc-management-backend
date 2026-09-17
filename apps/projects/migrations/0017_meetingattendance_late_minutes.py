@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0016_alter_meeting_description'),
+        ("projects", "0016_alter_meeting_description"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='meetingattendance',
-            name='late_minutes',
-            field=models.PositiveIntegerField(default=0, verbose_name='Kechikkan vaqti (daqiqa)'),
+            model_name="meetingattendance",
+            name="late_minutes",
+            field=models.PositiveIntegerField(
+                default=0, verbose_name="Kechikkan vaqti (daqiqa)"
+            ),
         ),
     ]

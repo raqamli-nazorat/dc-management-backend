@@ -6,16 +6,20 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('audit', '0004_alter_auditlog_is_active'),
+        ("audit", "0004_alter_auditlog_is_active"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='auditlog',
-            options={'ordering': ['-created_at'], 'verbose_name': 'Tarix yozuvi ', 'verbose_name_plural': 'Tarix yozuvlari'},
+            name="auditlog",
+            options={
+                "ordering": ["-created_at"],
+                "verbose_name": "Tarix yozuvi ",
+                "verbose_name_plural": "Tarix yozuvlari",
+            },
         ),
         migrations.RemoveField(
-            model_name='auditlog',
-            name='timestamp',
+            model_name="auditlog",
+            name="timestamp",
         ),
     ]

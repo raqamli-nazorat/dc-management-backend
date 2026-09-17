@@ -7,13 +7,17 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0007_alter_meeting_created_at_alter_meeting_is_active_and_more'),
+        ("projects", "0007_alter_meeting_created_at_alter_meeting_is_active_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='taskattachment',
-            name='file',
-            field=models.FileField(upload_to='tasks/files/', validators=[apps.common.validators.validate_file_size], verbose_name='Fayl'),
+            model_name="taskattachment",
+            name="file",
+            field=models.FileField(
+                upload_to="tasks/files/",
+                validators=[apps.common.validators.validate_file_size],
+                verbose_name="Fayl",
+            ),
         ),
     ]

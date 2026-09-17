@@ -6,28 +6,36 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('applications', '0004_alter_application_created_at_and_more'),
+        ("applications", "0004_alter_application_created_at_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='application',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Is Active'),
+            model_name="application",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Is Active"
+            ),
         ),
         migrations.AlterField(
-            model_name='district',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Is Active'),
+            model_name="district",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Is Active"
+            ),
         ),
         migrations.AlterField(
-            model_name='position',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Is Active'),
+            model_name="position",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Is Active"
+            ),
         ),
         migrations.AlterField(
-            model_name='region',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Is Active'),
+            model_name="region",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Is Active"
+            ),
         ),
     ]

@@ -7,13 +7,24 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('applications', '0002_initial'),
+        ("applications", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='application',
-            name='telegram',
-            field=models.CharField(blank=True, max_length=255, null=True, validators=[django.core.validators.RegexValidator(message="Telegram havolasi https://username.t.me formatida bo'lishi kerak.", regex='^https://[a-zA-Z0-9_]+\\.t\\.me$')], verbose_name='Telegram profil havolasi'),
+            model_name="application",
+            name="telegram",
+            field=models.CharField(
+                blank=True,
+                max_length=255,
+                null=True,
+                validators=[
+                    django.core.validators.RegexValidator(
+                        message="Telegram havolasi https://username.t.me formatida bo'lishi kerak.",
+                        regex="^https://[a-zA-Z0-9_]+\\.t\\.me$",
+                    )
+                ],
+                verbose_name="Telegram profil havolasi",
+            ),
         ),
     ]

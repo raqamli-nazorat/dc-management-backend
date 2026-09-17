@@ -6,83 +6,137 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('finance', '0002_initial'),
+        ("finance", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='expensecategory',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="expensecategory",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='expensecategory',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="expensecategory",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='expensereceipt',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="expensereceipt",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='expensereceipt',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="expensereceipt",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='expenserequest',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="expenserequest",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='expenserequest',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="expenserequest",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='expenserequest',
-            name='payment_method',
-            field=models.CharField(choices=[('cash', 'Naqd pul'), ('card', 'Karta raqam orqali')], db_index=True, default='card', max_length=10, verbose_name="To'lov turi"),
+            model_name="expenserequest",
+            name="payment_method",
+            field=models.CharField(
+                choices=[("cash", "Naqd pul"), ("card", "Karta raqam orqali")],
+                db_index=True,
+                default="card",
+                max_length=10,
+                verbose_name="To'lov turi",
+            ),
         ),
         migrations.AlterField(
-            model_name='expenserequest',
-            name='status',
-            field=models.CharField(choices=[('pending', 'Kutilmoqda'), ('paid', "To'landi"), ('confirmed', 'Tasdiqlandi'), ('cancelled', 'Bekor qilindi')], db_index=True, default='pending', max_length=20, verbose_name='Holati'),
+            model_name="expenserequest",
+            name="status",
+            field=models.CharField(
+                choices=[
+                    ("pending", "Kutilmoqda"),
+                    ("paid", "To'landi"),
+                    ("confirmed", "Tasdiqlandi"),
+                    ("cancelled", "Bekor qilindi"),
+                ],
+                db_index=True,
+                default="pending",
+                max_length=20,
+                verbose_name="Holati",
+            ),
         ),
         migrations.AlterField(
-            model_name='expenserequest',
-            name='type',
-            field=models.CharField(choices=[('withdrawal', "Mablag' chiqarish"), ('company', 'Kompaniya xarajatlari'), ('other', 'Boshqa xarajatlar')], db_index=True, default='withdrawal', max_length=20, verbose_name='Turi'),
+            model_name="expenserequest",
+            name="type",
+            field=models.CharField(
+                choices=[
+                    ("withdrawal", "Mablag' chiqarish"),
+                    ("company", "Kompaniya xarajatlari"),
+                    ("other", "Boshqa xarajatlar"),
+                ],
+                db_index=True,
+                default="withdrawal",
+                max_length=20,
+                verbose_name="Turi",
+            ),
         ),
         migrations.AlterField(
-            model_name='ledger',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="ledger",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='ledger',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="ledger",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='ledger',
-            name='transaction_type',
-            field=models.CharField(choices=[('debit', 'Chiqim'), ('credit', 'Kirim')], db_index=True, max_length=10, verbose_name='Tranzaksiya turi'),
+            model_name="ledger",
+            name="transaction_type",
+            field=models.CharField(
+                choices=[("debit", "Chiqim"), ("credit", "Kirim")],
+                db_index=True,
+                max_length=10,
+                verbose_name="Tranzaksiya turi",
+            ),
         ),
         migrations.AlterField(
-            model_name='payroll',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="payroll",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='payroll',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="payroll",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='payroll',
-            name='is_confirmed',
-            field=models.BooleanField(db_index=True, default=False, verbose_name='Tasdiqlandimi?'),
+            model_name="payroll",
+            name="is_confirmed",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="Tasdiqlandimi?"
+            ),
         ),
     ]

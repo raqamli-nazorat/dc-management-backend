@@ -10,29 +10,51 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('applications', '0001_initial'),
+        ("applications", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='application',
-            name='reviewed_by',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='reviewed_applications', to=settings.AUTH_USER_MODEL, verbose_name='Xulosa kiritgan xodim'),
+            model_name="application",
+            name="reviewed_by",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="reviewed_applications",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Xulosa kiritgan xodim",
+            ),
         ),
         migrations.AddField(
-            model_name='application',
-            name='position',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='applications', to='applications.position', verbose_name='Lavozim'),
+            model_name="application",
+            name="position",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="applications",
+                to="applications.position",
+                verbose_name="Lavozim",
+            ),
         ),
         migrations.AddField(
-            model_name='district',
-            name='region',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='districts', to='applications.region', verbose_name='Viloyat'),
+            model_name="district",
+            name="region",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="districts",
+                to="applications.region",
+                verbose_name="Viloyat",
+            ),
         ),
         migrations.AddField(
-            model_name='application',
-            name='region',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='applications', to='applications.region', verbose_name='Viloyat'),
+            model_name="application",
+            name="region",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="applications",
+                to="applications.region",
+                verbose_name="Viloyat",
+            ),
         ),
     ]

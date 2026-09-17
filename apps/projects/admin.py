@@ -1,8 +1,15 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
-    Project, Task, TaskAttachment, TaskRejectionFile, Meeting,
-    MeetingAttendance, ProjectStatus, Type, ProjectDocument
+    Project,
+    Task,
+    TaskAttachment,
+    TaskRejectionFile,
+    Meeting,
+    MeetingAttendance,
+    ProjectStatus,
+    Type,
+    ProjectDocument,
 )
 
 from unfold.admin import ModelAdmin
@@ -26,53 +33,69 @@ class TaskRejectionFileInline(admin.TabularInline):
 class MeetingAttendanceInline(admin.TabularInline):
     model = MeetingAttendance
     extra = 0
-    fields = ('user', 'is_attended', 'joined_at', 'left_at', 'duration_minutes', 'absence_reason')
+    fields = (
+        "user",
+        "is_attended",
+        "joined_at",
+        "left_at",
+        "duration_minutes",
+        "absence_reason",
+    )
     can_delete = False
 
 
 @admin.register(Project)
 class ProjectAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'manager', 'status_colored', 'created_at', 'deadline', 'is_active')
-    list_display_links = ('uid', 'title')
-    list_filter = ('status', 'created_at', 'deadline', 'manager')
-    search_fields = ('title', 'description', 'manager__username')
-    filter_horizontal = ('employees', 'testers')
-    exclude = ('payroll_processed',)
+    list_display = (
+        "uid",
+        "title",
+        "manager",
+        "status_colored",
+        "created_at",
+        "deadline",
+        "is_active",
+    )
+    list_display_links = ("uid", "title")
+    list_filter = ("status", "created_at", "deadline", "manager")
+    search_fields = ("title", "description", "manager__username")
+    filter_horizontal = ("employees", "testers")
+    exclude = ("payroll_processed",)
 
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ("created_at", "updated_at")
 
     inlines = [ProjectDocumentInline]
 
     fieldsets = (
-        ('Loyiha haqida ma\'lumot', {
-            'fields': ('prefix', 'title', 'description', 'status', 'is_hidden')
-        }),
-        ('Narxlar', {
-            'fields': ('project_price', 'penalty_percentage')
-        }),
-        ('Jamoa', {
-            'fields': ('created_by', 'manager', 'employees', 'testers')
-        }),
-        ('Vaqt jadvali', {
-            'fields': ('deadline',)
-        }),
-        ('Tizim haqida ma\'lumot', {
-            'fields': ('created_at', 'updated_at', 'is_active'),
-            'classes': ('collapse',),
-        }),
+        (
+            "Loyiha haqida ma'lumot",
+            {"fields": ("prefix", "title", "description", "status", "is_hidden")},
+        ),
+        ("Narxlar", {"fields": ("project_price", "penalty_percentage")}),
+        ("Jamoa", {"fields": ("created_by", "manager", "employees", "testers")}),
+        ("Vaqt jadvali", {"fields": ("deadline",)}),
+        (
+            "Tizim haqida ma'lumot",
+            {
+                "fields": ("created_at", "updated_at", "is_active"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
-    @admin.display(description='Holati', ordering='status')
+    @admin.display(description="Holati", ordering="status")
     def status_colored(self, obj):
         colors = {
-            ProjectStatus.PLANNING: 'gray',
-            ProjectStatus.ACTIVE: 'blue',
-            ProjectStatus.COMPLETED: 'green',
-            ProjectStatus.CANCELLED: 'red',
-            ProjectStatus.OVERDUE: 'orange',
+            ProjectStatus.PLANNING: "gray",
+            ProjectStatus.ACTIVE: "blue",
+            ProjectStatus.COMPLETED: "green",
+            ProjectStatus.CANCELLED: "red",
+            ProjectStatus.OVERDUE: "orange",
         }
-        return format_html('<span style="color: {}; font-weight: bold;">{}</span>',
-                           colors.get(obj.status, 'black'), obj.get_status_display())
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            colors.get(obj.status, "black"),
+            obj.get_status_display(),
+        )
 
     def save_model(self, request, obj, form, change):
         obj._current_user = request.user
@@ -85,13 +108,23 @@ class ProjectAdmin(ModelAdmin):
 
 @admin.register(Task)
 class TaskAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'project', 'assignee', 'type_badge', 'priority', 'status', 'deadline', 'is_active')
-    list_display_links = ('uid', 'title')
-    list_filter = ('status', 'priority', 'type', 'project', 'assignee', 'deadline')
-    search_fields = ('title', 'description', 'project__title', 'assignee__username')
-    exclude = ('payroll_processed',)
+    list_display = (
+        "uid",
+        "title",
+        "project",
+        "assignee",
+        "type_badge",
+        "priority",
+        "status",
+        "deadline",
+        "is_active",
+    )
+    list_display_links = ("uid", "title")
+    list_filter = ("status", "priority", "type", "project", "assignee", "deadline")
+    search_fields = ("title", "description", "project__title", "assignee__username")
+    exclude = ("payroll_processed",)
 
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ("created_at", "updated_at")
 
     def save_model(self, request, obj, form, change):
         obj._current_user = request.user
@@ -100,50 +133,96 @@ class TaskAdmin(ModelAdmin):
     inlines = [TaskAttachmentInline, TaskRejectionFileInline]
 
     fieldsets = (
-        ('Asosiy', {
-            'fields': ('project', 'title', 'description', 'rejection_reason')
-        }),
-        ('Tasniflash', {
-            'fields': ('status', 'priority', 'type', 'position', 'sprint')
-        }),
-        ('Topshiriq & narxlar', {
-            'fields': ('created_by', 'assignee', 'task_price', 'penalty_percentage')
-        }),
-        ('Vaqtni kuzatish & Sifat', {
-            'fields': ('deadline', 'estimated_minutes', 'actual_minutes', 'reopened_count')
-        }),
-        ('Tizim haqida ma\'lumot', {
-            'fields': ('created_at', 'updated_at', 'is_active'),
-            'classes': ('collapse',),
-        }),
+        ("Asosiy", {"fields": ("project", "title", "description", "rejection_reason")}),
+        (
+            "Tasniflash",
+            {"fields": ("status", "priority", "type", "position", "sprint")},
+        ),
+        (
+            "Topshiriq & narxlar",
+            {"fields": ("created_by", "assignee", "task_price", "penalty_percentage")},
+        ),
+        (
+            "Vaqtni kuzatish & Sifat",
+            {
+                "fields": (
+                    "deadline",
+                    "estimated_minutes",
+                    "actual_minutes",
+                    "reopened_count",
+                )
+            },
+        ),
+        (
+            "Tizim haqida ma'lumot",
+            {
+                "fields": ("created_at", "updated_at", "is_active"),
+                "classes": ("collapse",),
+            },
+        ),
     )
 
-    @admin.display(description='Turi')
+    @admin.display(description="Turi")
     def type_badge(self, obj):
-        color = 'red' if obj.type == Type.BUG else 'green' if obj.type == Type.FEATURE else 'blue'
-        return format_html('<b style="color: {};">{}</b>', color, obj.get_type_display())
+        color = (
+            "red"
+            if obj.type == Type.BUG
+            else "green" if obj.type == Type.FEATURE else "blue"
+        )
+        return format_html(
+            '<b style="color: {};">{}</b>', color, obj.get_type_display()
+        )
 
 
 @admin.register(Meeting)
 class MeetingAdmin(ModelAdmin):
-    list_display = ('uid', 'title', 'project', 'organizer', 'start_time', 'is_completed', 'is_active')
-    list_display_links = ('uid', 'title')
-    list_filter = ('is_completed', 'start_time', 'project', 'organizer')
-    search_fields = ('title', 'description', 'project__title', 'organizer__username')
+    list_display = (
+        "uid",
+        "title",
+        "project",
+        "organizer",
+        "start_time",
+        "is_completed",
+        "is_active",
+    )
+    list_display_links = ("uid", "title")
+    list_filter = ("is_completed", "start_time", "project", "organizer")
+    search_fields = ("title", "description", "project__title", "organizer__username")
 
-    readonly_fields = ('created_at', 'updated_at')
+    readonly_fields = ("created_at", "updated_at")
 
     inlines = [MeetingAttendanceInline]
 
     fieldsets = (
-        ('Asosiy', {
-            'fields': ('project', 'organizer', 'title', 'description', 'requires_approval', 'penalty_percentage')
-        }),
-        ('Vaqtni kuzatish & Holat', {
-            'fields': ('start_time', 'duration_minutes', 'is_completed', 'is_deleted')
-        }),
-        ('Tizim haqida ma\'lumot', {
-            'fields': ('created_at', 'updated_at', 'is_active'),
-            'classes': ('collapse',),
-        }),
+        (
+            "Asosiy",
+            {
+                "fields": (
+                    "project",
+                    "organizer",
+                    "title",
+                    "description",
+                    "requires_approval",
+                    "penalty_percentage",
+                )
+            },
+        ),
+        (
+            "Vaqtni kuzatish & Holat",
+            {
+                "fields": (
+                    "start_time",
+                    "duration_minutes",
+                    "is_completed",
+                    "is_deleted",
+                )
+            },
+        ),
+        (
+            "Tizim haqida ma'lumot",
+            {
+                "fields": ("created_at", "updated_at", "is_active"),
+                "classes": ("collapse",),
+            },
+        ),
     )

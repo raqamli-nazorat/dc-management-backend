@@ -11,11 +11,14 @@ handler404 = json_404
 handler500 = json_500
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include('apps.urls')),
-
-    path('api/docs/schema/', SpectacularAPIView.as_view(), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path("admin/", admin.site.urls),
+    path("api/", include("apps.urls")),
+    path("api/docs/schema/", SpectacularAPIView.as_view(), name="schema"),
+    path(
+        "api/docs/",
+        SpectacularSwaggerView.as_view(url_name="schema"),
+        name="swagger-ui",
+    ),
 ]
 
 if settings.DEBUG:

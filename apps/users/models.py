@@ -10,44 +10,96 @@ from apps.applications.models import Region, District, Position
 
 
 class Role(models.TextChoices):
-    ADMIN = 'admin', 'Administrator'
-    MANAGER = 'manager', 'Menejer'
-    EMPLOYEE = 'employee', 'Xodim'
-    AUDITOR = 'auditor', 'Nazoratchi'
-    ACCOUNTANT = 'accountant', 'Hisobchi'
+    ADMIN = "admin", "Administrator"
+    MANAGER = "manager", "Menejer"
+    EMPLOYEE = "employee", "Xodim"
+    AUDITOR = "auditor", "Nazoratchi"
+    ACCOUNTANT = "accountant", "Hisobchi"
 
 
 class User(AbstractUser):
-    username = models.CharField(max_length=150, unique=True, db_index=True, verbose_name="F.I.O")
-    roles = ArrayField(models.CharField(max_length=20, choices=Role.choices), default=list, blank=True,
-                       verbose_name="Rollari")
-    active_role = models.CharField(max_length=20, choices=Role.choices, null=True, blank=True,
-                                   db_index=True, verbose_name="Aktiv rol")
+    username = models.CharField(
+        max_length=150, unique=True, db_index=True, verbose_name="F.I.O"
+    )
+    roles = ArrayField(
+        models.CharField(max_length=20, choices=Role.choices),
+        default=list,
+        blank=True,
+        verbose_name="Rollari",
+    )
+    active_role = models.CharField(
+        max_length=20,
+        choices=Role.choices,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="Aktiv rol",
+    )
 
-    region = models.ForeignKey(Region, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Viloyati")
-    district = models.ForeignKey(District, on_delete=models.SET_NULL, null=True, blank=True,
-                                 verbose_name="Tumani")
-    phone_number = models.CharField(validators=[phone_validator], max_length=13, blank=True,
-                                    verbose_name="Telefon raqami")
-    card_number = models.JSONField(default=dict, blank=True, verbose_name="Karta raqami")
-    passport_series = models.CharField(max_length=9, blank=True, null=True, verbose_name="Passport seriyasi va raqami")
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Viloyati",
+    )
+    district = models.ForeignKey(
+        District,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Tumani",
+    )
+    phone_number = models.CharField(
+        validators=[phone_validator],
+        max_length=13,
+        blank=True,
+        verbose_name="Telefon raqami",
+    )
+    card_number = models.JSONField(
+        default=dict, blank=True, verbose_name="Karta raqami"
+    )
+    passport_series = models.CharField(
+        max_length=9, blank=True, null=True, verbose_name="Passport seriyasi va raqami"
+    )
 
-    passport_image = models.ImageField(upload_to=passport_path, validators=[validate_file_size], null=True, blank=True,
-                                       verbose_name="Passport rasmi")
-    avatar = models.ImageField(upload_to=user_avatar_path, validators=[validate_file_size], null=True, blank=True,
-                               verbose_name="Xodim avatari")
+    passport_image = models.ImageField(
+        upload_to=passport_path,
+        validators=[validate_file_size],
+        null=True,
+        blank=True,
+        verbose_name="Passport rasmi",
+    )
+    avatar = models.ImageField(
+        upload_to=user_avatar_path,
+        validators=[validate_file_size],
+        null=True,
+        blank=True,
+        verbose_name="Xodim avatari",
+    )
 
-    position = models.ForeignKey(Position, on_delete=models.SET_NULL, null=True, blank=True,
-                                 verbose_name='Lavozimi')
-    fixed_salary = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Oylik maosh")
-    balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00, verbose_name="Balans")
+    position = models.ForeignKey(
+        Position,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Lavozimi",
+    )
+    fixed_salary = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00, verbose_name="Oylik maosh"
+    )
+    balance = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0.00, verbose_name="Balans"
+    )
     change_password = models.BooleanField(default=True)
-    social_links = models.JSONField(default=dict, blank=True, verbose_name="Ijtimoiy tarmoqlar")
+    social_links = models.JSONField(
+        default=dict, blank=True, verbose_name="Ijtimoiy tarmoqlar"
+    )
 
     class Meta:
-        verbose_name = 'Foydalanuvchi '
-        verbose_name_plural = 'Foydalanuvchilar'
-        ordering = ['-date_joined']
+        verbose_name = "Foydalanuvchi "
+        verbose_name_plural = "Foydalanuvchilar"
+        ordering = ["-date_joined"]
 
     def __str__(self):
         return f"{self.username}"
@@ -62,16 +114,20 @@ class User(AbstractUser):
         super().clean()
 
         if self.active_role and self.active_role not in self.roles:
-            raise ValidationError({
-                'active_role': "Tanlangan rol foydalanuvchining mavjud rollari ro'yxatida topilmadi."
-            })
+            raise ValidationError(
+                {
+                    "active_role": "Tanlangan rol foydalanuvchining mavjud rollari ro'yxatida topilmadi."
+                }
+            )
 
         if self.district and self.region:
             if self.district.region_id != self.region_id:
-                raise ValidationError({
-                    'district': "Tanlangan tuman ushbu viloyatga tegishli emas!"
-                })
+                raise ValidationError(
+                    {"district": "Tanlangan tuman ushbu viloyatga tegishli emas!"}
+                )
 
     def save(self, *args, **kwargs):
-        self.full_clean()
+        if not getattr(self, '_skip_clean', False):
+            self.full_clean()
+        self._skip_clean = False
         super().save(*args, **kwargs)

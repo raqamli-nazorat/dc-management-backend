@@ -7,41 +7,101 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Todo',
+            name="Todo",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('title', models.CharField(max_length=255, verbose_name='Vazifa nomi')),
-                ('color', models.CharField(choices=[('red', 'Qizil'), ('green', 'Yashil'), ('blue', "Ko'k"), ('yellow', 'Sariq')], default='blue', max_length=20, verbose_name='Rangi')),
-                ('is_done', models.BooleanField(default=False, verbose_name='Bajarildimi?')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Vazifa nomi")),
+                (
+                    "color",
+                    models.CharField(
+                        choices=[
+                            ("red", "Qizil"),
+                            ("green", "Yashil"),
+                            ("blue", "Ko'k"),
+                            ("yellow", "Sariq"),
+                        ],
+                        default="blue",
+                        max_length=20,
+                        verbose_name="Rangi",
+                    ),
+                ),
+                (
+                    "is_done",
+                    models.BooleanField(default=False, verbose_name="Bajarildimi?"),
+                ),
             ],
             options={
-                'verbose_name': 'Vazifa ',
-                'verbose_name_plural': 'Vazifalar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Vazifa ",
+                "verbose_name_plural": "Vazifalar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='TodoItem',
+            name="TodoItem",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('title', models.CharField(max_length=255, verbose_name='Nomi')),
-                ('is_done', models.BooleanField(default=False, verbose_name='Bajarildimi?')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Nomi")),
+                (
+                    "is_done",
+                    models.BooleanField(default=False, verbose_name="Bajarildimi?"),
+                ),
             ],
             options={
-                'verbose_name': 'Kichik vazifa ',
-                'verbose_name_plural': 'Kichik vazifalar',
-                'ordering': ['created_at'],
+                "verbose_name": "Kichik vazifa ",
+                "verbose_name_plural": "Kichik vazifalar",
+                "ordering": ["created_at"],
             },
         ),
     ]

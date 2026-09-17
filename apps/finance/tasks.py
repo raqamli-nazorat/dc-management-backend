@@ -10,7 +10,13 @@ from django.utils import timezone
 from apps.finance.models import Payroll
 from apps.finance.utils import get_month_range, get_month_display_name
 from apps.notifications.models import Notification, NotificationType
-from apps.projects.models import MeetingAttendance, Project, ProjectStatus, Task, TaskStatus
+from apps.projects.models import (
+    MeetingAttendance,
+    Project,
+    ProjectStatus,
+    Task,
+    TaskStatus,
+)
 from apps.users.models import Role, User
 
 logger = logging.getLogger(__name__)
@@ -24,9 +30,8 @@ def _round(value: Decimal) -> Decimal:
 
 def _send_accountant_notifications(month_label):
     accountants = User.objects.filter(
-        roles__contains=[Role.ACCOUNTANT],
-        is_active=True
-    ).only('id')
+        roles__contains=[Role.ACCOUNTANT], is_active=True
+    ).only("id")
 
     notifications = [
         Notification(
@@ -34,7 +39,8 @@ def _send_accountant_notifications(month_label):
             title="Oylik hisob-kitob yakunlandi",
             message=f"{month_label} oyi uchun maoshlar hisoblab chiqildi. Tasdiqlashingizni kutmoqda.",
             type=NotificationType.FINANCE,
-        ) for accountant in accountants
+        )
+        for accountant in accountants
     ]
 
     if notifications:
@@ -44,8 +50,7 @@ def _send_accountant_notifications(month_label):
 
 def _calc_meeting_penalty(user):
     unexcused_qs = list(
-        MeetingAttendance.objects
-        .filter(
+        MeetingAttendance.objects.filter(
             user=user,
             payroll_processed=False,
             is_excused=False,
@@ -54,9 +59,7 @@ def _calc_meeting_penalty(user):
             meeting__is_deleted=False,
             meeting__is_completed=True,
         )
-        .filter(
-            Q(is_attended=False) | Q(is_attended=True, late_minutes__gt=5)
-        )
+        .filter(Q(is_attended=False) | Q(is_attended=True, late_minutes__gt=5))
         .exclude(meeting__organizer=user)
         .select_related("meeting")
     )
@@ -85,15 +88,16 @@ def _calc_meeting_penalty(user):
             reasons.append(f"{desc} {pct}% ({penalty} so'm) minus bo'lgan")
 
     if processed_atts:
-        MeetingAttendance.objects.filter(id__in=processed_atts).update(payroll_processed=True)
+        MeetingAttendance.objects.filter(id__in=processed_atts).update(
+            payroll_processed=True
+        )
 
     return total_penalty, reasons, len(unexcused_qs)
 
 
 def _calc_manager_kpi(user):
     completed_projects = list(
-        Project.objects
-        .filter(
+        Project.objects.filter(
             manager=user,
             status=ProjectStatus.COMPLETED,
             payroll_processed=False,
@@ -114,21 +118,29 @@ def _calc_manager_kpi(user):
         if project.was_overdue and penalty_base > 0:
             penalty = _round((penalty_base * project.penalty_percentage) / 100)
             total_penalty += penalty
-            reasons.append(f'"{project.title}" loyihasi uchun muddat qo\'shilgan {project.penalty_percentage}% ({penalty} so\'m) minus bo\'lgan')
-            logger.debug("Manager %s | Loyiha '%s' kechikkan. Jarima: %s", user.username, project.title, penalty)
+            reasons.append(
+                f"\"{project.title}\" loyihasi uchun muddat qo'shilgan {project.penalty_percentage}% ({penalty} so'm) minus bo'lgan"
+            )
+            logger.debug(
+                "Manager %s | Loyiha '%s' kechikkan. Jarima: %s",
+                user.username,
+                project.title,
+                penalty,
+            )
 
         kpi_bonus += gross
 
     if processed_project_ids:
-        Project.objects.filter(id__in=processed_project_ids).update(payroll_processed=True)
+        Project.objects.filter(id__in=processed_project_ids).update(
+            payroll_processed=True
+        )
 
     return kpi_bonus, total_penalty, reasons
 
 
 def _calc_employee_kpi(user):
     completed_tasks = list(
-        Task.objects
-        .filter(
+        Task.objects.filter(
             assignee=user,
             status=TaskStatus.CHECKED,
             payroll_processed=False,
@@ -153,34 +165,56 @@ def _calc_employee_kpi(user):
 
         if penalty_base > 0:
             if task.reopened_count > 0:
-                reopen_penalty = _round((penalty_base * task.penalty_percentage) / 100) * task.reopened_count
+                reopen_penalty = (
+                    _round((penalty_base * task.penalty_percentage) / 100)
+                    * task.reopened_count
+                )
                 current_task_penalty += reopen_penalty
                 total_reopen_pct = task.penalty_percentage * task.reopened_count
-                reasons.append(f'"{task.title}" task {task.reopened_count} marta qayta ochilgani uchun {total_reopen_pct}% ({reopen_penalty} so\'m) minus bo\'lgan')
+                reasons.append(
+                    f"\"{task.title}\" task {task.reopened_count} marta qayta ochilgani uchun {total_reopen_pct}% ({reopen_penalty} so'm) minus bo'lgan"
+                )
 
             if task.was_overdue:
                 missed_deadlines_count += 1
                 overdue_penalty = _round((penalty_base * task.penalty_percentage) / 100)
                 current_task_penalty += overdue_penalty
-                reasons.append(f'"{task.title}" task uchun muddat qo\'shilgan {task.penalty_percentage}% ({overdue_penalty} so\'m) minus bo\'lgan')
-                logger.debug("Employee %s | Task '%s' kechikkan. Jarima: %s", user.username, task.title,
-                             overdue_penalty)
+                reasons.append(
+                    f"\"{task.title}\" task uchun muddat qo'shilgan {task.penalty_percentage}% ({overdue_penalty} so'm) minus bo'lgan"
+                )
+                logger.debug(
+                    "Employee %s | Task '%s' kechikkan. Jarima: %s",
+                    user.username,
+                    task.title,
+                    overdue_penalty,
+                )
 
         total_penalty += current_task_penalty
 
         est = task.estimated_minutes or 0
         act = task.actual_minutes or 0
-        velocity = Decimal(str(min(est / act, 1.0))) if est > 0 and act > 0 else Decimal("1.0")
+        velocity = (
+            Decimal(str(min(est / act, 1.0))) if est > 0 and act > 0 else Decimal("1.0")
+        )
         kpi_bonus += _round(gross * velocity)
 
     if processed_task_ids:
         Task.objects.filter(id__in=processed_task_ids).update(payroll_processed=True)
 
-    return kpi_bonus, total_penalty, len(completed_tasks), missed_deadlines_count, bugs_count, reasons
+    return (
+        kpi_bonus,
+        total_penalty,
+        len(completed_tasks),
+        missed_deadlines_count,
+        bugs_count,
+        reasons,
+    )
 
 
 @shared_task(bind=True, max_retries=3, default_retry_delay=60)
-def calculate_monthly_salaries(self=None, target_month=None, user_id=None, notify_accountants=True):
+def calculate_monthly_salaries(
+    self=None, target_month=None, user_id=None, notify_accountants=True
+):
     month_start, month_end, target_date = get_month_range(target_month)
     month_label = target_date.strftime("%Y-%m")
     display_name = get_month_display_name(target_date)
@@ -191,11 +225,9 @@ def calculate_monthly_salaries(self=None, target_month=None, user_id=None, notif
     if user_id:
         users_qs = users_qs.filter(id=user_id)
 
-    users_qs = (
-        users_qs
-        .only("id", "username", "roles", "fixed_salary", "balance")
-        .iterator(chunk_size=500)
-    )
+    users_qs = users_qs.only(
+        "id", "username", "roles", "fixed_salary", "balance"
+    ).iterator(chunk_size=500)
 
     stats = {
         "month": month_label,
@@ -206,39 +238,49 @@ def calculate_monthly_salaries(self=None, target_month=None, user_id=None, notif
         "skipped_confirmed": 0,
         "errors": 0,
         "total_amount": Decimal("0.00"),
-        "details": []
+        "details": [],
     }
 
     for user in users_qs:
         try:
-            payroll, created, status = _process_user(user, month_start, month_end, target_date)
+            payroll, created, status = _process_user(
+                user, month_start, month_end, target_date
+            )
             stats["processed"] += 1
             if status == "confirmed":
                 stats["skipped_confirmed"] += 1
-                stats["details"].append({
-                    "user": user,
-                    "status": "confirmed",
-                    "payroll": payroll,
-                })
+                stats["details"].append(
+                    {
+                        "user": user,
+                        "status": "confirmed",
+                        "payroll": payroll,
+                    }
+                )
             else:
                 if created:
                     stats["created"] += 1
                 else:
                     stats["updated"] += 1
                 stats["total_amount"] += payroll.total_amount
-                stats["details"].append({
-                    "user": user,
-                    "status": "created" if created else "updated",
-                    "payroll": payroll,
-                })
+                stats["details"].append(
+                    {
+                        "user": user,
+                        "status": "created" if created else "updated",
+                        "payroll": payroll,
+                    }
+                )
         except Exception as exc:
             stats["errors"] += 1
-            stats["details"].append({
-                "user": user,
-                "status": "error",
-                "error": str(exc)
-            })
-            logger.error("Foydalanuvchi %s (%s) uchun hisoblashda xato: %s", user.username, user.pk, exc, exc_info=True)
+            stats["details"].append(
+                {"user": user, "status": "error", "error": str(exc)}
+            )
+            logger.error(
+                "Foydalanuvchi %s (%s) uchun hisoblashda xato: %s",
+                user.username,
+                user.pk,
+                exc,
+                exc_info=True,
+            )
 
     if notify_accountants:
         try:
@@ -258,12 +300,18 @@ def calculate_monthly_salaries(self=None, target_month=None, user_id=None, notif
 
 def _process_user(user: User, month_start, month_end, target_date=None):
     if target_date is None:
-        target_date = month_start.date() if hasattr(month_start, 'date') else month_start
+        target_date = (
+            month_start.date() if hasattr(month_start, "date") else month_start
+        )
 
     with transaction.atomic():
         existing = Payroll.objects.filter(user=user, month=target_date).first()
         if existing and existing.is_confirmed:
-            logger.info("Foydalanuvchi %s uchun %s oyi maoshi allaqachon tasdiqlangan, o'tkazib yuborildi.", user.username, target_date)
+            logger.info(
+                "Foydalanuvchi %s uchun %s oyi maoshi allaqachon tasdiqlangan, o'tkazib yuborildi.",
+                user.username,
+                target_date,
+            )
             return existing, False, "confirmed"
 
         kpi_bonus = Decimal("0.00")
@@ -278,11 +326,20 @@ def _process_user(user: User, month_start, month_end, target_date=None):
             reasons.extend(mgr_reasons)
 
         if user.has_any_role(Role.EMPLOYEE):
-            meet_penalty, meet_reasons, missed_meetings_count = _calc_meeting_penalty(user)
+            meet_penalty, meet_reasons, missed_meetings_count = _calc_meeting_penalty(
+                user
+            )
             total_penalty += meet_penalty
             reasons.extend(meet_reasons)
 
-            emp_kpi, task_penalty, tasks_done, missed_deadlines, bugs_count, emp_reasons = _calc_employee_kpi(user)
+            (
+                emp_kpi,
+                task_penalty,
+                tasks_done,
+                missed_deadlines,
+                bugs_count,
+                emp_reasons,
+            ) = _calc_employee_kpi(user)
             kpi_bonus += emp_kpi
             total_penalty += task_penalty
             reasons.extend(emp_reasons)
@@ -296,13 +353,15 @@ def _process_user(user: User, month_start, month_end, target_date=None):
                 "fixed_salary": user.fixed_salary,
                 "kpi_bonus": kpi_bonus,
                 "penalty_amount": total_penalty,
-                "total_amount": max(Decimal("0.00"), user.fixed_salary + kpi_bonus - total_penalty),
+                "total_amount": max(
+                    Decimal("0.00"), user.fixed_salary + kpi_bonus - total_penalty
+                ),
                 "tasks_completed": tasks_done,
                 "deadline_missed": missed_deadlines,
                 "bug_count": bugs_count,
                 "missed_meetings_count": missed_meetings_count,
                 "reason": reason_text,
                 "is_confirmed": False,
-            }
+            },
         )
         return payroll, created, "created" if created else "updated"

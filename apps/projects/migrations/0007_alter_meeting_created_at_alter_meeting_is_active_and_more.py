@@ -7,108 +7,151 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0006_meetingattendance_is_excused'),
+        ("projects", "0006_meetingattendance_is_excused"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='meeting',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="meeting",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='meeting',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="meeting",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meeting',
-            name='is_completed',
-            field=models.BooleanField(db_index=True, default=False, verbose_name='Tugatildimi?'),
+            model_name="meeting",
+            name="is_completed",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="Tugatildimi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meeting',
-            name='is_deleted',
-            field=models.BooleanField(db_index=True, default=False, verbose_name="O'chirilganmi?"),
+            model_name="meeting",
+            name="is_deleted",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="O'chirilganmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='absence_reason',
-            field=models.TextField(blank=True, null=True, validators=[django.core.validators.MinLengthValidator(10)], verbose_name='Sabab'),
+            model_name="meetingattendance",
+            name="absence_reason",
+            field=models.TextField(
+                blank=True,
+                null=True,
+                validators=[django.core.validators.MinLengthValidator(10)],
+                verbose_name="Sabab",
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="meetingattendance",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="meetingattendance",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='is_attended',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Qatnashdimi?'),
+            model_name="meetingattendance",
+            name="is_attended",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Qatnashdimi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='is_excused',
-            field=models.BooleanField(db_index=True, default=False, verbose_name='Sabablimi?'),
+            model_name="meetingattendance",
+            name="is_excused",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="Sabablimi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='project',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="project",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='project',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="project",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='project',
-            name='is_deleted',
-            field=models.BooleanField(db_index=True, default=False, verbose_name="O'chirilganmi?"),
+            model_name="project",
+            name="is_deleted",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="O'chirilganmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='project',
-            name='is_hidden',
-            field=models.BooleanField(db_index=True, default=False, verbose_name='Yashirilganmi?'),
+            model_name="project",
+            name="is_hidden",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="Yashirilganmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="task",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="task",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='task',
-            name='is_deleted',
-            field=models.BooleanField(db_index=True, default=False, verbose_name="O'chirilganmi?"),
+            model_name="task",
+            name="is_deleted",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="O'chirilganmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='taskattachment',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="taskattachment",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='taskattachment',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="taskattachment",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='taskrejectionfile',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="taskrejectionfile",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='taskrejectionfile',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="taskrejectionfile",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
     ]

@@ -56,7 +56,7 @@ class ResponseRenderer(JSONRenderer):
             "errorId": status_code,
             "errorCode": str(error_code) if error_code else None,
             "isFriendly": is_friendly,
-            "errorMsg": str(error_msg), 
+            "errorMsg": str(error_msg),
             "details": details,
         }
 

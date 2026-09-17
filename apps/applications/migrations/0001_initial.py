@@ -9,81 +9,270 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Application',
+            name="Application",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('full_name', models.CharField(max_length=255, verbose_name="To'liq ism sharif")),
-                ('birth_date', models.DateField(verbose_name="Tug'ilgan sana")),
-                ('is_student', models.BooleanField(default=False, verbose_name='Talabami?')),
-                ('university', models.CharField(blank=True, max_length=255, null=True, verbose_name="O'qish joyi va kursi")),
-                ('phone', models.CharField(max_length=20, validators=[django.core.validators.RegexValidator(message="Telefon raqami +998XXXXXXXXX formatida bo'lishi kerak.", regex='^\\+998\\d{9}$')], verbose_name='Telefon raqami')),
-                ('telegram', models.CharField(blank=True, max_length=255, null=True, validators=[django.core.validators.RegexValidator(message="Telegram havolasi https://t.me/username yoki https://username.t.me formatida bo'lishi kerak.", regex='^https://(t\\.me/.+|[a-zA-Z0-9_]+\\.t\\.me)$')], verbose_name='Telegram profil havolasi')),
-                ('resume', models.FileField(upload_to='applications/resumes/', validators=[apps.common.validators.validate_only_pdf, apps.common.validators.validate_file_size], verbose_name='Rezyume (CV)')),
-                ('extra_info', models.TextField(blank=True, null=True, verbose_name="Qo'shimcha ma'lumot")),
-                ('portfolio', models.CharField(blank=True, max_length=500, null=True, validators=[django.core.validators.RegexValidator(message='Portfolio havolasi https:// bilan boshlanishi kerak.', regex='^https://.+$')], verbose_name='Portfolio manzili')),
-                ('status', models.CharField(choices=[('pending', 'Kutilmoqda'), ('accepted', 'Qabul qilindi'), ('rejected', 'Rad etildi')], db_index=True, default='pending', max_length=10, verbose_name='Holati')),
-                ('conclusion', models.TextField(blank=True, null=True, verbose_name='Xulosa')),
-                ('reviewed_at', models.DateTimeField(blank=True, null=True, verbose_name='Xulosa kiritilgan vaqt')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "full_name",
+                    models.CharField(max_length=255, verbose_name="To'liq ism sharif"),
+                ),
+                ("birth_date", models.DateField(verbose_name="Tug'ilgan sana")),
+                (
+                    "is_student",
+                    models.BooleanField(default=False, verbose_name="Talabami?"),
+                ),
+                (
+                    "university",
+                    models.CharField(
+                        blank=True,
+                        max_length=255,
+                        null=True,
+                        verbose_name="O'qish joyi va kursi",
+                    ),
+                ),
+                (
+                    "phone",
+                    models.CharField(
+                        max_length=20,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Telefon raqami +998XXXXXXXXX formatida bo'lishi kerak.",
+                                regex="^\\+998\\d{9}$",
+                            )
+                        ],
+                        verbose_name="Telefon raqami",
+                    ),
+                ),
+                (
+                    "telegram",
+                    models.CharField(
+                        blank=True,
+                        max_length=255,
+                        null=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Telegram havolasi https://t.me/username yoki https://username.t.me formatida bo'lishi kerak.",
+                                regex="^https://(t\\.me/.+|[a-zA-Z0-9_]+\\.t\\.me)$",
+                            )
+                        ],
+                        verbose_name="Telegram profil havolasi",
+                    ),
+                ),
+                (
+                    "resume",
+                    models.FileField(
+                        upload_to="applications/resumes/",
+                        validators=[
+                            apps.common.validators.validate_only_pdf,
+                            apps.common.validators.validate_file_size,
+                        ],
+                        verbose_name="Rezyume (CV)",
+                    ),
+                ),
+                (
+                    "extra_info",
+                    models.TextField(
+                        blank=True, null=True, verbose_name="Qo'shimcha ma'lumot"
+                    ),
+                ),
+                (
+                    "portfolio",
+                    models.CharField(
+                        blank=True,
+                        max_length=500,
+                        null=True,
+                        validators=[
+                            django.core.validators.RegexValidator(
+                                message="Portfolio havolasi https:// bilan boshlanishi kerak.",
+                                regex="^https://.+$",
+                            )
+                        ],
+                        verbose_name="Portfolio manzili",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Kutilmoqda"),
+                            ("accepted", "Qabul qilindi"),
+                            ("rejected", "Rad etildi"),
+                        ],
+                        db_index=True,
+                        default="pending",
+                        max_length=10,
+                        verbose_name="Holati",
+                    ),
+                ),
+                (
+                    "conclusion",
+                    models.TextField(blank=True, null=True, verbose_name="Xulosa"),
+                ),
+                (
+                    "reviewed_at",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Xulosa kiritilgan vaqt"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Ariza',
-                'verbose_name_plural': 'Arizalar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Ariza",
+                "verbose_name_plural": "Arizalar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='District',
+            name="District",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('name', models.CharField(max_length=255, verbose_name='Nomi')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                ("name", models.CharField(max_length=255, verbose_name="Nomi")),
             ],
             options={
-                'verbose_name': 'Tuman',
-                'verbose_name_plural': 'Tumanlar',
-                'ordering': ['name'],
+                "verbose_name": "Tuman",
+                "verbose_name_plural": "Tumanlar",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Position',
+            name="Position",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('name', models.CharField(max_length=255, unique=True, verbose_name='Nomi')),
-                ('is_application', models.BooleanField(default=False, verbose_name='Ariza uchun ham ishlatilsinmi?')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(max_length=255, unique=True, verbose_name="Nomi"),
+                ),
+                (
+                    "is_application",
+                    models.BooleanField(
+                        default=False, verbose_name="Ariza uchun ham ishlatilsinmi?"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Lavozim',
-                'verbose_name_plural': 'Lavozimlar',
-                'ordering': ['name'],
+                "verbose_name": "Lavozim",
+                "verbose_name_plural": "Lavozimlar",
+                "ordering": ["name"],
             },
         ),
         migrations.CreateModel(
-            name='Region',
+            name="Region",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('name', models.CharField(max_length=255, unique=True, verbose_name='Nomi')),
-                ('is_application', models.BooleanField(default=False, verbose_name='Ariza uchun ham ishlatilsinmi?')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "name",
+                    models.CharField(max_length=255, unique=True, verbose_name="Nomi"),
+                ),
+                (
+                    "is_application",
+                    models.BooleanField(
+                        default=False, verbose_name="Ariza uchun ham ishlatilsinmi?"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Viloyat',
-                'verbose_name_plural': 'Viloyatlar',
-                'ordering': ['name'],
+                "verbose_name": "Viloyat",
+                "verbose_name_plural": "Viloyatlar",
+                "ordering": ["name"],
             },
         ),
     ]

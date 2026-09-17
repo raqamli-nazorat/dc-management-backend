@@ -10,102 +10,355 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='ExpenseCategory',
+            name="ExpenseCategory",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('title', models.CharField(max_length=255, unique=True, verbose_name='Nomi')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "title",
+                    models.CharField(max_length=255, unique=True, verbose_name="Nomi"),
+                ),
             ],
             options={
-                'verbose_name': 'Xarajatlar toifasi ',
-                'verbose_name_plural': 'Xarajatlar toifalari',
-                'ordering': ['title'],
+                "verbose_name": "Xarajatlar toifasi ",
+                "verbose_name_plural": "Xarajatlar toifalari",
+                "ordering": ["title"],
             },
         ),
         migrations.CreateModel(
-            name='ExpenseReceipt',
+            name="ExpenseReceipt",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('file', models.FileField(upload_to='expense/receipts/%Y/%m/', validators=[apps.common.validators.validate_file_extension, apps.common.validators.validate_file_size], verbose_name='Chek hujjati')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to="expense/receipts/%Y/%m/",
+                        validators=[
+                            apps.common.validators.validate_file_extension,
+                            apps.common.validators.validate_file_size,
+                        ],
+                        verbose_name="Chek hujjati",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Xarajat cheki',
-                'verbose_name_plural': 'Xarajat cheklari',
+                "verbose_name": "Xarajat cheki",
+                "verbose_name_plural": "Xarajat cheklari",
             },
         ),
         migrations.CreateModel(
-            name='ExpenseRequest',
+            name="ExpenseRequest",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('type', models.CharField(choices=[('withdrawal', "Mablag' chiqarish"), ('company', 'Kompaniya xarajatlari'), ('other', 'Boshqa xarajatlar')], default='withdrawal', max_length=20, verbose_name='Turi')),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=12, validators=[django.core.validators.MinValueValidator(Decimal('1.00'))], verbose_name='Miqdori')),
-                ('reason', models.TextField(blank=True, null=True, verbose_name='Sababi')),
-                ('cancel_reason', models.TextField(blank=True, null=True, verbose_name='Bekor qilish sababi')),
-                ('payment_method', models.CharField(choices=[('cash', 'Naqd pul'), ('card', 'Karta raqam orqali')], default='card', max_length=10, verbose_name="To'lov turi")),
-                ('card_number', models.CharField(blank=True, max_length=20, null=True, verbose_name='Karta raqami')),
-                ('status', models.CharField(choices=[('pending', 'Kutilmoqda'), ('paid', "To'landi"), ('confirmed', 'Tasdiqlandi'), ('cancelled', 'Bekor qilindi')], default='pending', max_length=20, verbose_name='Holati')),
-                ('paid_at', models.DateTimeField(blank=True, null=True, verbose_name="To'langan vaqti")),
-                ('confirmed_at', models.DateTimeField(blank=True, null=True, verbose_name='Tasdiqlangan vaqti')),
-                ('cancelled_at', models.DateTimeField(blank=True, null=True, verbose_name='Bekor qilingan vaqti')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("withdrawal", "Mablag' chiqarish"),
+                            ("company", "Kompaniya xarajatlari"),
+                            ("other", "Boshqa xarajatlar"),
+                        ],
+                        default="withdrawal",
+                        max_length=20,
+                        verbose_name="Turi",
+                    ),
+                ),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        max_digits=12,
+                        validators=[
+                            django.core.validators.MinValueValidator(Decimal("1.00"))
+                        ],
+                        verbose_name="Miqdori",
+                    ),
+                ),
+                (
+                    "reason",
+                    models.TextField(blank=True, null=True, verbose_name="Sababi"),
+                ),
+                (
+                    "cancel_reason",
+                    models.TextField(
+                        blank=True, null=True, verbose_name="Bekor qilish sababi"
+                    ),
+                ),
+                (
+                    "payment_method",
+                    models.CharField(
+                        choices=[("cash", "Naqd pul"), ("card", "Karta raqam orqali")],
+                        default="card",
+                        max_length=10,
+                        verbose_name="To'lov turi",
+                    ),
+                ),
+                (
+                    "card_number",
+                    models.CharField(
+                        blank=True,
+                        max_length=20,
+                        null=True,
+                        verbose_name="Karta raqami",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Kutilmoqda"),
+                            ("paid", "To'landi"),
+                            ("confirmed", "Tasdiqlandi"),
+                            ("cancelled", "Bekor qilindi"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                        verbose_name="Holati",
+                    ),
+                ),
+                (
+                    "paid_at",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="To'langan vaqti"
+                    ),
+                ),
+                (
+                    "confirmed_at",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Tasdiqlangan vaqti"
+                    ),
+                ),
+                (
+                    "cancelled_at",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Bekor qilingan vaqti"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': "Xarajat so'rovi ",
-                'verbose_name_plural': "Xarajat so'rovlari",
-                'ordering': ['-created_at'],
+                "verbose_name": "Xarajat so'rovi ",
+                "verbose_name_plural": "Xarajat so'rovlari",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Ledger',
+            name="Ledger",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('amount', models.DecimalField(decimal_places=2, max_digits=12, verbose_name='Miqdori')),
-                ('transaction_type', models.CharField(choices=[('debit', 'Chiqim'), ('credit', 'Kirim')], max_length=10, verbose_name='Tranzaksiya turi')),
-                ('description', models.CharField(max_length=255)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "amount",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=12, verbose_name="Miqdori"
+                    ),
+                ),
+                (
+                    "transaction_type",
+                    models.CharField(
+                        choices=[("debit", "Chiqim"), ("credit", "Kirim")],
+                        max_length=10,
+                        verbose_name="Tranzaksiya turi",
+                    ),
+                ),
+                ("description", models.CharField(max_length=255)),
             ],
             options={
-                'verbose_name': 'Arxiv ',
-                'verbose_name_plural': 'Arxivlar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Arxiv ",
+                "verbose_name_plural": "Arxivlar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Payroll',
+            name="Payroll",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('month', models.DateField(verbose_name='Oy')),
-                ('fixed_salary', models.DecimalField(decimal_places=2, max_digits=12, verbose_name='Oylik maosh')),
-                ('kpi_bonus', models.DecimalField(decimal_places=2, default=0, max_digits=12, verbose_name='KPI bonusi')),
-                ('penalty_amount', models.DecimalField(decimal_places=2, default=0, max_digits=12, verbose_name='Jarima miqdori')),
-                ('total_amount', models.DecimalField(decimal_places=2, editable=False, max_digits=12, verbose_name='Jami miqdori')),
-                ('tasks_completed', models.PositiveIntegerField(default=0, verbose_name='Bajarilgan vazifalar')),
-                ('deadline_missed', models.PositiveIntegerField(default=0, verbose_name="Muddatdan o'tkazib yuborilganlar")),
-                ('bug_count', models.PositiveIntegerField(default=0, verbose_name='Xatolar')),
-                ('is_confirmed', models.BooleanField(default=False, verbose_name='Tasdiqlandimi?')),
-                ('confirmed_at', models.DateTimeField(blank=True, null=True, verbose_name='Tasdiqlangan vaqti')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                ("month", models.DateField(verbose_name="Oy")),
+                (
+                    "fixed_salary",
+                    models.DecimalField(
+                        decimal_places=2, max_digits=12, verbose_name="Oylik maosh"
+                    ),
+                ),
+                (
+                    "kpi_bonus",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=12,
+                        verbose_name="KPI bonusi",
+                    ),
+                ),
+                (
+                    "penalty_amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0,
+                        max_digits=12,
+                        verbose_name="Jarima miqdori",
+                    ),
+                ),
+                (
+                    "total_amount",
+                    models.DecimalField(
+                        decimal_places=2,
+                        editable=False,
+                        max_digits=12,
+                        verbose_name="Jami miqdori",
+                    ),
+                ),
+                (
+                    "tasks_completed",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Bajarilgan vazifalar"
+                    ),
+                ),
+                (
+                    "deadline_missed",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Muddatdan o'tkazib yuborilganlar"
+                    ),
+                ),
+                (
+                    "bug_count",
+                    models.PositiveIntegerField(default=0, verbose_name="Xatolar"),
+                ),
+                (
+                    "is_confirmed",
+                    models.BooleanField(default=False, verbose_name="Tasdiqlandimi?"),
+                ),
+                (
+                    "confirmed_at",
+                    models.DateTimeField(
+                        blank=True, null=True, verbose_name="Tasdiqlangan vaqti"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Ish haqi ',
-                'verbose_name_plural': 'Ish haqlari',
-                'ordering': ['-month', '-id'],
+                "verbose_name": "Ish haqi ",
+                "verbose_name_plural": "Ish haqlari",
+                "ordering": ["-month", "-id"],
             },
         ),
     ]

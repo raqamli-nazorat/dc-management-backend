@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0015_meeting_requires_approval'),
+        ("projects", "0015_meeting_requires_approval"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='meeting',
-            name='description',
-            field=models.TextField(blank=True, null=True, verbose_name='Tavfsifi'),
+            model_name="meeting",
+            name="description",
+            field=models.TextField(blank=True, null=True, verbose_name="Tavfsifi"),
         ),
     ]

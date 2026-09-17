@@ -7,21 +7,21 @@ class NotificationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Notification
         fields = (
-            'id',
-            'title',
-            'message',
-            'type',
-            'extra_data',
-            'is_read',
-            'created_at'
+            "id",
+            "title",
+            "message",
+            "type",
+            "extra_data",
+            "is_read",
+            "created_at",
         )
 
 
 class UserDeviceSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserDevice
-        fields = ('fcm_token', 'device_type', 'device_id')
+        fields = ("fcm_token", "device_type", "device_id")
         extra_kwargs = {
-            'device_id': {'validators': []},
-            'fcm_token': {'validators': []}
+            "device_id": {"validators": []},
+            "fcm_token": {"validators": []},
         }

@@ -7,42 +7,56 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0012_meeting_notification_eta_meeting_notification_sent'),
+        ("projects", "0012_meeting_notification_eta_meeting_notification_sent"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='meeting',
-            name='link',
+            model_name="meeting",
+            name="link",
         ),
         migrations.AddField(
-            model_name='meeting',
-            name='recording_url',
-            field=models.URLField(blank=True, null=True, verbose_name='Yozuv havolasi'),
+            model_name="meeting",
+            name="recording_url",
+            field=models.URLField(blank=True, null=True, verbose_name="Yozuv havolasi"),
         ),
         migrations.AddField(
-            model_name='meetingattendance',
-            name='duration_minutes',
-            field=models.PositiveIntegerField(default=0, verbose_name='Qatnashgan vaqti (daqiqa)'),
+            model_name="meetingattendance",
+            name="duration_minutes",
+            field=models.PositiveIntegerField(
+                default=0, verbose_name="Qatnashgan vaqti (daqiqa)"
+            ),
         ),
         migrations.AddField(
-            model_name='meetingattendance',
-            name='joined_at',
-            field=models.DateTimeField(blank=True, null=True, verbose_name='Kirgan vaqti'),
+            model_name="meetingattendance",
+            name="joined_at",
+            field=models.DateTimeField(
+                blank=True, null=True, verbose_name="Kirgan vaqti"
+            ),
         ),
         migrations.AddField(
-            model_name='meetingattendance',
-            name='left_at',
-            field=models.DateTimeField(blank=True, null=True, verbose_name='Chiqgan vaqti'),
+            model_name="meetingattendance",
+            name="left_at",
+            field=models.DateTimeField(
+                blank=True, null=True, verbose_name="Chiqgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='is_attended',
-            field=models.BooleanField(db_index=True, default=False, verbose_name='Qatnashdimi?'),
+            model_name="meetingattendance",
+            name="is_attended",
+            field=models.BooleanField(
+                db_index=True, default=False, verbose_name="Qatnashdimi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='meeting',
-            field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='attendances', to='projects.meeting', verbose_name="Yig'ilish"),
+            model_name="meetingattendance",
+            name="meeting",
+            field=models.ForeignKey(
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="attendances",
+                to="projects.meeting",
+                verbose_name="Yig'ilish",
+            ),
         ),
     ]

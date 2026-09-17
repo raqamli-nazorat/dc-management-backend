@@ -1,25 +1,42 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
 
-from .views import (ProjectShortViewSet, ProjectViewSet, TaskViewSet,
-                    TaskAttachmentViewSet,
-                    MeetingViewSet, MeetingAttendanceViewSet, TaskRejectionFileViewSet, ProjectDocumentViewSet,
-                    LiveKitWebhookView)
+from .views import (
+    ProjectShortViewSet,
+    ProjectViewSet,
+    TaskViewSet,
+    TaskAttachmentViewSet,
+    MeetingViewSet,
+    MeetingAttendanceViewSet,
+    TaskRejectionFileViewSet,
+    ProjectDocumentViewSet,
+    LiveKitWebhookView,
+)
 
 router = SimpleRouter()
 
-router.register('projects', ProjectViewSet, basename='projects')
-router.register('project-documents', ProjectDocumentViewSet, basename='project-documents')
-router.register('project-shorts', ProjectShortViewSet, basename='projects-shorts')
+router.register("projects", ProjectViewSet, basename="projects")
+router.register(
+    "project-documents", ProjectDocumentViewSet, basename="project-documents"
+)
+router.register("project-shorts", ProjectShortViewSet, basename="projects-shorts")
 
-router.register('tasks', TaskViewSet, basename='tasks')
-router.register('task-attachments', TaskAttachmentViewSet, basename='task-attachments')
-router.register('task-rejection-files', TaskRejectionFileViewSet, basename='task-rejection-files')
+router.register("tasks", TaskViewSet, basename="tasks")
+router.register("task-attachments", TaskAttachmentViewSet, basename="task-attachments")
+router.register(
+    "task-rejection-files", TaskRejectionFileViewSet, basename="task-rejection-files"
+)
 
-router.register('meetings', MeetingViewSet, basename='meetings')
-router.register('meeting-attendance', MeetingAttendanceViewSet, basename='meeting-attendance')
+router.register("meetings", MeetingViewSet, basename="meetings")
+router.register(
+    "meeting-attendance", MeetingAttendanceViewSet, basename="meeting-attendance"
+)
 
 urlpatterns = [
-    path('meetings/livekit/webhook/', LiveKitWebhookView.as_view(), name='livekit-webhook'),
-    path('', include(router.urls))
+    path(
+        "meetings/livekit/webhook/",
+        LiveKitWebhookView.as_view(),
+        name="livekit-webhook",
+    ),
+    path("", include(router.urls)),
 ]

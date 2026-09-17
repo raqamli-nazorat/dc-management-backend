@@ -17,32 +17,32 @@ from .serializers import (
     ProjectComprehensiveReportSerializer,
     ExpenseRequestReportSerializer,
     PayrollReportSerializer,
-    TaskReportSerializer
+    TaskReportSerializer,
 )
 from .filters import (
     UserReportFilter,
     ProjectReportFilter,
     ExpenseReportFilter,
     PayrollReportFilter,
-    TaskReportFilter
+    TaskReportFilter,
 )
 
 User = get_user_model()
 
 
-@extend_schema(tags=['User Reports'])
+@extend_schema(tags=["User Reports"])
 class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserComprehensiveReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = UserReportFilter
-    search_fields = ['username', 'phone_number', 'passport_series']
-    ordering_fields = ['date_joined', 'balance', 'fixed_salary', 'username']
-    ordering = ['-date_joined']
+    search_fields = ["username", "phone_number", "passport_series"]
+    ordering_fields = ["date_joined", "balance", "fixed_salary", "username"]
+    ordering = ["-date_joined"]
 
     def get_queryset(self):
-        user = getattr(self.request, 'user', None)
+        user = getattr(self.request, "user", None)
         queryset = UserComprehensiveReportSerializer.setup_eager_loading(
             User.objects.filter(is_active=True).exclude(is_superuser=True)
         )
@@ -50,30 +50,35 @@ class UserReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(
+            Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR
+        ):
             return queryset
 
         if user.has_role(Role.MANAGER):
-            managed_employee_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
-                'employees', flat=True)
-            return queryset.filter(Q(id=user.id) | Q(id__in=managed_employee_ids)).distinct()
+            managed_employee_ids = Project.objects.filter(
+                manager=user, is_active=True, is_deleted=False
+            ).values_list("employees", flat=True)
+            return queryset.filter(
+                Q(id=user.id) | Q(id__in=managed_employee_ids)
+            ).distinct()
 
         return queryset.filter(id=user.id)
 
 
-@extend_schema(tags=['Project Reports'])
+@extend_schema(tags=["Project Reports"])
 class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Project.objects.filter(is_active=True, is_deleted=False)
     serializer_class = ProjectComprehensiveReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ProjectReportFilter
-    search_fields = ['title', 'prefix', 'description']
-    ordering_fields = ['deadline', 'project_price', 'created_at']
-    ordering = ['-created_at']
+    search_fields = ["title", "prefix", "description"]
+    ordering_fields = ["deadline", "project_price", "created_at"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        user = getattr(self.request, 'user', None)
+        user = getattr(self.request, "user", None)
         queryset = ProjectComprehensiveReportSerializer.setup_eager_loading(
             Project.objects.filter(is_active=True, is_deleted=False, is_hidden=False)
         )
@@ -81,7 +86,9 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(
+            Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR
+        ):
             return queryset
 
         if user.has_role(Role.MANAGER):
@@ -92,62 +99,71 @@ class ProjectReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset.none()
 
-    @action(detail=False, methods=['get'], url_path='all-testers')
+    @action(detail=False, methods=["get"], url_path="all-testers")
     def all_testers(self, request):
         projects = self.filter_queryset(self.get_queryset())
 
-        testers = User.objects.filter(
-            tester_projects__in=projects
-        ).distinct().order_by('username')
+        testers = (
+            User.objects.filter(tester_projects__in=projects)
+            .distinct()
+            .order_by("username")
+        )
 
         serializer = UserShortSerializer(testers, many=True)
         return Response(serializer.data)
 
 
-@extend_schema(tags=['Expense Reports'])
+@extend_schema(tags=["Expense Reports"])
 class ExpenseReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ExpenseRequest.objects.filter(is_active=True)
     serializer_class = ExpenseRequestReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = ExpenseReportFilter
-    search_fields = ['reason', 'cancel_reason', 'card_number']
-    ordering_fields = ['created_at', 'amount', 'status']
-    ordering = ['-created_at']
+    search_fields = ["reason", "cancel_reason", "card_number"]
+    ordering_fields = ["created_at", "amount", "status"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        user = getattr(self.request, 'user', None)
+        user = getattr(self.request, "user", None)
         queryset = ExpenseRequestReportSerializer.setup_eager_loading(
-            ExpenseRequest.objects.filter(is_active=True).exclude(user__is_superuser=True)
+            ExpenseRequest.objects.filter(is_active=True).exclude(
+                user__is_superuser=True
+            )
         )
 
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(
+            Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR
+        ):
             return queryset
 
         if user.has_role(Role.MANAGER):
-            managed_employee_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
-                'employees', flat=True)
-            return queryset.filter(Q(user=user) | Q(user_id__in=managed_employee_ids)).distinct()
+            managed_employee_ids = Project.objects.filter(
+                manager=user, is_active=True, is_deleted=False
+            ).values_list("employees", flat=True)
+            return queryset.filter(
+                Q(user=user) | Q(user_id__in=managed_employee_ids)
+            ).distinct()
 
         return queryset.filter(user=user)
 
 
-@extend_schema(tags=['Payroll Reports'])
+@extend_schema(tags=["Payroll Reports"])
 class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Payroll.objects.filter(is_active=True)
     serializer_class = PayrollReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = PayrollReportFilter
-    search_fields = ['user__username', 'accountant__username']
-    ordering_fields = ['month', 'total_amount', 'created_at']
-    ordering = ['-month', '-created_at']
+    search_fields = ["user__username", "accountant__username"]
+    ordering_fields = ["month", "total_amount", "created_at"]
+    ordering = ["-month", "-created_at"]
 
     def get_queryset(self):
-        user = getattr(self.request, 'user', None)
+        user = getattr(self.request, "user", None)
         queryset = PayrollReportSerializer.setup_eager_loading(
             Payroll.objects.filter(is_active=True).exclude(user__is_superuser=True)
         )
@@ -155,46 +171,54 @@ class PayrollReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(
+            Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR
+        ):
             return queryset
 
         if user.has_role(Role.MANAGER):
-            managed_employee_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
-                'employees', flat=True)
-            return queryset.filter(Q(user=user) | Q(user_id__in=managed_employee_ids)).distinct()
+            managed_employee_ids = Project.objects.filter(
+                manager=user, is_active=True, is_deleted=False
+            ).values_list("employees", flat=True)
+            return queryset.filter(
+                Q(user=user) | Q(user_id__in=managed_employee_ids)
+            ).distinct()
 
         return queryset.filter(user=user)
 
 
-@extend_schema(tags=['Task Reports'])
+@extend_schema(tags=["Task Reports"])
 class TaskReportReadOnlyViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Task.objects.filter(is_active=True, is_deleted=False)
     serializer_class = TaskReportSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = TaskReportFilter
-    search_fields = ['title', 'uid', 'project__title', 'project__prefix']
-    ordering_fields = ['deadline', 'created_at', 'task_price', 'priority']
-    ordering = ['-created_at']
+    search_fields = ["title", "uid", "project__title", "project__prefix"]
+    ordering_fields = ["deadline", "created_at", "task_price", "priority"]
+    ordering = ["-created_at"]
 
     def get_queryset(self):
-        user = getattr(self.request, 'user', None)
-        queryset = TaskReportSerializer.setup_eager_loading(Task.objects.filter(is_active=True, is_deleted=False))
+        user = getattr(self.request, "user", None)
+        queryset = TaskReportSerializer.setup_eager_loading(
+            Task.objects.filter(is_active=True, is_deleted=False)
+        )
 
         if not user or not user.is_authenticated:
             return queryset.none()
 
-        if user.is_superuser or user.has_role(Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR):
+        if user.is_superuser or user.has_role(
+            Role.ADMIN, Role.ACCOUNTANT, Role.AUDITOR
+        ):
             return queryset
 
         if user.has_role(Role.MANAGER):
-            managed_project_ids = Project.objects.filter(manager=user, is_active=True, is_deleted=False).values_list(
-                'id', flat=True)
+            managed_project_ids = Project.objects.filter(
+                manager=user, is_active=True, is_deleted=False
+            ).values_list("id", flat=True)
 
             return queryset.filter(project_id__in=managed_project_ids)
 
         return queryset.filter(
-            Q(assignee=user) |
-            Q(created_by=user) |
-            Q(project__testers=user)
+            Q(assignee=user) | Q(created_by=user) | Q(project__testers=user)
         ).distinct()

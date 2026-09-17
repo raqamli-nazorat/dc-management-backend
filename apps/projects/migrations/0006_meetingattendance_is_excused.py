@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0005_alter_meetingattendance_absence_reason'),
+        ("projects", "0005_alter_meetingattendance_absence_reason"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='meetingattendance',
-            name='is_excused',
-            field=models.BooleanField(default=False, verbose_name='Uzrlimi?'),
+            model_name="meetingattendance",
+            name="is_excused",
+            field=models.BooleanField(default=False, verbose_name="Uzrlimi?"),
         ),
     ]

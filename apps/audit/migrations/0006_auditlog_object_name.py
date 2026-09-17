@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('audit', '0005_alter_auditlog_options_remove_auditlog_timestamp'),
+        ("audit", "0005_alter_auditlog_options_remove_auditlog_timestamp"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='auditlog',
-            name='object_name',
-            field=models.CharField(blank=True, max_length=255, null=True, verbose_name='Obyekt nomi'),
+            model_name="auditlog",
+            name="object_name",
+            field=models.CharField(
+                blank=True, max_length=255, null=True, verbose_name="Obyekt nomi"
+            ),
         ),
     ]

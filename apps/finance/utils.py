@@ -3,18 +3,55 @@ from datetime import date, datetime, timedelta
 from django.utils import timezone
 
 MONTH_NAMES_MAP = {
-    'yanvar': 1, 'fevral': 2, 'mart': 3, 'aprel': 4, 'may': 5, 'iyun': 6,
-    'iyul': 7, 'avgust': 8, 'sentabr': 9, 'oktabr': 10, 'noyabr': 11, 'dekabr': 12,
-    'january': 1, 'february': 2, 'march': 3, 'april': 4, 'june': 6,
-    'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12,
-    'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'jun': 6,
-    'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12,
+    "yanvar": 1,
+    "fevral": 2,
+    "mart": 3,
+    "aprel": 4,
+    "may": 5,
+    "iyun": 6,
+    "iyul": 7,
+    "avgust": 8,
+    "sentabr": 9,
+    "oktabr": 10,
+    "noyabr": 11,
+    "dekabr": 12,
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
 }
 
 MONTH_UZ_NAMES = {
-    1: "Yanvar", 2: "Fevral", 3: "Mart", 4: "Aprel",
-    5: "May", 6: "Iyun", 7: "Iyul", 8: "Avgust",
-    9: "Sentabr", 10: "Oktabr", 11: "Noyabr", 12: "Dekabr"
+    1: "Yanvar",
+    2: "Fevral",
+    3: "Mart",
+    4: "Aprel",
+    5: "May",
+    6: "Iyun",
+    7: "Iyul",
+    8: "Avgust",
+    9: "Sentabr",
+    10: "Oktabr",
+    11: "Noyabr",
+    12: "Dekabr",
 }
 
 
@@ -34,13 +71,13 @@ def parse_month_input(val) -> date:
 
     for name, m_num in MONTH_NAMES_MAP.items():
         if name in s:
-            year_match = re.search(r'\b(20\d\d|19\d\d)\b', s)
+            year_match = re.search(r"\b(20\d\d|19\d\d)\b", s)
             if year_match:
                 year = int(year_match.group(1))
                 return date(year, m_num, 1)
 
-    cleaned = re.sub(r'[\.\/]', '-', s)
-    parts = cleaned.split('-')
+    cleaned = re.sub(r"[\.\/]", "-", s)
+    parts = cleaned.split("-")
 
     if len(parts) >= 2:
         p0, p1 = parts[0].strip(), parts[1].strip()
@@ -70,9 +107,13 @@ def parse_month_input(val) -> date:
 def get_month_range(target=None):
     now = timezone.now()
     if target is None:
-        first_of_this_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        first_of_this_month = now.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
         last_of_prev_month = first_of_this_month - timedelta(seconds=1)
-        month_start = last_of_prev_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        month_start = last_of_prev_month.replace(
+            day=1, hour=0, minute=0, second=0, microsecond=0
+        )
         month_end = last_of_prev_month
         target_date = month_start.date()
     else:

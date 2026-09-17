@@ -9,9 +9,9 @@ class UserAdminForm(forms.ModelForm):
         choices=Role.choices,
         widget=UnfoldAdminSelectMultipleWidget(),
         label="Rollari",
-        required=True
+        required=True,
     )
 
     class Meta:
         model = User
-        fields = '__all__'
+        fields = "__all__"

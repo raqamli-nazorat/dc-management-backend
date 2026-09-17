@@ -1,11 +1,17 @@
 from rest_framework.routers import SimpleRouter
-from .views import ExpenseRequestViewSet, ExpenseCategoryViewSet, LedgerViewSet, PayrollViewSet, ExpenseReceiptViewSet
+from .views import (
+    ExpenseRequestViewSet,
+    ExpenseCategoryViewSet,
+    LedgerViewSet,
+    PayrollViewSet,
+    ExpenseReceiptViewSet,
+)
 
 router = SimpleRouter()
-router.register('expense-category', ExpenseCategoryViewSet)
-router.register('expense-request', ExpenseRequestViewSet)
-router.register('expense-receipt', ExpenseReceiptViewSet)
-router.register('ledger', LedgerViewSet)
-router.register('payroll', PayrollViewSet)
+router.register("expense-category", ExpenseCategoryViewSet)
+router.register("expense-request", ExpenseRequestViewSet)
+router.register("expense-receipt", ExpenseReceiptViewSet)
+router.register("ledger", LedgerViewSet)
+router.register("payroll", PayrollViewSet)
 
 urlpatterns = router.urls

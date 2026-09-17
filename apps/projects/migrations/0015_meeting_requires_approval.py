@@ -6,13 +6,15 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0014_alter_meeting_project'),
+        ("projects", "0014_alter_meeting_project"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='meeting',
-            name='requires_approval',
-            field=models.BooleanField(default=False, verbose_name="Mezbon tasdig'i talab qilinsinmi?"),
+            model_name="meeting",
+            name="requires_approval",
+            field=models.BooleanField(
+                default=False, verbose_name="Mezbon tasdig'i talab qilinsinmi?"
+            ),
         ),
     ]

@@ -32,10 +32,10 @@ class TicketAuthMiddleware:
 
         if ticket:
             user, cache_key = await get_user_and_cache_key(ticket)
-            scope['user'] = user
-            scope['ws_cache_key'] = cache_key
+            scope["user"] = user
+            scope["ws_cache_key"] = cache_key
         else:
-            scope['user'] = AnonymousUser()
-            scope['ws_cache_key'] = None
+            scope["user"] = AnonymousUser()
+            scope["ws_cache_key"] = None
 
         return await self.app(scope, receive, send)

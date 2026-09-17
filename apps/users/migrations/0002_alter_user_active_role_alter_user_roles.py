@@ -7,18 +7,44 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0001_initial'),
+        ("users", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='user',
-            name='active_role',
-            field=models.CharField(blank=True, choices=[('admin', 'Administrator'), ('manager', 'Menejer'), ('employee', 'Xodim'), ('auditor', 'Nazoratchi'), ('accountant', 'Hisobchi')], max_length=20, null=True, verbose_name='Aktiv rol'),
+            model_name="user",
+            name="active_role",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("admin", "Administrator"),
+                    ("manager", "Menejer"),
+                    ("employee", "Xodim"),
+                    ("auditor", "Nazoratchi"),
+                    ("accountant", "Hisobchi"),
+                ],
+                max_length=20,
+                null=True,
+                verbose_name="Aktiv rol",
+            ),
         ),
         migrations.AlterField(
-            model_name='user',
-            name='roles',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.CharField(choices=[('admin', 'Administrator'), ('manager', 'Menejer'), ('employee', 'Xodim'), ('auditor', 'Nazoratchi'), ('accountant', 'Hisobchi')], max_length=20), blank=True, default=list, verbose_name='Rollari'),
+            model_name="user",
+            name="roles",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.CharField(
+                    choices=[
+                        ("admin", "Administrator"),
+                        ("manager", "Menejer"),
+                        ("employee", "Xodim"),
+                        ("auditor", "Nazoratchi"),
+                        ("accountant", "Hisobchi"),
+                    ],
+                    max_length=20,
+                ),
+                blank=True,
+                default=list,
+                verbose_name="Rollari",
+            ),
         ),
     ]

@@ -6,48 +6,64 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('applications', '0003_alter_application_telegram'),
+        ("applications", "0003_alter_application_telegram"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='application',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="application",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='application',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="application",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='district',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="district",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='district',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="district",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='position',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="position",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='position',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="position",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='region',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="region",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='region',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="region",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
     ]

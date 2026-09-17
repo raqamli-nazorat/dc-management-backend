@@ -7,29 +7,83 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='AuditLog',
+            name="AuditLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('action', models.CharField(choices=[('create', 'Create'), ('update', 'Update'), ('delete', 'Delete'), ('confirm', 'Confirm'), ('restore', 'Restore')], max_length=50, verbose_name='Harakati')),
-                ('ip_address', models.GenericIPAddressField(blank=True, null=True, verbose_name='IP manzili')),
-                ('table_name', models.CharField(max_length=50, verbose_name='Jadval nomi')),
-                ('record_id', models.PositiveIntegerField(verbose_name='Yozuv raqami')),
-                ('old_values', models.JSONField(blank=True, null=True, verbose_name='Eski qiymati')),
-                ('new_values', models.JSONField(blank=True, null=True, verbose_name='Yangi qiymati')),
-                ('timestamp', models.DateTimeField(auto_now_add=True, verbose_name='Vaqti')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "action",
+                    models.CharField(
+                        choices=[
+                            ("create", "Create"),
+                            ("update", "Update"),
+                            ("delete", "Delete"),
+                            ("confirm", "Confirm"),
+                            ("restore", "Restore"),
+                        ],
+                        max_length=50,
+                        verbose_name="Harakati",
+                    ),
+                ),
+                (
+                    "ip_address",
+                    models.GenericIPAddressField(
+                        blank=True, null=True, verbose_name="IP manzili"
+                    ),
+                ),
+                (
+                    "table_name",
+                    models.CharField(max_length=50, verbose_name="Jadval nomi"),
+                ),
+                ("record_id", models.PositiveIntegerField(verbose_name="Yozuv raqami")),
+                (
+                    "old_values",
+                    models.JSONField(
+                        blank=True, null=True, verbose_name="Eski qiymati"
+                    ),
+                ),
+                (
+                    "new_values",
+                    models.JSONField(
+                        blank=True, null=True, verbose_name="Yangi qiymati"
+                    ),
+                ),
+                (
+                    "timestamp",
+                    models.DateTimeField(auto_now_add=True, verbose_name="Vaqti"),
+                ),
             ],
             options={
-                'verbose_name': 'Tarix yozuvi ',
-                'verbose_name_plural': 'Tarix yozuvlari',
-                'ordering': ['-timestamp'],
+                "verbose_name": "Tarix yozuvi ",
+                "verbose_name_plural": "Tarix yozuvlari",
+                "ordering": ["-timestamp"],
             },
         ),
     ]

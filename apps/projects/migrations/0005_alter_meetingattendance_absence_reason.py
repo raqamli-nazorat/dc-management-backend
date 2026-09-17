@@ -7,13 +7,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('projects', '0004_meeting_is_deleted'),
+        ("projects", "0004_meeting_is_deleted"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='meetingattendance',
-            name='absence_reason',
-            field=models.TextField(blank=True, null=True, validators=[django.core.validators.MinLengthValidator(10)], verbose_name='Kela olmaganlik sababi'),
+            model_name="meetingattendance",
+            name="absence_reason",
+            field=models.TextField(
+                blank=True,
+                null=True,
+                validators=[django.core.validators.MinLengthValidator(10)],
+                verbose_name="Kela olmaganlik sababi",
+            ),
         ),
     ]

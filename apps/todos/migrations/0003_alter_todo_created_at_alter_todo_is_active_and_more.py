@@ -6,28 +6,36 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('todos', '0002_initial'),
+        ("todos", "0002_initial"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='todo',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="todo",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='todo',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="todo",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
         migrations.AlterField(
-            model_name='todoitem',
-            name='created_at',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Yaratilgan vaqti'),
+            model_name="todoitem",
+            name="created_at",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Yaratilgan vaqti"
+            ),
         ),
         migrations.AlterField(
-            model_name='todoitem',
-            name='is_active',
-            field=models.BooleanField(db_index=True, default=True, verbose_name='Faolmi?'),
+            model_name="todoitem",
+            name="is_active",
+            field=models.BooleanField(
+                db_index=True, default=True, verbose_name="Faolmi?"
+            ),
         ),
     ]

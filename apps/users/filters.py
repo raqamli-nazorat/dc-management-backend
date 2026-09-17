@@ -5,15 +5,15 @@ from .models import User
 
 
 class UserFilter(filters.FilterSet):
-    roles = CharInFilter(method='filter_by_roles', label="Rollar")
+    roles = CharInFilter(method="filter_by_roles", label="Rollar")
 
     class Meta:
         model = User
         fields = {
-            'region': ['exact'],
-            'district': ['exact'],
-            'position': ['exact'],
-            'date_joined': ['exact', 'gte', 'lte'],
+            "region": ["exact"],
+            "district": ["exact"],
+            "position": ["exact"],
+            "date_joined": ["exact", "gte", "lte"],
         }
 
     def filter_by_roles(self, queryset, name, value):

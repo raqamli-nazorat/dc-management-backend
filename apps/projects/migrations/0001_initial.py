@@ -9,138 +9,486 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Meeting',
+            name="Meeting",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('uid', models.CharField(editable=False, max_length=20, unique=True, verbose_name='UID')),
-                ('title', models.CharField(max_length=255, verbose_name='Nomi')),
-                ('description', models.TextField(verbose_name='Tavfsifi')),
-                ('link', models.URLField(verbose_name='Havolasi')),
-                ('penalty_percentage', models.DecimalField(decimal_places=2, default=0.0, max_digits=5, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(100)], verbose_name='Jarima foizi (%)')),
-                ('start_time', models.DateTimeField(verbose_name='Boshlanish vaqti')),
-                ('duration_minutes', models.PositiveIntegerField(verbose_name='Davomiyligi')),
-                ('is_completed', models.BooleanField(default=False, verbose_name='Tugatildimi?')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "uid",
+                    models.CharField(
+                        editable=False, max_length=20, unique=True, verbose_name="UID"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Nomi")),
+                ("description", models.TextField(verbose_name="Tavfsifi")),
+                ("link", models.URLField(verbose_name="Havolasi")),
+                (
+                    "penalty_percentage",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0.0,
+                        max_digits=5,
+                        validators=[
+                            django.core.validators.MinValueValidator(0),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                        verbose_name="Jarima foizi (%)",
+                    ),
+                ),
+                ("start_time", models.DateTimeField(verbose_name="Boshlanish vaqti")),
+                (
+                    "duration_minutes",
+                    models.PositiveIntegerField(verbose_name="Davomiyligi"),
+                ),
+                (
+                    "is_completed",
+                    models.BooleanField(default=False, verbose_name="Tugatildimi?"),
+                ),
             ],
             options={
-                'verbose_name': "Yig'ilish ",
-                'verbose_name_plural': "Yig'lishlar",
-                'ordering': ['-created_at'],
+                "verbose_name": "Yig'ilish ",
+                "verbose_name_plural": "Yig'lishlar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='MeetingAttendance',
+            name="MeetingAttendance",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('is_attended', models.BooleanField(default=True, verbose_name='Qatnashdimi?')),
-                ('payroll_processed', models.BooleanField(default=False, verbose_name='Oylikda hisoblandimi?')),
-                ('absence_reason', models.TextField(blank=True, null=True, verbose_name='Sababi')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "is_attended",
+                    models.BooleanField(default=True, verbose_name="Qatnashdimi?"),
+                ),
+                (
+                    "payroll_processed",
+                    models.BooleanField(
+                        default=False, verbose_name="Oylikda hisoblandimi?"
+                    ),
+                ),
+                (
+                    "absence_reason",
+                    models.TextField(blank=True, null=True, verbose_name="Sababi"),
+                ),
             ],
             options={
-                'verbose_name': "Yig'ilishga qatnashish ",
-                'verbose_name_plural': "Yig'ilishga qatnashishlar",
-                'ordering': ['-created_at'],
+                "verbose_name": "Yig'ilishga qatnashish ",
+                "verbose_name_plural": "Yig'ilishga qatnashishlar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Project',
+            name="Project",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('uid', models.CharField(blank=True, editable=False, max_length=20, null=True, unique=True, verbose_name='UID')),
-                ('prefix', models.CharField(max_length=10, unique=True, verbose_name='Prefiksi')),
-                ('title', models.CharField(max_length=255, verbose_name='Nomi')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Tavsifi')),
-                ('deadline', models.DateTimeField(verbose_name='Muddati')),
-                ('status', models.CharField(choices=[('planning', 'Rejalashtirilmoqda'), ('active', 'Faol'), ('overdue', "Muddati o'tgan"), ('completed', 'Yakunlangan'), ('cancelled', 'Bekor qilingan')], db_index=True, default='planning', max_length=20, verbose_name='Holati')),
-                ('project_price', models.DecimalField(decimal_places=2, default=0.0, max_digits=12, verbose_name='Menejer bonusi (Loyiha uchun)')),
-                ('penalty_percentage', models.DecimalField(decimal_places=2, default=0.0, max_digits=5, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(100)], verbose_name='Jarima foizi (%)')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name="O'chirilganmi?")),
-                ('is_hidden', models.BooleanField(default=False, verbose_name='Yashirilganmi?')),
-                ('completed_at', models.DateTimeField(blank=True, null=True)),
-                ('payroll_processed', models.BooleanField(default=False)),
-                ('was_overdue', models.BooleanField(default=False, editable=False)),
-                ('hidden_at', models.DateTimeField(blank=True, editable=False, null=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "uid",
+                    models.CharField(
+                        blank=True,
+                        editable=False,
+                        max_length=20,
+                        null=True,
+                        unique=True,
+                        verbose_name="UID",
+                    ),
+                ),
+                (
+                    "prefix",
+                    models.CharField(
+                        max_length=10, unique=True, verbose_name="Prefiksi"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Nomi")),
+                (
+                    "description",
+                    models.TextField(blank=True, null=True, verbose_name="Tavsifi"),
+                ),
+                ("deadline", models.DateTimeField(verbose_name="Muddati")),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("planning", "Rejalashtirilmoqda"),
+                            ("active", "Faol"),
+                            ("overdue", "Muddati o'tgan"),
+                            ("completed", "Yakunlangan"),
+                            ("cancelled", "Bekor qilingan"),
+                        ],
+                        db_index=True,
+                        default="planning",
+                        max_length=20,
+                        verbose_name="Holati",
+                    ),
+                ),
+                (
+                    "project_price",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0.0,
+                        max_digits=12,
+                        verbose_name="Menejer bonusi (Loyiha uchun)",
+                    ),
+                ),
+                (
+                    "penalty_percentage",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0.0,
+                        max_digits=5,
+                        validators=[
+                            django.core.validators.MinValueValidator(0),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                        verbose_name="Jarima foizi (%)",
+                    ),
+                ),
+                (
+                    "is_deleted",
+                    models.BooleanField(default=False, verbose_name="O'chirilganmi?"),
+                ),
+                (
+                    "is_hidden",
+                    models.BooleanField(default=False, verbose_name="Yashirilganmi?"),
+                ),
+                ("completed_at", models.DateTimeField(blank=True, null=True)),
+                ("payroll_processed", models.BooleanField(default=False)),
+                ("was_overdue", models.BooleanField(default=False, editable=False)),
+                (
+                    "hidden_at",
+                    models.DateTimeField(blank=True, editable=False, null=True),
+                ),
             ],
             options={
-                'verbose_name': 'Loyiha ',
-                'verbose_name_plural': 'Loyihalar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Loyiha ",
+                "verbose_name_plural": "Loyihalar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Task',
+            name="Task",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('uid', models.CharField(editable=False, max_length=20, unique=True, verbose_name='UID')),
-                ('title', models.CharField(max_length=255, verbose_name='Nomi')),
-                ('description', models.TextField(blank=True, null=True, verbose_name='Tavsifi')),
-                ('rejection_reason', models.TextField(blank=True, null=True, verbose_name='Rad etish sababi')),
-                ('status', models.CharField(choices=[('todo', 'Qilinishi kerak'), ('in_progress', 'Jarayonda'), ('overdue', "Muddati o'tgan"), ('done', 'Bajarildi'), ('production', 'Ishga tushirildi'), ('checked', 'Tekshirildi'), ('rejected', 'Rad etildi')], db_index=True, default='todo', max_length=20, verbose_name='Holati')),
-                ('priority', models.CharField(choices=[('low', 'Past'), ('medium', 'Oʻrta'), ('high', 'Yuqori'), ('critical', 'Kritik')], db_index=True, default='medium', max_length=20, verbose_name='Darajasi')),
-                ('type', models.CharField(choices=[('bug', 'Xatolik (Bug)'), ('extra', 'Qoʻshimcha'), ('feature', 'Yangi funksiya'), ('research', 'Tadqiqot/Oʻrganish')], db_index=True, default='feature', max_length=20, verbose_name='Turi')),
-                ('deadline', models.DateTimeField(db_index=True, verbose_name='Muddati')),
-                ('started_at', models.DateTimeField(blank=True, null=True)),
-                ('task_price', models.DecimalField(decimal_places=2, default=0.0, max_digits=12, verbose_name='Vazifa narxi')),
-                ('penalty_percentage', models.DecimalField(decimal_places=2, default=0.0, max_digits=5, validators=[django.core.validators.MinValueValidator(0), django.core.validators.MaxValueValidator(100)], verbose_name='Jarima foizi (%)')),
-                ('sprint', models.PositiveSmallIntegerField(blank=True, null=True, validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(10)], verbose_name='Sprint')),
-                ('is_deleted', models.BooleanField(default=False, verbose_name="O'chirilganmi?")),
-                ('estimated_minutes', models.PositiveIntegerField(default=0, verbose_name='Taxminiy vaqt (daqiqa)')),
-                ('actual_minutes', models.PositiveIntegerField(default=0, verbose_name='Haqiqiy ish vaqti (daqiqa)')),
-                ('reopened_count', models.PositiveIntegerField(default=0, verbose_name='Qaytishlar soni')),
-                ('completed_at', models.DateTimeField(blank=True, null=True)),
-                ('payroll_processed', models.BooleanField(default=False)),
-                ('was_overdue', models.BooleanField(default=False, editable=False)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "uid",
+                    models.CharField(
+                        editable=False, max_length=20, unique=True, verbose_name="UID"
+                    ),
+                ),
+                ("title", models.CharField(max_length=255, verbose_name="Nomi")),
+                (
+                    "description",
+                    models.TextField(blank=True, null=True, verbose_name="Tavsifi"),
+                ),
+                (
+                    "rejection_reason",
+                    models.TextField(
+                        blank=True, null=True, verbose_name="Rad etish sababi"
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("todo", "Qilinishi kerak"),
+                            ("in_progress", "Jarayonda"),
+                            ("overdue", "Muddati o'tgan"),
+                            ("done", "Bajarildi"),
+                            ("production", "Ishga tushirildi"),
+                            ("checked", "Tekshirildi"),
+                            ("rejected", "Rad etildi"),
+                        ],
+                        db_index=True,
+                        default="todo",
+                        max_length=20,
+                        verbose_name="Holati",
+                    ),
+                ),
+                (
+                    "priority",
+                    models.CharField(
+                        choices=[
+                            ("low", "Past"),
+                            ("medium", "Oʻrta"),
+                            ("high", "Yuqori"),
+                            ("critical", "Kritik"),
+                        ],
+                        db_index=True,
+                        default="medium",
+                        max_length=20,
+                        verbose_name="Darajasi",
+                    ),
+                ),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("bug", "Xatolik (Bug)"),
+                            ("extra", "Qoʻshimcha"),
+                            ("feature", "Yangi funksiya"),
+                            ("research", "Tadqiqot/Oʻrganish"),
+                        ],
+                        db_index=True,
+                        default="feature",
+                        max_length=20,
+                        verbose_name="Turi",
+                    ),
+                ),
+                (
+                    "deadline",
+                    models.DateTimeField(db_index=True, verbose_name="Muddati"),
+                ),
+                ("started_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "task_price",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0.0,
+                        max_digits=12,
+                        verbose_name="Vazifa narxi",
+                    ),
+                ),
+                (
+                    "penalty_percentage",
+                    models.DecimalField(
+                        decimal_places=2,
+                        default=0.0,
+                        max_digits=5,
+                        validators=[
+                            django.core.validators.MinValueValidator(0),
+                            django.core.validators.MaxValueValidator(100),
+                        ],
+                        verbose_name="Jarima foizi (%)",
+                    ),
+                ),
+                (
+                    "sprint",
+                    models.PositiveSmallIntegerField(
+                        blank=True,
+                        null=True,
+                        validators=[
+                            django.core.validators.MinValueValidator(1),
+                            django.core.validators.MaxValueValidator(10),
+                        ],
+                        verbose_name="Sprint",
+                    ),
+                ),
+                (
+                    "is_deleted",
+                    models.BooleanField(default=False, verbose_name="O'chirilganmi?"),
+                ),
+                (
+                    "estimated_minutes",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Taxminiy vaqt (daqiqa)"
+                    ),
+                ),
+                (
+                    "actual_minutes",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Haqiqiy ish vaqti (daqiqa)"
+                    ),
+                ),
+                (
+                    "reopened_count",
+                    models.PositiveIntegerField(
+                        default=0, verbose_name="Qaytishlar soni"
+                    ),
+                ),
+                ("completed_at", models.DateTimeField(blank=True, null=True)),
+                ("payroll_processed", models.BooleanField(default=False)),
+                ("was_overdue", models.BooleanField(default=False, editable=False)),
             ],
             options={
-                'verbose_name': 'Vazifa ',
-                'verbose_name_plural': 'Vazifalar',
-                'ordering': ['-created_at'],
+                "verbose_name": "Vazifa ",
+                "verbose_name_plural": "Vazifalar",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='TaskAttachment',
+            name="TaskAttachment",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('file', models.FileField(upload_to='tasks/files/', validators=[apps.common.validators.validate_file_extension, apps.common.validators.validate_file_size], verbose_name='Fayl')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(
+                        upload_to="tasks/files/",
+                        validators=[
+                            apps.common.validators.validate_file_extension,
+                            apps.common.validators.validate_file_size,
+                        ],
+                        verbose_name="Fayl",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Vazifa fayli ',
-                'verbose_name_plural': 'Vazifa fayllari',
-                'ordering': ['-created_at'],
+                "verbose_name": "Vazifa fayli ",
+                "verbose_name_plural": "Vazifa fayllari",
+                "ordering": ["-created_at"],
             },
         ),
         migrations.CreateModel(
-            name='TaskRejectionFile',
+            name="TaskRejectionFile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('is_active', models.BooleanField(default=True, verbose_name='Faolmi?')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Yaratilgan vaqti')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Yangilangan vaqti')),
-                ('file', models.ImageField(upload_to='tasks/rejections/', validators=[apps.common.validators.validate_file_size], verbose_name='Rasm (Skrinshot)')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "is_active",
+                    models.BooleanField(default=True, verbose_name="Faolmi?"),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Yaratilgan vaqti"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Yangilangan vaqti"
+                    ),
+                ),
+                (
+                    "file",
+                    models.ImageField(
+                        upload_to="tasks/rejections/",
+                        validators=[apps.common.validators.validate_file_size],
+                        verbose_name="Rasm (Skrinshot)",
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Rad etish fayli ',
-                'verbose_name_plural': 'Rad etish fayllari',
-                'ordering': ['-created_at'],
+                "verbose_name": "Rad etish fayli ",
+                "verbose_name_plural": "Rad etish fayllari",
+                "ordering": ["-created_at"],
             },
         ),
     ]

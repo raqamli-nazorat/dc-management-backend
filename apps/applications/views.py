@@ -8,8 +8,13 @@ from rest_framework.permissions import AllowAny
 from apps.common.mixins import SoftDeleteMixin
 from apps.applications.filters import ApplicationFilter
 from apps.applications.models import Region, District, Position, Application
-from apps.applications.serializers import (RegionSerializer, DistrictSerializer, PositionSerializer,
-                                           ApplicationSerializer, ApplicationStatusUpdateSerializer)
+from apps.applications.serializers import (
+    RegionSerializer,
+    DistrictSerializer,
+    PositionSerializer,
+    ApplicationSerializer,
+    ApplicationStatusUpdateSerializer,
+)
 from apps.users.permissions import IsAdmin, IsManager, IsAuditor
 from apps.users.models import Role
 
@@ -18,69 +23,72 @@ class RoleBasedAccessMixin:
     admin_roles = [Role.ADMIN, Role.MANAGER]
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve']:
+        if self.action in ["list", "retrieve"]:
             return [AllowAny()]
         return [(IsAdmin | IsManager)()]
 
 
-@extend_schema(tags=['Region'])
+@extend_schema(tags=["Region"])
 class RegionViewSet(SoftDeleteMixin, RoleBasedAccessMixin, viewsets.ModelViewSet):
     queryset = Region.objects.filter(is_active=True)
     serializer_class = RegionSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    search_fields = ["name"]
 
 
-@extend_schema(tags=['District'])
+@extend_schema(tags=["District"])
 class DistrictViewSet(SoftDeleteMixin, RoleBasedAccessMixin, viewsets.ModelViewSet):
-    queryset = District.objects.filter(is_active=True).select_related('region')
+    queryset = District.objects.filter(is_active=True).select_related("region")
     serializer_class = DistrictSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
-    filterset_fields = ['region']
-    search_fields = ['name']
+    filterset_fields = ["region"]
+    search_fields = ["name"]
 
 
-@extend_schema(tags=['Position'])
+@extend_schema(tags=["Position"])
 class PositionViewSet(SoftDeleteMixin, RoleBasedAccessMixin, viewsets.ModelViewSet):
     queryset = Position.objects.filter(is_active=True)
     serializer_class = PositionSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ['name']
+    search_fields = ["name"]
 
 
-@extend_schema(tags=['Application'])
+@extend_schema(tags=["Application"])
 class ApplicationView(ListCreateAPIView):
     serializer_class = ApplicationSerializer
     parser_classes = [parsers.MultiPartParser, parsers.FormParser]
     permission_classes = (AllowAny,)
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = ApplicationFilter
-    search_fields = ['full_name']
+    search_fields = ["full_name"]
 
     def get_permissions(self):
-        if self.request.method == 'POST':
+        if self.request.method == "POST":
             return [AllowAny()]
         return [(IsAdmin | IsManager | IsAuditor)()]
 
     def get_queryset(self):
         return Application.objects.filter(is_active=True).select_related(
-            'region', 'position', 'reviewed_by'
+            "region", "position", "reviewed_by"
         )
 
 
-@extend_schema(tags=['Application'])
+@extend_schema(tags=["Application"])
 class ApplicationDetailView(RetrieveUpdateAPIView):
     queryset = Application.objects.filter(is_active=True).select_related(
-        'region', 'position', 'reviewed_by'
+        "region", "position", "reviewed_by"
     )
-    http_method_names = ('get', 'patch',)
+    http_method_names = (
+        "get",
+        "patch",
+    )
 
     def get_permissions(self):
-        if self.request.method == 'GET':
+        if self.request.method == "GET":
             return [(IsAdmin | IsManager | IsAuditor)()]
         return [(IsAdmin | IsManager)()]
 
     def get_serializer_class(self):
-        if self.request.method == 'GET':
+        if self.request.method == "GET":
             return ApplicationSerializer
         return ApplicationStatusUpdateSerializer

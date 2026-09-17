@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('finance', '0003_alter_expensecategory_created_at_and_more'),
+        ("finance", "0003_alter_expensecategory_created_at_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='ledger',
-            name='description',
+            model_name="ledger",
+            name="description",
             field=models.TextField(),
         ),
     ]

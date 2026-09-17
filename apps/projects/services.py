@@ -30,12 +30,12 @@ class TaskService:
         task = Task.objects.create(created_by=user, **validated_data)
 
         if task.assignee and task.assignee != user:
-            deadline_str = task.deadline.strftime('%d.%m.%Y %H:%M')
+            deadline_str = task.deadline.strftime("%d.%m.%Y %H:%M")
             cls._send_task_notification(
                 task.assignee,
                 task,
                 "Yangi vazifa biriktirildi",
-                f"Sizga {task.title} nomli yangi vazifa topshirildi. Muddati: {deadline_str}"
+                f"Sizga {task.title} nomli yangi vazifa topshirildi. Muddati: {deadline_str}",
             )
 
         manager = task.project.manager
@@ -44,7 +44,7 @@ class TaskService:
                 manager,
                 task,
                 "Yangi vazifa yaratildi",
-                f"Loyihangizda yangi vazifa yaratildi: {task.title}. Yaratuvchi: {user.username}"
+                f"Loyihangizda yangi vazifa yaratildi: {task.title}. Yaratuvchi: {user.username}",
             )
 
         return task
@@ -62,26 +62,41 @@ class TaskService:
         is_admin = user.is_superuser or user.has_role(Role.ADMIN)
 
         if is_admin:
-            updated_task = cls._handle_admin_full_control(task, user, new_status, rejection_reason, now)
+            updated_task = cls._handle_admin_full_control(
+                task, user, new_status, rejection_reason, now
+            )
         elif new_status in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
             if task.project.manager == user:
-                updated_task = cls._handle_manager_logic(task, user, new_status, rejection_reason, now)
+                updated_task = cls._handle_manager_logic(
+                    task, user, new_status, rejection_reason, now
+                )
             else:
                 is_tester = task.project.testers.filter(id=user.id).exists()
                 if is_tester:
                     if task.assignee_id == user.id:
-                        raise PermissionDenied("O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!")
-                    updated_task = cls._handle_tester_logic(task, user, new_status, rejection_reason, now)
+                        raise PermissionDenied(
+                            "O'zingiz topshirgan vazifani o'zingiz tekshira olmaysiz!"
+                        )
+                    updated_task = cls._handle_tester_logic(
+                        task, user, new_status, rejection_reason, now
+                    )
                 else:
-                    raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
+                    raise PermissionDenied(
+                        "Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q."
+                    )
 
         else:
             if task.assignee == user:
                 updated_task = cls._handle_assignee_logic(task, user, new_status, now)
-            elif task.assignee is None and task.project.employees.filter(id=user.id).exists():
+            elif (
+                task.assignee is None
+                and task.project.employees.filter(id=user.id).exists()
+            ):
                 updated_task = cls._handle_claim_logic(task, user, new_status, now)
             else:
-                raise PermissionDenied("Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q.")
+                raise PermissionDenied(
+                    "Sizda ushbu vazifaning statusini o'zgartirish huquqi yo'q."
+                )
 
         if updated_task:
             recipients = set()
@@ -109,10 +124,10 @@ class TaskService:
                         "Vazifa holati o'zgardi",
                         f"'{updated_task.title}' vazifasining holati '{status_display}' ga o'zgartirildi.",
                         extra_data={
-                            'action': 'task_status_changed',
-                            'old_status': current_status,
-                            'new_status': updated_task.status
-                        }
+                            "action": "task_status_changed",
+                            "old_status": current_status,
+                            "new_status": updated_task.status,
+                        },
                     )
 
         return updated_task
@@ -123,7 +138,9 @@ class TaskService:
 
         if new_status == TaskStatus.REJECTED:
             if rejection_reason and rejection_reason.strip():
-                return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
+                return cls._apply_rejection(
+                    task, rejection_reason, now, "Vazifa rad etildi"
+                )
             task.status = TaskStatus.REJECTED
             task.started_at = None
             task.save()
@@ -131,38 +148,60 @@ class TaskService:
 
         cls._update_task_time_and_status(task, new_status, now)
         if new_status == TaskStatus.CHECKED:
-            cls._send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
+            cls._send_task_notification(
+                task.assignee,
+                task,
+                "Vazifa tasdiqlandi",
+                "Siz topshirgan vazifa tasdiqlandi.",
+            )
         return task
 
     @classmethod
     def _handle_manager_logic(cls, task, user, new_status, rejection_reason, now):
         if new_status not in [TaskStatus.CHECKED, TaskStatus.REJECTED]:
-            raise PermissionDenied("Menejer faqat vazifani tekshirish yoki rad etish huquqiga ega.")
+            raise PermissionDenied(
+                "Menejer faqat vazifani tekshirish yoki rad etish huquqiga ega."
+            )
 
         if new_status == TaskStatus.REJECTED:
-            return cls._apply_rejection(task, rejection_reason, now, "Vazifa rad etildi")
+            return cls._apply_rejection(
+                task, rejection_reason, now, "Vazifa rad etildi"
+            )
 
         if cls.STATUS_ORDER.get(new_status, 0) < cls.STATUS_ORDER.get(task.status, 0):
             raise PermissionDenied("Statusni orqaga qaytara olmaysiz.")
 
         cls._update_task_time_and_status(task, new_status, now)
         if new_status == TaskStatus.CHECKED:
-            cls._send_task_notification(task.assignee, task, "Vazifa tasdiqlandi", "Siz topshirgan vazifa tasdiqlandi.")
+            cls._send_task_notification(
+                task.assignee,
+                task,
+                "Vazifa tasdiqlandi",
+                "Siz topshirgan vazifa tasdiqlandi.",
+            )
         return task
 
     @classmethod
     def _handle_tester_logic(cls, task, user, new_status, rejection_reason, now):
         if task.status != TaskStatus.PRODUCTION:
-            raise PermissionDenied("Faqat ishga tushurilgan vazifalarni tekshirish mumkin.")
+            raise PermissionDenied(
+                "Faqat ishga tushurilgan vazifalarni tekshirish mumkin."
+            )
 
         if new_status == TaskStatus.REJECTED:
-            return cls._apply_rejection(task, rejection_reason, now, "Topshirilgan vazifa rad etildi")
+            return cls._apply_rejection(
+                task, rejection_reason, now, "Topshirilgan vazifa rad etildi"
+            )
 
         if new_status == TaskStatus.CHECKED:
             task.status = TaskStatus.CHECKED
             task.save()
-            cls._send_task_notification(task.assignee, task, "Topshirilgan vazifa tasdiqlandi",
-                                        "Siz topshirgan vazifa tasdiqlandi.")
+            cls._send_task_notification(
+                task.assignee,
+                task,
+                "Topshirilgan vazifa tasdiqlandi",
+                "Siz topshirgan vazifa tasdiqlandi.",
+            )
             return task
 
     @classmethod
@@ -174,7 +213,9 @@ class TaskService:
             TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
         }
         if new_status not in transitions.get(task.status, []):
-            raise PermissionDenied("Bu bosqichga o'tishga ruxsat yo'q yoki status orqaga qaytaryapsiz.")
+            raise PermissionDenied(
+                "Bu bosqichga o'tishga ruxsat yo'q yoki status orqaga qaytaryapsiz."
+            )
 
         cls._update_task_time_and_status(task, new_status, now)
         return task
@@ -188,7 +229,9 @@ class TaskService:
             raise PermissionDenied("Vazifani olish uchun uni jarayonga o'tkazing.")
 
         if task.position_id and user.position_id != task.position_id:
-            raise PermissionDenied(f"Bu vazifa faqat {task.position.name} lavozimi uchun.")
+            raise PermissionDenied(
+                f"Bu vazifa faqat {task.position.name} lavozimi uchun."
+            )
 
         task.assignee = user
         task.status = TaskStatus.IN_PROGRESS
@@ -198,7 +241,10 @@ class TaskService:
 
     @classmethod
     def _update_task_time_and_status(cls, task, new_status, now):
-        if new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED] and task.started_at:
+        if (
+            new_status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]
+            and task.started_at
+        ):
             diff_seconds = (now - task.started_at).total_seconds()
 
             if diff_seconds >= 60:
@@ -220,14 +266,17 @@ class TaskService:
     @classmethod
     def _apply_rejection(cls, task, reason, now, title):
         if not reason or not reason.strip():
-            raise ValidationError({'rejection_reason': "Rad etish sababini yozish shart!"})
+            raise ValidationError(
+                {"rejection_reason": "Rad etish sababini yozish shart!"}
+            )
 
         if task.status in [TaskStatus.DONE, TaskStatus.PRODUCTION, TaskStatus.CHECKED]:
             task.reopened_count += 1
 
         timestamp = timezone.localtime(now).strftime("%d.%m.%Y %H:%M")
         task.rejection_reason = (
-                                    f"{task.rejection_reason}\n\n" if task.rejection_reason else "") + f"[{timestamp}] {reason}"
+            f"{task.rejection_reason}\n\n" if task.rejection_reason else ""
+        ) + f"[{timestamp}] {reason}"
 
         task.status = TaskStatus.IN_PROGRESS
         task.started_at = now
@@ -239,7 +288,11 @@ class TaskService:
     @staticmethod
     def _send_task_notification(user, task, title, message, extra_data=None):
         if user:
-            payload = {'task_id': task.id, 'action': 'open_task', 'project_id': task.project_id}
+            payload = {
+                "task_id": task.id,
+                "action": "open_task",
+                "project_id": task.project_id,
+            }
             if extra_data:
                 payload.update(extra_data)
 
@@ -248,47 +301,59 @@ class TaskService:
                 title=title,
                 message=message,
                 type=NotificationType.TASK,
-                extra_data=payload
+                extra_data=payload,
             )
 
 
 class MeetingService:
     @staticmethod
-    def _send_meeting_notifications(meeting, members, organizer_id, title="Yangi yig'ilish belgilandi",
-                                    msg_template=None):
+    def _send_meeting_notifications(
+        meeting,
+        members,
+        organizer_id,
+        title="Yangi yig'ilish belgilandi",
+        msg_template=None,
+    ):
         notifications_to_bulk = []
         broadcast_data = []
-        start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
+        start_time_str = meeting.start_time.strftime("%d.%m.%Y %H:%M")
 
         if msg_template is None:
             msg_template = f"{meeting.title} yig'ilish tayinlandi. Vaqti: {start_time_str}. Davomiyligi: {meeting.duration_minutes} daqiqa."
 
         for member in members:
             if member.id != organizer_id:
-                notifications_to_bulk.append(Notification(
-                    user=member,
-                    title=title,
-                    message=msg_template,
-                    type=NotificationType.MEETING
-                ))
+                notifications_to_bulk.append(
+                    Notification(
+                        user=member,
+                        title=title,
+                        message=msg_template,
+                        type=NotificationType.MEETING,
+                    )
+                )
 
-                broadcast_data.append({
-                    "user_id": member.id,
-                    "title": title,
-                    "message": msg_template,
-                    "type": "meeting",
-                    "extra_data": {
-                        "meeting_id": meeting.id,
-                        "action": "open_meeting",
-                        "project_id": meeting.project_id
+                broadcast_data.append(
+                    {
+                        "user_id": member.id,
+                        "title": title,
+                        "message": msg_template,
+                        "type": "meeting",
+                        "extra_data": {
+                            "meeting_id": meeting.id,
+                            "action": "open_meeting",
+                            "project_id": meeting.project_id,
+                        },
                     }
-                })
+                )
 
         if notifications_to_bulk:
             Notification.objects.bulk_create(notifications_to_bulk)
 
             from apps.notifications.tasks import mass_notification_sender
-            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+            transaction.on_commit(
+                lambda: mass_notification_sender.delay(broadcast_data)
+            )
 
     @classmethod
     @transaction.atomic
@@ -296,35 +361,41 @@ class MeetingService:
         if participants is None:
             return
 
-        current_attendees = MeetingAttendance.objects.filter(meeting=meeting).select_related('user')
+        current_attendees = MeetingAttendance.objects.filter(
+            meeting=meeting
+        ).select_related("user")
         current_attendee_ids = {a.user_id for a in current_attendees}
         new_participant_ids = {p.id for p in participants}
 
         if organizer_id not in new_participant_ids:
             new_participant_ids.add(organizer_id)
 
-        to_remove_attendees = [a for a in current_attendees if a.user_id not in new_participant_ids]
+        to_remove_attendees = [
+            a for a in current_attendees if a.user_id not in new_participant_ids
+        ]
         if to_remove_attendees:
             removed_users = [a.user for a in to_remove_attendees]
-            MeetingAttendance.objects.filter(id__in=[a.id for a in to_remove_attendees]).delete()
+            MeetingAttendance.objects.filter(
+                id__in=[a.id for a in to_remove_attendees]
+            ).delete()
             cls._send_meeting_notifications(
                 meeting,
                 removed_users,
                 organizer_id,
                 title="Yig'ilishdan chiqarildingiz",
-                msg_template=f"Siz '{meeting.title}' yig'ilishi qatnashchilari ro'yxatidan chiqarildingiz."
+                msg_template=f"Siz '{meeting.title}' yig'ilishi qatnashchilari ro'yxatidan chiqarildingiz.",
             )
 
         to_add_ids = new_participant_ids - current_attendee_ids
 
         if to_add_ids:
             from django.contrib.auth import get_user_model
+
             User = get_user_model()
             to_add_users = User.objects.filter(id__in=to_add_ids)
 
             attendances = [
-                MeetingAttendance(user=user, meeting=meeting)
-                for user in to_add_users
+                MeetingAttendance(user=user, meeting=meeting) for user in to_add_users
             ]
             MeetingAttendance.objects.bulk_create(attendances)
             cls._send_meeting_notifications(meeting, to_add_users, organizer_id)
@@ -332,7 +403,7 @@ class MeetingService:
     @classmethod
     @transaction.atomic
     def create_meeting(cls, organizer, validated_data):
-        participants = validated_data.pop('participants', [])
+        participants = validated_data.pop("participants", [])
         meeting = Meeting.objects.create(organizer=organizer, **validated_data)
         cls.handle_participants(meeting, participants, organizer.id)
         return meeting
@@ -351,16 +422,19 @@ class MeetingService:
             meeting=meeting,
             is_attended=True,
             joined_at__isnull=False,
-            left_at__isnull=True
+            left_at__isnull=True,
         )
         for att in active_attendances:
             att.left_at = meeting.completed_at
             duration_secs = (meeting.completed_at - att.joined_at).total_seconds()
-            att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
-            att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
+            att.duration_minutes = max(
+                att.duration_minutes or 0, int(duration_secs // 60)
+            )
+            att.save(update_fields=["left_at", "duration_minutes", "updated_at"])
 
         from channels.layers import get_channel_layer
         from asgiref.sync import async_to_sync
+
         channel_layer = get_channel_layer()
         if channel_layer:
             async_to_sync(channel_layer.group_send)(
@@ -370,14 +444,16 @@ class MeetingService:
                     "data": {
                         "type": "meeting_ended",
                         "meeting_id": meeting.id,
-                        "message": "Yig'ilish tugatildi."
-                    }
-                }
+                        "message": "Yig'ilish tugatildi.",
+                    },
+                },
             )
 
         LiveKitService.delete_room(meeting.uid)
 
-        absent_attendances = MeetingAttendance.objects.filter(meeting=meeting, is_attended=False).select_related('user')
+        absent_attendances = MeetingAttendance.objects.filter(
+            meeting=meeting, is_attended=False
+        ).select_related("user")
 
         notifications_to_bulk = []
         broadcast_data = []
@@ -385,42 +461,49 @@ class MeetingService:
         for attendance in absent_attendances:
             msg = f"Siz {meeting.title} yig'ilishda qatnashmadingiz. Sababini ko'rsatishingiz so'raladi."
 
-            notifications_to_bulk.append(Notification(
-                user_id=attendance.user.id,
-                title="Yig'ilishda ishtirok etmadingiz.",
-                message=msg,
-                type=NotificationType.MEETING,
-                extra_data={
-                    "meeting_id": meeting.id,
-                    "action": "open_meeting",
-                    "project_id": meeting.project_id
-                }
-            ))
+            notifications_to_bulk.append(
+                Notification(
+                    user_id=attendance.user.id,
+                    title="Yig'ilishda ishtirok etmadingiz.",
+                    message=msg,
+                    type=NotificationType.MEETING,
+                    extra_data={
+                        "meeting_id": meeting.id,
+                        "action": "open_meeting",
+                        "project_id": meeting.project_id,
+                    },
+                )
+            )
 
-            broadcast_data.append({
-                "user_id": attendance.user.id,
-                "title": "Yig'ilishda ishtirok etmadingiz.",
-                "message": msg,
-                "type": NotificationType.MEETING,
-                "extra_data": {
-                    "meeting_id": meeting.id,
-                    "action": "open_meeting",
-                    "project_id": meeting.project_id
+            broadcast_data.append(
+                {
+                    "user_id": attendance.user.id,
+                    "title": "Yig'ilishda ishtirok etmadingiz.",
+                    "message": msg,
+                    "type": NotificationType.MEETING,
+                    "extra_data": {
+                        "meeting_id": meeting.id,
+                        "action": "open_meeting",
+                        "project_id": meeting.project_id,
+                    },
                 }
-            })
+            )
 
         if notifications_to_bulk:
             Notification.objects.bulk_create(notifications_to_bulk)
 
             from apps.notifications.tasks import mass_notification_sender
-            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+            transaction.on_commit(
+                lambda: mass_notification_sender.delay(broadcast_data)
+            )
 
         return meeting
 
     @classmethod
     def notify_time_change(cls, meeting):
         participants = meeting.participants.all()
-        start_time_str = meeting.start_time.strftime('%d.%m.%Y %H:%M')
+        start_time_str = meeting.start_time.strftime("%d.%m.%Y %H:%M")
 
         notifications_to_bulk = []
         broadcast_data = []
@@ -429,29 +512,36 @@ class MeetingService:
 
         for member in participants:
             if member.id != meeting.organizer_id:
-                notifications_to_bulk.append(Notification(
-                    user=member,
-                    title="Yig'ilish vaqti o'zgardi",
-                    message=msg,
-                    type=NotificationType.MEETING
-                ))
+                notifications_to_bulk.append(
+                    Notification(
+                        user=member,
+                        title="Yig'ilish vaqti o'zgardi",
+                        message=msg,
+                        type=NotificationType.MEETING,
+                    )
+                )
 
-                broadcast_data.append({
-                    "user_id": member.id,
-                    "title": "Yig'ilish vaqti o'zgardi",
-                    "message": msg,
-                    "type": "meeting",
-                    "extra_data": {
-                        "meeting_id": meeting.id,
-                        "action": "open_meeting",
-                        "project_id": meeting.project_id
+                broadcast_data.append(
+                    {
+                        "user_id": member.id,
+                        "title": "Yig'ilish vaqti o'zgardi",
+                        "message": msg,
+                        "type": "meeting",
+                        "extra_data": {
+                            "meeting_id": meeting.id,
+                            "action": "open_meeting",
+                            "project_id": meeting.project_id,
+                        },
                     }
-                })
+                )
 
         if notifications_to_bulk:
             Notification.objects.bulk_create(notifications_to_bulk)
             from apps.notifications.tasks import mass_notification_sender
-            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+
+            transaction.on_commit(
+                lambda: mass_notification_sender.delay(broadcast_data)
+            )
 
     @classmethod
     def notify_meeting_started(cls, meeting):
@@ -462,10 +552,8 @@ class MeetingService:
 
         attended_user_ids = set(
             MeetingAttendance.objects.filter(
-                meeting=meeting,
-                is_attended=True,
-                left_at__isnull=True
-            ).values_list('user_id', flat=True)
+                meeting=meeting, is_attended=True, left_at__isnull=True
+            ).values_list("user_id", flat=True)
         )
         attended_user_ids.add(meeting.organizer_id)
 
@@ -480,7 +568,7 @@ class MeetingService:
             extra = {
                 "meeting_id": meeting.id,
                 "room_name": meeting.uid,
-                "action": "join_meeting"
+                "action": "join_meeting",
             }
             notifications_to_create.append(
                 Notification(
@@ -488,20 +576,24 @@ class MeetingService:
                     title=title,
                     message=msg,
                     type=NotificationType.MEETING,
-                    extra_data=extra
+                    extra_data=extra,
                 )
             )
-            broadcast_data.append({
-                "user_id": participant.id,
-                "title": title,
-                "message": msg,
-                "type": "meeting",
-                "extra_data": extra
-            })
+            broadcast_data.append(
+                {
+                    "user_id": participant.id,
+                    "title": title,
+                    "message": msg,
+                    "type": "meeting",
+                    "extra_data": extra,
+                }
+            )
 
         if notifications_to_create:
             Notification.objects.bulk_create(notifications_to_create)
-            transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
+            transaction.on_commit(
+                lambda: mass_notification_sender.delay(broadcast_data)
+            )
 
         channel_layer = get_channel_layer()
         if channel_layer:
@@ -512,9 +604,9 @@ class MeetingService:
                     "data": {
                         "type": "organizer_joined",
                         "meeting_id": meeting.id,
-                        "message": "Tashkilotchi yig'ilishga kirdi."
-                    }
-                }
+                        "message": "Tashkilotchi yig'ilishga kirdi.",
+                    },
+                },
             )
 
     @classmethod
@@ -532,21 +624,23 @@ class MeetingService:
             extra_data={
                 "meeting_id": meeting.id,
                 "action": "open_meeting",
-                "late_minutes": late_minutes
-            }
+                "late_minutes": late_minutes,
+            },
         )
 
-        broadcast_data = [{
-            "user_id": user.id,
-            "title": title,
-            "message": msg,
-            "type": "meeting",
-            "extra_data": {
-                "meeting_id": meeting.id,
-                "action": "open_meeting",
-                "late_minutes": late_minutes
+        broadcast_data = [
+            {
+                "user_id": user.id,
+                "title": title,
+                "message": msg,
+                "type": "meeting",
+                "extra_data": {
+                    "meeting_id": meeting.id,
+                    "action": "open_meeting",
+                    "late_minutes": late_minutes,
+                },
             }
-        }]
+        ]
         transaction.on_commit(lambda: mass_notification_sender.delay(broadcast_data))
 
 
@@ -556,12 +650,12 @@ class LiveKitService:
         api_key = settings.LIVEKIT_API_KEY
         api_secret = settings.LIVEKIT_API_SECRET
 
-        is_organizer = (meeting.organizer_id == user.id)
+        is_organizer = meeting.organizer_id == user.id
         is_participant = meeting.participants.filter(id=user.id).exists()
         is_cohost = is_participant and (
-            user.is_superuser or
-            user.has_role(Role.ADMIN) or
-            (meeting.project and meeting.project.manager_id == user.id)
+            user.is_superuser
+            or user.has_role(Role.ADMIN)
+            or (meeting.project and meeting.project.manager_id == user.id)
         )
         has_admin_grants = is_organizer or is_cohost
 
@@ -573,7 +667,7 @@ class LiveKitService:
             can_publish_data=True,
             room_create=has_admin_grants,
             room_admin=has_admin_grants,
-            room_record=has_admin_grants
+            room_record=has_admin_grants,
         )
 
         unique_suffix = str(device_id).strip() if device_id else uuid.uuid4().hex[:6]
@@ -581,14 +675,16 @@ class LiveKitService:
 
         base_name = user.get_full_name() or user.username
         clean_device_name = str(device_name).strip() if device_name else None
-        participant_name = f"{base_name} ({clean_device_name})" if clean_device_name else base_name
+        participant_name = (
+            f"{base_name} ({clean_device_name})" if clean_device_name else base_name
+        )
 
         metadata = {
             "user_id": user.id,
             "username": user.username,
             "full_name": base_name,
             "device_id": unique_suffix,
-            "is_organizer": is_organizer
+            "is_organizer": is_organizer,
         }
         if clean_device_name:
             metadata["device_name"] = clean_device_name
@@ -608,11 +704,13 @@ class LiveKitService:
     def delete_room(cls, room_name):
         from asgiref.sync import async_to_sync
 
-        http_url = getattr(settings, 'LIVEKIT_INTERNAL_URL', 'http://127.0.0.1:7880')
+        http_url = getattr(settings, "LIVEKIT_INTERNAL_URL", "http://127.0.0.1:7880")
 
         async def _delete():
             try:
-                async with api.LiveKitAPI(http_url, settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET) as lk:
+                async with api.LiveKitAPI(
+                    http_url, settings.LIVEKIT_API_KEY, settings.LIVEKIT_API_SECRET
+                ) as lk:
                     await lk.room.delete_room(api.DeleteRoomRequest(room=room_name))
             except Exception:
                 pass
@@ -644,7 +742,7 @@ class LiveKitService:
 
         if event_type == "participant_joined" and participant:
             raw_identity = participant.identity or ""
-            raw_user_id = raw_identity.split('_')[0] if raw_identity else None
+            raw_user_id = raw_identity.split("_")[0] if raw_identity else None
             if not raw_user_id and participant.metadata:
                 try:
                     raw_user_id = json.loads(participant.metadata).get("user_id")
@@ -664,14 +762,18 @@ class LiveKitService:
             active_devices.add(raw_identity)
             cache.set(devices_cache_key, active_devices, timeout=86400)
 
-            att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
+            att = MeetingAttendance.objects.filter(
+                meeting=meeting, user_id=user_id
+            ).first()
             was_attended = att.is_attended if att else False
             now = timezone.now()
-            is_organizer = (str(meeting.organizer_id) == str(user_id))
+            is_organizer = str(meeting.organizer_id) == str(user_id)
 
             calc_late_minutes = 0
             if not is_organizer:
-                org_att = MeetingAttendance.objects.filter(meeting=meeting, user_id=meeting.organizer_id).first()
+                org_att = MeetingAttendance.objects.filter(
+                    meeting=meeting, user_id=meeting.organizer_id
+                ).first()
                 org_joined_at = org_att.joined_at if org_att else None
                 base_start_time = meeting.start_time
                 if org_joined_at and meeting.start_time:
@@ -697,9 +799,17 @@ class LiveKitService:
                 if not att.joined_at:
                     att.joined_at = now
                     att.late_minutes = calc_late_minutes
-                att.save(update_fields=['is_attended', 'joined_at', 'late_minutes', 'updated_at'])
+                att.save(
+                    update_fields=[
+                        "is_attended",
+                        "joined_at",
+                        "late_minutes",
+                        "updated_at",
+                    ]
+                )
             else:
                 from django.contrib.auth import get_user_model
+
                 User = get_user_model()
                 target_user = User.objects.filter(id=user_id).first()
                 if target_user:
@@ -708,18 +818,20 @@ class LiveKitService:
                         user=target_user,
                         is_attended=True,
                         joined_at=now,
-                        late_minutes=calc_late_minutes
+                        late_minutes=calc_late_minutes,
                     )
 
             if att and att.late_minutes > 5 and not was_attended and not is_organizer:
-                MeetingService.notify_participant_late(meeting, att.user, att.late_minutes)
+                MeetingService.notify_participant_late(
+                    meeting, att.user, att.late_minutes
+                )
 
             if is_organizer and not was_attended:
                 MeetingService.notify_meeting_started(meeting)
 
         elif event_type == "participant_left" and participant:
             raw_identity = participant.identity or ""
-            raw_user_id = raw_identity.split('_')[0] if raw_identity else None
+            raw_user_id = raw_identity.split("_")[0] if raw_identity else None
             if not raw_user_id and participant.metadata:
                 try:
                     raw_user_id = json.loads(participant.metadata).get("user_id")
@@ -740,14 +852,20 @@ class LiveKitService:
             cache.set(devices_cache_key, active_devices, timeout=86400)
 
             if len(active_devices) == 0:
-                att = MeetingAttendance.objects.filter(meeting=meeting, user_id=user_id).first()
+                att = MeetingAttendance.objects.filter(
+                    meeting=meeting, user_id=user_id
+                ).first()
                 if att:
                     now = timezone.now()
                     att.left_at = now
                     if att.joined_at:
                         duration_secs = (now - att.joined_at).total_seconds()
-                        att.duration_minutes = max(att.duration_minutes or 0, int(duration_secs // 60))
-                    att.save(update_fields=['left_at', 'duration_minutes', 'updated_at'])
+                        att.duration_minutes = max(
+                            att.duration_minutes or 0, int(duration_secs // 60)
+                        )
+                    att.save(
+                        update_fields=["left_at", "duration_minutes", "updated_at"]
+                    )
 
         elif event_type == "room_finished":
             if not meeting.is_completed:
