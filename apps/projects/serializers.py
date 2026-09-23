@@ -391,6 +391,9 @@ class MeetingSerializer(ModelCleanMixin, serializers.ModelSerializer):
 class MeetingAttendanceSerializer(serializers.ModelSerializer):
     user_info = UserShortSerializer(source="user", read_only=True)
     meeting_title = serializers.CharField(source="meeting.title", read_only=True)
+    meeting_start_time = serializers.DateTimeField(source="meeting.start_time", read_only=True)
+    reason_deadline = serializers.SerializerMethodField(read_only=True)
+    can_submit_reason = serializers.SerializerMethodField(read_only=True)
     absence_reason = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
@@ -400,6 +403,7 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
             "user_info",
             "meeting",
             "meeting_title",
+            "meeting_start_time",
             "is_attended",
             "is_excused",
             "joined_at",
@@ -407,16 +411,43 @@ class MeetingAttendanceSerializer(serializers.ModelSerializer):
             "duration_minutes",
             "late_minutes",
             "absence_reason",
+            "reason_deadline",
+            "can_submit_reason",
         )
         read_only_fields = (
             "id",
             "user_info",
             "meeting",
+            "meeting_start_time",
             "joined_at",
             "left_at",
             "duration_minutes",
             "late_minutes",
+            "reason_deadline",
+            "can_submit_reason",
         )
+
+    def get_reason_deadline(self, obj):
+        from datetime import timedelta
+        ref_time = None
+        if obj.is_attended:
+            ref_time = obj.joined_at or obj.meeting.start_time
+        else:
+            ref_time = obj.meeting.completed_at or obj.meeting.start_time
+        if ref_time:
+            return ref_time + timedelta(hours=24)
+        return None
+
+    def get_can_submit_reason(self, obj):
+        from django.utils import timezone
+        if obj.absence_reason:
+            return False
+        if obj.is_attended and obj.late_minutes <= 5:
+            return False
+        deadline = self.get_reason_deadline(obj)
+        if not deadline:
+            return False
+        return timezone.now() <= deadline
 
     def validate(self, attrs):
         user = self.request_user

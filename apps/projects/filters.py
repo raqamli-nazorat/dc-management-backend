@@ -113,6 +113,7 @@ class MeetingFilter(filters.FilterSet):
     class Meta:
         model = Meeting
         fields = {
+            "uid": ["exact", "iexact"],
             "project": ["exact"],
             "organizer": ["exact"],
             "is_completed": ["exact"],

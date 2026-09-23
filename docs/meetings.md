@@ -1,40 +1,39 @@
-# LiveKit Video Konferensiya va WebSocket Integratsiya Qo'llanmasi (Frontend uchun)
+# LiveKit Video Konferensiya va WebSocket Integratsiya Qo'llanmasi (Frontend va Mobile uchun)
 
-Ushbu qo'llanma **LiveKit** va **Django Channels (WebSocket)** orqali video yig'ilishlarni frontendda (React, Vue, Angular yoki mobil ilovalar) noldan to'liq integratsiya qilish uchun mo'ljallangan.
-
----
-
-## 1. Umumiy Arxitektura va Ishlash Tartibi
-
-Tizim uchta asosiy qismdan iborat:
-1. **Django REST API**: Yig'ilishlarni boshqarish (yaratish, tahrirlash, yakunlash, davomatni ko'rish).
-2. **Django WebSocket (`/api/ws/meetings/<meeting_id>/`)**: Kirish ruxsatlari, kutish xonasi (Waiting room), mezbon tasdig'i (Knock & Admit), avtomatik token uzatish va yig'ilish holatlarini sinxronlash.
-3. **LiveKit WebRTC Server**: Yuqori sifatli audio, video, ekran ulashish va real-vaqt ma'lumotlari (chat/raise hand).
+Ushbu hujjat **Mobile (Flutter)** va **Frontend (React/Web)** dasturchilari uchun LiveKit hamda Django Channels (WebSocket) orqali video konferensiya funksiyalarini bir xilda, xavfsiz va to'liq integratsiya qilish bo'yicha yagona texnik qo'llanmadir.
 
 ---
 
-## 2. WebSocket Ulanishlarning Farqi va Hayot Sikli (Lifecycle)
+## 1. Umumiy Arxitektura va Qatlamlar
 
-Loyiha ikkita mutlaqo boshqa WebSocket kanalidan foydalanadi:
+Video yig'ilish tizimi 3 ta asosiy qatlamga bo'lingan:
 
-### A. Global Bildirishnomalar WebSocket'i (`/api/ws/notifications/`)
-* **Qachon ulanadi?** Foydalanuvchi saytga/ilovaga kirishi (login bo'lishi) bilanoq 1 marta ulanadi.
-* **Qachongacha ochiq turadi?** Butun dastur bo'yicha orqa fonda (global) doimiy ochiq turadi.
-* **Vazifasi:** Yangi vazifalar, tizim bildirishnomalari va `"meeting_started"` (Yig'ilish boshlandi, agar foydalanuvchi hali kirmagan bo'lsa) kabi xabarlarni qabul qilish.
+```text
+1. REST API
+   ├── Yig'ilishlar ro'yxati va CRUD (/api/meetings/)
+   ├── Deep-link bo'yicha qidiruv (/api/meetings/?uid=MT-0009)
+   ├── Yig'ilishni yakunlash (/api/meetings/{id}/close/)
+   ├── Davomat va sabab bildirish (/api/meeting-attendance/)
+   └── Bir martalik WebSocket bileti (Ticket) olish (/api/notifications/tickets/)
 
-### B. Yig'ilish WebSocket'i (`/api/ws/meetings/<meeting_id>/`)
-* **Qachon ulanadi?** FAQAT foydalanuvchi muayyan yig'ilish sahifasiga kirganida (yoki "Yig'ilishga kirish" tugmasini bosganida).
-* **Qachon uziladi (`disconnect`)?** Foydalanuvchi yig'ilish sahifasidan chiqqanda (komponent unmount bo'lganda) yoki yig'ilish tugaganda (`meeting_ended` hodisasi kelganda).
-* **Vazifasi:** Yig'ilish xonasining kutish zali, daxlsizlik tekshiruvi, mezbon tasdig'i (knock & admit), LiveKit tokenini qabul qilish va xonadagi jonli holatlarni boshqarish.
+2. Django Channels WebSocket (/api/ws/meetings/{meeting_id}/?ticket={ticket})
+   ├── Xona holatini sinxronlash (meeting_state)
+   ├── Kutish zali va mezbon tasdig'i (Waiting Room & Knock/Admit)
+   ├── Qo'l ko'tarish holati (Hand Raise)
+   ├── Jonli emojilar (Reactions)
+   ├── Mezbon boshqaruvi (Mute Microphone / Camera)
+   └── Ovozni qayta yoqish so'rovi (Unmute Request)
 
-> [!WARNING]
-> **Muhim:** `/api/ws/meetings/<meeting_id>/` ga sayt ochilishi bilan global ulab qo'ymang! Unda muayyan `meeting_id` bo'lishi shart va u faqat foydalanuvchi yig'ilish oynasida o'tirgan paytidagina faol bo'lishi kerak. Yig'ilish tugashi bilan `ws.close()` qilinishi shart!
+3. LiveKit WebRTC Server (Audio / Video / Screen Share)
+   ├── Ovoz, video va ekran ulashish
+   └── Jonli guruh chati (LiveKit Data Channel orqali)
+```
 
 ---
 
-## 3. Autentifikatsiya (Ticket tizimi)
+## 2. Autentifikatsiya va WebSocket'ga Ulanish
 
-WebSocket ulanishlari xavfsiz bir martalik bilet (**Ticket**) orqali amalga oshiriladi:
+Barcha WebSocket ulanishlari xavfsiz **bir martalik bilet (One-time Ticket)** orqali ulanadi.
 
 ### 1-qadam: Ticket olish (REST API)
 * **URL:** `POST /api/notifications/tickets/`
@@ -42,30 +41,30 @@ WebSocket ulanishlari xavfsiz bir martalik bilet (**Ticket**) orqali amalga oshi
 * **Response (200 OK):**
 ```json
 {
-  "success": true,
-  "data": {
-    "ticket": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
-    "expires_in": 60
-  }
+  "ticket": "9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d",
+  "expires_in": 60
 }
 ```
 
 ### 2-qadam: WebSocket'ga ulanish
-Olingan ticket bilan WebSocket ulanishini oching:
+Olingan ticket orqali yig'ilishning maxsus kanaliga ulanasiz:
+```text
+wss://backend.raqamlinazorat.uz/api/ws/meetings/<meeting_id>/?ticket=<ticket>
 ```
-wss://<domain>/api/ws/meetings/<meeting_id>/?ticket=<ticket>
-```
-*(Lokal muhitda: `ws://127.0.0.1:8000/api/ws/meetings/16/?ticket=...`)*  
-*(Production muhitida: `wss://backend.raqamlinazorat.uz/api/ws/meetings/16/?ticket=...`)*
+*(Lokal muhitda: `ws://127.0.0.1:8000/api/ws/meetings/16/?ticket=...`)*
+
+> [!IMPORTANT]
+> **Web va Mobile uchun qoidalar:**
+> 1. URL har doim `wss://` (lokalda `ws://`) va `/api/ws/meetings/{id}/` ko'rinishida bo'lishi shart.
+> 2. Ticket bir martalik: WebSocket ulanishi muvaffaqiyatli bo'lishi bilanoq backend uni keshdan o'chiradi. Har bir yangi ulanish yoki qayta ulanish (reconnect) paytida albatta yangi ticket olinishi kerak.
+> 3. Ushbu WebSocket faqat yig'ilish xonasi sahifasida (ekranida) faol bo'ladi. Xonadan chiqilganda yoki yig'ilish tugaganda `socket.close()` qilinishi shart!
 
 ---
 
-## 4. Xavfsizlik, Daxlsizlik va Xatoliklarni Qayta Ishlash
+## 3. Ulanish Xatoliklari (Terminal Errors)
 
-Agar foydalanuvchi yig'ilishga kirish huquqiga ega bo'lmasa, server ulanishni yopishdan oldin **aniq JSON xatolik hodisasi** yuboradi va shundan so'ng ulanishni yopadi:
+Agar foydalanuvchi xonaga kira olmasa, server ulanishni yopishdan oldin `error` xabarini yuboradi:
 
-### A. Ruxsat yo'q (403 Forbidden):
-Yig'ilishga **faqat tashkilotchi va taklif qilingan qatnashchilar** kira oladi. Agar foydalanuvchi (shu jumladan tizim admini yoki loyiha menejeri ham) ushbu yig'ilish qatnashchilar ro'yxatida bo'lmasa, yig'ilish daxlsiz hisoblanadi va xonaga kiritilmaydi:
 ```json
 {
   "type": "error",
@@ -73,166 +72,106 @@ Yig'ilishga **faqat tashkilotchi va taklif qilingan qatnashchilar** kira oladi. 
   "message": "Siz ushbu yig'ilish qatnashchisi emassiz."
 }
 ```
-*WebSocket yopilish kodi:* `4003`
 
-### B. Yig'ilish topilmadi yoki allaqachon tugagan (404 Not Found):
-Tugagan yig'ilishlarga qayta kirish taqiqlangan:
-```json
-{
-  "type": "error",
-  "code": 404,
-  "message": "Ushbu yig'ilish allaqachon tugagan yoki mavjud emas."
-}
-```
-*WebSocket yopilish kodi:* `4004`
-
-### C. Login qilinmagan (401 Unauthorized):
-Ticket yaroqsiz yoki berilmagan bo'lsa:
-```json
-{
-  "type": "error",
-  "code": 401,
-  "message": "Autentifikatsiyadan o'tilmagan."
-}
-```
-*WebSocket yopilish kodi:* `4003`
-
-### Frontendda xatoliklarni tutib olish namunasi:
-```javascript
-socket.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  if (data.type === 'error') {
-    toast.error(data.message); // Masalan: "Siz ushbu yig'ilish qatnashchisi emassiz."
-    return;
-  }
-  // ... boshqa hodisalar
-};
-
-socket.onclose = (event) => {
-  if (event.code === 4003) {
-    console.warn("Kirish taqiqlandi (403)");
-  } else if (event.code === 4004) {
-    console.warn("Yig'ilish tugagan yoki mavjud emas (404)");
-  }
-};
-```
+| HTTP / Error Code | WebSocket Close Code | Sabab va Harakat |
+| :--- | :--- | :--- |
+| `401` | `4003` | Ticket yaroqsiz yoki avtorizatsiyadan o'tilmagan. Yangi ticket olib qayta urinish kerak. |
+| `403` | `4003` | Foydalanuvchi ushbu yig'ilish ro'yxatida yo'q. Qayta ulanish to'xtatiladi, xatolik ko'rsatiladi. |
+| `404` | `4004` | Yig'ilish allaqachon yakunlangan yoki mavjud emas. Sahifadan chiqiladi. |
 
 ---
 
-## 5. Ulanish va Boshlang'ich Holat (`meeting_state`)
+## 4. Boshlang'ich Holat (`meeting_state`)
 
-Foydalanuvchi muvaffaqiyatli ulanganda, server avtomatik ravishda yig'ilishning joriy holatini qaytaradi:
+Foydalanuvchi muvaffaqiyatli ulanganda server avtomatik tarzda `meeting_state` xabarini yuboradi:
 
 ```json
 {
   "type": "meeting_state",
   "meeting_id": 16,
-  "title": "Haftalik loyiha tahlili",
+  "title": "Haftalik tahlil",
   "requires_approval": true,
   "organizer_joined": true,
   "is_host": true,
   "is_approved": true,
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "server_url": "wss://locale.alijonov.uz",
-  "room_name": "MT0009"
+  "token": "eyJhbGciOiJIUzI1Ni...",
+  "server_url": "wss://livekit.example.com",
+  "room_name": "MT-0009",
+  "raised_hands": [
+    {
+      "user_id": 45,
+      "username": "ali",
+      "full_name": "Ali Valiyev",
+      "raised_at": "2026-09-23T15:30:00Z"
+    }
+  ]
 }
 ```
 
-### Parametrlar tavsifi:
-| Maydon | Tip | Tavsif |
-| :--- | :--- | :--- |
-| `meeting_id` | `int` | Yig'ilish identifikatori |
-| `title` | `string` | Yig'ilish nomi |
-| `requires_approval` | `bool` | Mezbon tasdig'i talab qilinadimi? |
-| `organizer_joined` | `bool` | Tashkilotchi (mezbon) yig'ilishga kirganmi? |
-| `is_host` | `bool` | **Mezbon (Host / Co-host) vakolati:** Agar foydalanuvchi tashkilotchi bo'lsa, YOKI ushbu yig'ilishga qatnashchi sifatida qo'shilgan Admin/Loyiha menejeri bo'lsa `true` bo'ladi. Ular qatnashchilarni qabul qila oladi va yig'ilishni boshqara oladi. |
-| `is_approved` | `bool` | Ushbu foydalanuvchiga kirishga ruxsat berilganmi? |
-| `token` | `string \| null` | LiveKit WebRTC xonasiga kirish tokeni (ruxsat bo'lsa darhol keladi) |
-| `server_url` | `string \| null` | LiveKit server manzili |
-| `room_name` | `string \| null` | LiveKit xonasi nomi (`meeting.uid`) |
+* `is_host`: Foydalanuvchi tashkilotchi bo'lsa yoki yig'ilish a'zosi bo'lgan Admin/Menejer bo'lsa `true`.
+* `token`: Agar xonaga to'g'ridan-to'g'ri kirish mumkin bo'lsa (mezbon bo'lsa yoki tasdiq talab etilmasa), LiveKit JWT tokeni darhol shu yerda keladi.
+* `raised_hands`: Hozirda qo'lini ko'tarib turgan ishtirokchilar ro'yxati (xona ochilganda ekranda ko'rsatish uchun).
 
 ---
 
-## 6. Kutish Xonasi Mantiqi (Waiting Room Flow)
+## 5. Kutish Zali va Mezbon Tasdig'i (Knock & Admit)
 
-Foydalanuvchi mezbon bo'lmasa (`is_host: false`), kirish tartibi quyidagicha kechadi:
+Agar `requires_approval: true` bo'lsa va oddiy qatnashchi kirmagan bo'lsa (`is_host: false, is_approved: false`):
 
-### 1-bosqich: Mezbon kirmagan (`organizer_joined: false`)
-* Frontend ekranda kutish xabarnomasini ko'rsatadi: *"Tashkilotchi yig'ilishga kirmaguncha kuting..."*
-* Serverdan quyidagi hodisa keladi:
+### 1-bosqich: Mezbon hali kirmagan bo'lsa
+* Serverdan `waiting_organizer` keladi. Ekranda *"Mezbon kirishini kuting"* ko'rsatiladi.
+* Mezbon kirishi bilan server barchaga `organizer_joined` xabarini yuboradi.
+
+### 2-bosqich: Xodim kirishni so'rashi (Knock)
+Foydalanuvchi ekranda *"Kirishni so'rash"* tugmasini bosganda:
 ```json
-{
-  "type": "waiting_organizer",
-  "message": "Tashkilotchi yig'ilishga kirmaguncha kuting."
-}
-```
-* **Frontend hech qanday polling qilishi shart emas!**
-* Tashkilotchi kirishi bilan server barcha kutib turganlarga `organizer_joined` hodisasini yuboradi:
-```json
-{
-  "type": "organizer_joined",
-  "meeting_id": 16,
-  "message": "Tashkilotchi yig'ilishga kirdi."
-}
-```
-> [!NOTE]
-> Agar yig'ilishda tasdiqlash talab qilinmasa (`requires_approval: false`), tashkilotchi kirishi bilan kutib turganlarga avtomatik ravishda `token_response` (token bilan) keladi va ular sahifani yangilamasdan to'g'ridan-to'g'ri xonaga kirib ketadi!
-
----
-
-## 7. Mezbon Tasdig'i (Google Meet uslubidagi "Knock & Admit")
-
-Agar yig'ilishda `requires_approval: true` bo'lsa va foydalanuvchi hali tasdiqlanmagan bo'lsa (`is_approved: false`):
-
-### 1-qadam: Xodim kirishni so'raydi (Knock)
-Frontend WebSocket orqali quyidagi so'rovni yuboradi:
-```json
+// Client -> Server
 {
   "action": "ask_to_join"
 }
 ```
-Frontend ekranda: *"Mezbon tasdiqlashini kuting..."* ko'rsatiladi.
 
-### 2-qadam: Mezbonlar ekraniga so'rov kelishi (Host & Co-host)
-Tashkilotchi hamda qatnashchi bo'lgan Admin/Menejerlarning ekranida `knock_request` xabari chiqadi:
+### 3-bosqich: Mezbon ekraniga bildirishnoma borishi
+Mezbon(lar) ekranida quyidagi hodisa chiqadi:
 ```json
+// Server -> Host
 {
   "type": "knock_request",
   "meeting_id": 16,
   "user_id": 45,
-  "username": "Ali Valiyev",
+  "username": "ali",
+  "full_name": "Ali Valiyev",
   "avatar": "/media/avatars/ali.jpg"
 }
 ```
-Frontend mezbonlar ekranida "Qabul qilish" (Admit) va "Rad etish" (Reject) tugmalari bilan modal/popup ko'rsatadi.
 
-### 3-qadam: Mezbon qaror qabul qiladi
-Mezbon WebSocket orqali quyidagi JSON'ni yuboradi:
+### 4-bosqich: Mezbon qarori (Admit)
+Mezbon qabul qilganda yoki rad etganda:
 ```json
+// Host -> Server
 {
   "action": "admit",
   "user_id": 45,
-  "decision": "approve" 
+  "decision": "approve" // yoki "reject"
 }
 ```
-*(Rad etish uchun: `"decision": "reject"`)*
 
-### 4-qadam: Xodim natijani qabul qiladi (`knock_response`)
+> [!WARNING]
+> Web va Mobile admit so'rovini **faqat WebSocket** orqali yuborishi kerak. REST API orqali parallel so'rov yuborilmaydi.
 
-#### Agar tasdiqlansa (`status: "approved"`):
+### 5-bosqich: Foydalanuvchiga javob borishi (`knock_response`)
+* **Agar qabul qilinsa (`status: "approved"`):**
 ```json
 {
   "type": "knock_response",
   "status": "approved",
-  "server_url": "wss://locale.alijonov.uz",
-  "room_name": "MT0009",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "server_url": "wss://livekit.example.com",
+  "room_name": "MT-0009",
+  "token": "eyJhbGciOiJIUzI1Ni..."
 }
 ```
-Frontend ushbu `token` va `server_url` orqali to'g'ridan-to'g'ri LiveKit xonasiga ulanadi.
-
-#### Agar rad etilsa (`status: "rejected"`):
+Klient olingan `token` va `server_url` orqali LiveKit xonasiga ulanadi.
+* **Agar rad etilsa (`status: "rejected"`):**
 ```json
 {
   "type": "knock_response",
@@ -243,153 +182,183 @@ Frontend ushbu `token` va `server_url` orqali to'g'ridan-to'g'ri LiveKit xonasig
 
 ---
 
-## 8. LiveKit Tokenini Olish (`get_token`) va Bir nechta Qurilmadan Kirish (Multi-Device)
+## 6. Qo'l Ko'tarish (Hand Raise)
 
-Agar foydalanuvchi tasdiqlangan bo'lsa yoki tasdiq talab etilmasa, istalgan paytda tokenni so'rash mumkin.
-Google Meet kabi bitta akkauntdan bir vaqtning o'zida **bir nechta kompyuter yoki qurilmadan** (masalan, bittasidan mikrofon/kamera, ikkinchisidan taqdimot/ekran ulashish) xonaga kirish to'liq qo'llab-quvvatlanadi. 
+Qo'l ko'tarish — bu **holat (state)** hisoblanadi. Har bir ishtirokchi o'z qo'lini ko'tarishi va o'zi tushirishi mumkin.
 
-Har bir qurilma uchun avtomatik unikal sessiya yaratiladi va ular bir-birini uzib yubormaydi. Ixtiyoriy ravishda qurilmani farqlash uchun `device_id` va `device_name` yuborish mumkin:
+### 1. Qo'l ko'tarish yoki tushirish:
+```json
+// Client -> Server
+{
+  "action": "hand_raise",
+  "raised": true // Qo'l ko'tarish uchun true, tushirish uchun false
+}
+```
 
+### 2. Barchaga boradigan xabar:
+Server barcha ishtirokchilarga holat o'zgarganini xabar qiladi:
+```json
+// Server -> All Clients
+{
+  "type": "hand_raise_updated",
+  "user_id": 45,
+  "username": "ali",
+  "full_name": "Ali Valiyev",
+  "raised": true,
+  "raised_at": "2026-09-23T15:40:00Z"
+}
+```
+
+---
+
+## 7. Jonli Emojilar (Reactions)
+
+Reaksiyalar — bu **bir lahzalik hodisa (ephemeral event)**. Holat saqlanmaydi, faqat ekranda uchib chiquvchi animatsiya ko'rsatiladi.
+
+### 1. Reaksiya yuborish:
+```json
+// Client -> Server
+{
+  "action": "send_reaction",
+  "reaction": "👏" // Masalan: "👏", "👍", "❤️", "🎉", "🔥"
+}
+```
+
+### 2. Barcha ishtirokchilarga keladigan xabar:
+```json
+// Server -> All Clients
+{
+  "type": "reaction_received",
+  "user_id": 45,
+  "username": "ali",
+  "full_name": "Ali Valiyev",
+  "reaction": "👏",
+  "sent_at": "2026-09-23T15:40:12Z"
+}
+```
+Mobil va Web ilovalar ushbu xabar kelganda ekranda 2-3 soniyalik emoji animatsiyasini chiqarib so'ndiradi.
+
+---
+
+## 8. Mezbon Moderatsiyasi (Mute & Unmute)
+
+Qatnashchilarni masofadan boshqarish to'liq **Backend va LiveKit Server** orqali boshqariladi. Client-side soxtalashtirishlarga yo'l qo'yilmaydi.
+
+### A. Ishtirokchini majburiy MUTE qilish (Mikrofon yoki Kamera)
+Faqat mezbon boshqa ishtirokchining mikrofonini yoki kamerasini o'chira oladi:
+
+```json
+// Host -> Server
+{
+  "action": "moderate_track",
+  "target_identity": "45_ab12cd", // LiveKit participant identity
+  "track_source": "microphone",   // yoki "camera"
+  "operation": "mute"
+}
+```
+**Natija:**
+1. Backend LiveKit serverida trackni server darajasida o'chiradi.
+2. Barcha qatnashchilarga hodisa boradi:
+```json
+// Server -> All Clients
+{
+  "type": "track_moderation_changed",
+  "meeting_id": 16,
+  "target_identity": "45_ab12cd",
+  "user_id": 45,
+  "track_source": "microphone",
+  "muted": true,
+  "actor_user_id": 1
+}
+```
+3. Klient ushbu xabarni olganda, o'sha foydalanuvchining mikrofon/kamera belgisini o'chirilgan (qizil) holatga o'tkazadi.
+
+### B. Ishtirokchiga UNMUTE so'rovini yuborish
+Mezbon hech kimning mikrofonini yoki kamerasini uning ruxsatisiz majburiy yoqib yubora olmaydi. Mezbon faqat so'rov yuboradi:
+
+```json
+// Host -> Server
+{
+  "action": "request_track_unmute",
+  "target_identity": "45_ab12cd",
+  "target_user_id": 45,
+  "track_source": "microphone" // yoki "camera"
+}
+```
+
+**Target ishtirokchiga keladigan taklif:**
+```json
+// Server -> Target User
+{
+  "type": "track_unmute_requested",
+  "request_id": "b6e3f4e1-...",
+  "from_user_id": 1,
+  "from_name": "Mezbon Ali",
+  "target_identity": "45_ab12cd",
+  "track_source": "microphone"
+}
+```
+Foydalanuvchi ekranda: *"Mezbon mikrofoningizni yoqishingizni so'ramoqda: [Roziman] / [Rad etish]"* dialogini ko'radi.
+
+Agar foydalanuvchi **[Roziman]** ni bossa:
+1. Uning qurilmasi (Mobile/Web) LiveKit orqali o'z mikrofonini yoqadi:
+   `room.localParticipant.setMicrophoneEnabled(true)`
+2. Mezbonga tasdiq xabarini qaytaradi:
+```json
+// Target -> Server
+{
+  "action": "respond_track_unmute_request",
+  "request_id": "b6e3f4e1-...",
+  "decision": "accept", // yoki "reject"
+  "target_identity": "45_ab12cd",
+  "track_source": "microphone"
+}
+```
+
+---
+
+## 9. LiveKit Chat (Guruh Chati)
+
+Guruh chati LiveKit-ning o'zida mavjud bo'lib, alohida backend ma'lumotlar bazasida saqlash talab etilmaydi. LiveKit Data Channel orqali 0 ms kechikish bilan barcha qatnashchilarga uzatiladi:
+
+```typescript
+// Web / Mobile yuborish
+const chatMessage = {
+  version: 1,
+  type: "chat",
+  message_id: uuidv4(),
+  sender_identity: room.localParticipant.identity,
+  sender_name: currentUserName,
+  sent_at: new Date().toISOString(),
+  text: "Salom barchaga!"
+};
+
+const payload = new TextEncoder().encode(JSON.stringify(chatMessage));
+await room.localParticipant.publishData(payload, { reliable: true });
+```
+
+---
+
+## 10. Multi-Device (Bir nechta qurilmadan kirish)
+
+Foydalanuvchi bitta hisob bilan bir vaqtning o'zida telefonidan ham, kompyuteridan ham kira oladi (biri ikkinchisini uzib yubormaydi).
+Token so'rashda ixtiyoriy ravishda qurilma nomini ko'rsatish mumkin:
 ```json
 {
   "action": "get_token",
-  "device_id": "laptop_screen", // ixtiyoriy (unikal qurilma id)
-  "device_name": "Taqdimot"    // ixtiyoriy (xona a'zolariga "Ism Familiya (Taqdimot)" shaklida ko'rinadi)
+  "device_id": "phone_samsung",
+  "device_name": "Telefon"
 }
 ```
-Oddiy holatda parametrlarsiz ham yuborish mumkin:
-```json
-{
-  "action": "get_token"
-}
-```
-**Server javobi:**
-```json
-{
-  "type": "token_response",
-  "status": "joined",
-  "server_url": "wss://locale.alijonov.uz",
-  "room_name": "MT0009",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
+Boshqa qatnashchilar ro'yxatida uning nomi *"Ali Valiyev (Telefon)"* ko'rinishida chiqadi.
 
 ---
 
-## 9. LiveKit SDK bilan Ulanish (Frontend JS/TS Kodi)
+## 11. Yig'ilishni Yakunlash (`close`)
 
-### 1-qadam: Kutubxonani o'rnatish
-```bash
-npm install livekit-client
-```
-
-### 2-qadam: Xonaga ulanish kodi
-```typescript
-import { Room, RoomEvent, VideoPresets } from 'livekit-client';
-
-const room = new Room({
-  adaptiveStream: true,
-  dynacast: true,
-  videoCaptureDefaults: {
-    resolution: VideoPresets.h720.resolution,
-    simulcast: true,
-  },
-  publishDefaults: {
-    simulcast: true,
-    videoSimulcastLayers: [
-      VideoPresets.h1080,
-      VideoPresets.h720,
-      VideoPresets.h360
-    ]
-  }
-});
-
-async function joinConference(serverUrl: string, token: string) {
-  // 1. LiveKit xonasiga ulanish
-  await room.connect(serverUrl, token);
-  console.log("Xonaga muvaffaqiyatli ulandi:", room.name);
-
-  // 2. O'z kamera va mikrofonini yoqish
-  await room.localParticipant.enableCameraAndMicrophone();
-
-  // O'z videomizni ekranda ko'rsatish
-  const localVideoTrack = room.localParticipant.getTrackPublication('camera')?.videoTrack;
-  if (localVideoTrack) {
-    const element = localVideoTrack.attach();
-    document.getElementById('local-video-container')?.appendChild(element);
-  }
-
-  // 3. Boshqa ishtirokchilar kamerasi/ovozini qabul qilish
-  room.on(RoomEvent.TrackSubscribed, (track, publication, participant) => {
-    const element = track.attach();
-    const container = document.getElementById(`participant-${participant.identity}`);
-    if (container) {
-      container.appendChild(element);
-    }
-  });
-
-  // 4. Ishtirokchi chiqqanda uning elementlarini tozalash
-  room.on(RoomEvent.TrackUnsubscribed, (track) => {
-    track.detach();
-  });
-}
-```
-
-### 3-qadam: Mikrofon / Kamera / Ekran boshqaruvi
-```typescript
-async function toggleMic(enabled: boolean) {
-  await room.localParticipant.setMicrophoneEnabled(enabled);
-}
-
-async function toggleCamera(enabled: boolean) {
-  await room.localParticipant.setCameraEnabled(enabled);
-}
-
-async function toggleScreenShare(enabled: boolean) {
-  await room.localParticipant.setScreenShareEnabled(enabled);
-}
-
-async function leaveRoom() {
-  await room.disconnect();
-}
-```
-
-### 4-qadam: Jonli Chat va Reaksiyalar (WebRTC Data Channel)
-Tokenlar `can_publish_data: true` bilan beriladi. LiveKit orqali 0 ms kechikish bilan xabar almashish mumkin:
-
-```typescript
-// 1. Chat xabari yuborish
-async function sendChatMessage(text: string, currentUserName: string) {
-  const messageData = {
-    type: 'chat',
-    text: text,
-    sender: currentUserName,
-    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  };
-  const payload = new TextEncoder().encode(JSON.stringify(messageData));
-  await room.localParticipant.publishData(payload, { reliable: true });
-}
-
-// 2. Xabarlarni qabul qilish
-room.on(RoomEvent.DataReceived, (payload: Uint8Array, participant) => {
-  const decoded = JSON.parse(new TextDecoder().decode(payload));
-  if (decoded.type === 'chat') {
-    console.log(`${decoded.sender}: ${decoded.text}`);
-  }
-});
-```
-
----
-
-## 10. Yig'ilishni Yakunlash (`close`)
-
-Yig'ilishni tashkilotchi, qatnashchi bo'lgan admin yoki menejer tugatishi mumkin:
-1. **REST API so'rovi:**
-   * **URL:** `POST /api/meetings/<meeting_id>/close/`
-   * **Headers:** `Authorization: Bearer <JWT_ACCESS_TOKEN>`
-2. **Natija:**
-   * LiveKit Media Serveri xonani o'chiradi va ichidagi barcha ishtirokchilarni uzib yuboradi.
-   * Xonadagi barcha foydalanuvchilarga `meeting_ended` hodisasi boradi:
+Yig'ilishni mezbon tugatganda:
+1. Mezbon REST so'rov yuboradi: `POST /api/meetings/{id}/close/`
+2. Server LiveKit xonasini yopadi va barcha qatnashchilarga WebSocket orqali xabar yuboradi:
 ```json
 {
   "type": "meeting_ended",
@@ -397,115 +366,55 @@ Yig'ilishni tashkilotchi, qatnashchi bo'lgan admin yoki menejer tugatishi mumkin
   "message": "Yig'ilish tugatildi."
 }
 ```
-3. **Frontend nima qilishi kerak:**
-   ```typescript
-   await room.disconnect();
-   meetingWs.close();
-   showModal("Yig'ilish mezbon tomonidan yakunlandi");
-   ```
+3. Klient darhol LiveKit va WebSocket ulanishlarini yopadi va natija ekraniga o'tadi:
+```typescript
+await room.disconnect();
+socket.close();
+```
 
 ---
 
-## 11. Yig'ilish Davomatini Olish (`meeting-attendance`)
+## 12. Davomat va Sabab Bildirish (`meeting-attendance`)
 
-Yig'ilish tugaganidan keyin yoki davomida qatnashuvchilar davomatini olish uchun:
-* **URL:** `GET /api/meeting-attendance/?meeting=<meeting_id>`
-* **Headers:** `Authorization: Bearer <JWT_ACCESS_TOKEN>`
-* **Response (200 OK):**
+Davomat ro'yxatini olish: `GET /api/meeting-attendance/?meeting={meeting_id}`
+
+### Qaytadigan yangi maydonlar:
 ```json
 {
-  "success": true,
-  "data": {
-    "count": 2,
-    "results": [
-      {
-        "id": 29,
-        "user_info": {
-          "id": 3,
-          "username": "Alijonov Abdulbosit",
-          "position": "Dasturchi"
-        },
-        "meeting": 16,
-        "meeting_title": "Haftalik loyiha tahlili",
-        "is_attended": true,
-        "is_excused": false,
-        "joined_at": "2026-09-13T10:00:00+05:00",
-        "left_at": "2026-09-13T10:30:00+05:00",
-        "duration_minutes": 30,
-        "late_minutes": 8,
-        "absence_reason": null
-      }
-    ]
-  }
+  "id": 29,
+  "user_info": {
+    "id": 3,
+    "username": "ali",
+    "position": "Dasturchi"
+  },
+  "meeting": 16,
+  "meeting_title": "Haftalik tahlil",
+  "meeting_start_time": "2026-09-23T10:00:00+05:00",
+  "is_attended": true,
+  "is_excused": false,
+  "joined_at": "2026-09-23T10:08:00+05:00",
+  "left_at": "2026-09-23T10:30:00+05:00",
+  "duration_minutes": 22,
+  "late_minutes": 8,
+  "absence_reason": null,
+  "reason_deadline": "2026-09-24T10:08:00+05:00",
+  "can_submit_reason": true
 }
 ```
 
-### Davomat va Sabab Kiritish Qoidalari:
-> [!NOTE]
-> **Adolatli kechikish hisobi:** Kechikish daqiqasi `max(meeting.start_time, organizer_joined_at, attendance.created_at)` (rejalashtirilgan vaqt, tashkilotchi kirgan vaqt yoki xodim yig'ilishga biriktirilgan vaqtning eng kattasi)ga nisbatan o'lchanadi. Agar xodim yig'ilish ketayotgan paytda (masalan, 20-daqiqada) ro'yxatga qo'shilsa, uning kechikish hisobi aynan u yig'ilishga biriktirilgan vaqtdan boshlab hisoblanadi va unga ham 5 daqiqa ruxsat etilgan norma beriladi (asossiz kechikkan hisoblanmaydi). Ro'yxatda bo'lmay eshik qoqib (knock/admit) kirganlarga esa kechikish hisoblanmaydi (0 daqiqa).
-
-1. **O'z vaqtida kirganlar (`is_attended: true` va `late_minutes <= 5`)**:
-   - Jarima yo'q (0%), sabab kiritish talab etilmaydi.
-2. **Kechikib kirganlar (`is_attended: true` va `late_minutes > 5`)**:
-   - Foydalanuvchiga kechikkanligi haqida bildirishnoma boradi.
-   - Foydalanuvchi kirgan paytidan boshlab **24 soat ichida** `PATCH /api/meeting-attendance/<id>/` orqali `absence_reason` (kechikish sababi) yuborishi mumkin. 24 soat o'tgach, sabab qabul qilinmaydi.
-3. **Umuman kirmaganlar (`is_attended: false`)**:
-   - Yig'ilish tugagach, qatnashmaganligi haqida bildirishnoma boradi.
-   - Foydalanuvchi **24 soat ichida** `PATCH /api/meeting-attendance/<id>/` orqali `absence_reason` (qatnashmaslik sababi) yuborishi mumkin.
-4. **Tashkilotchi / Mas'ul tomonidan ko'rib chiqish**:
-   - Tashkilotchi yoki loyiha menejeri `PATCH /api/meeting-attendance/<id>/` orqali `{"is_excused": true}` (sababli) yoki `{"is_excused": false}` (sababsiz) deb baholaydi.
-   - Natija bo'yicha xodimga bildirishnoma yetkaziladi.
-
-### Jarimalar Shkalasi:
-* **Agar `is_excused: true` bo'lsa**: 0% (jarima hisoblanmaydi).
-* **Agar `is_excused: false` bo'lsa (yoki 24 soat ichida sabab kiritilmasa)**:
-  - `0 <= late_minutes <= 5`: **0%** (ruxsat etilgan norma, jarimasiz)
-  - `5 < late_minutes <= 15`: **0.1%** oylikdan
-  - `15 < late_minutes <= 25`: **0.5%** oylikdan
-  - `late_minutes > 25`: **1.0%** oylikdan
-  - Umuman kirmagan bo'lsa (`is_attended: false`): **yig'ilishga belgilangan foiz** (`penalty_percentage`)
+* `can_submit_reason`: Agar `true` bo'lsa, xodim sabab yozish tugmasini bosib sabab kirita oladi.
+* `reason_deadline`: Sabab kiritish mumkin bo'lgan oxirgi muddat (aniq 24 soat).
+* **Sabab kiritish (Xodim):** `PATCH /api/meeting-attendance/{id}/` -> `{"absence_reason": "Kechikish sababi matni..."}`
+* **Sababni baholash (Mezbon):** `PATCH /api/meeting-attendance/{id}/` -> `{"is_excused": true}` yoki `false`
 
 ---
 
-## 12. Frontend uchun To'liq State Mashinasi
+## 13. Deep-Link va UID bo'yicha Yig'ilishni Topish
 
-```
-[Boshlanish]
-    │
-    ▼
-1. POST /api/notifications/tickets/ ──► Ticket olish
-    │
-    ▼
-2. wss://.../api/ws/meetings/<id>/?ticket=... ga ulanish
-    │
-    ├─► type == "error" (code: 403 / 404 / 401) ──► Toast xato va oynadan chiqish
-    │
-    ▼
-3. "meeting_state" xabarini kutib olish
-    │
-    ├─► is_host == true (Tashkilotchi yoki Hamkor Admin/Menejer)
-    │       │
-    │       ▼
-    │   Token bilan LiveKit'ga kirish va Kutish zalini boshqarish (admit)
-    │
-    └─► is_host == false (Oddiy qatnashchi)
-            │
-            ├─► organizer_joined == false ──► "Mezbon kirishini kuting" ekrani
-            │       │
-            │       └─► "organizer_joined" kelganda ──┐
-            │                                         │
-            └─► organizer_joined == true  ◄───────────┘
-                    │
-                    ├─► requires_approval == true va is_approved == false
-                    │       │
-                    │       ├─► {"action": "ask_to_join"} yuborish
-                    │       │
-                    │       ├─► "knock_response" (status: approved) ──► LiveKit'ga kirish
-                    │       │
-                    │       └─► "knock_response" (status: rejected) ──► "Rad etildi"
-                    │
-                    └─► requires_approval == false yoki is_approved == true
-                            │
-                            ▼
-                        LiveKit'ga kirish (token_response orqali)
-```
+Web va Mobile'da `https://app.raqamlinazorat.uz/meetings/MT-0009` havolasi ochilganda:
+* Backendga to'g'ridan-to'g'ri so'rov yuborish mumkin:
+  `GET /api/meetings/?uid=MT-0009`
+* Yoki umumiy qidiruv orqali:
+  `GET /api/meetings/?search=MT-0009`
+
+Ikkala holatda ham backend aniq o'sha yig'ilishni topib beradi.

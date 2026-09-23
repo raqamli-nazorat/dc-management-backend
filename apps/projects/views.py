@@ -460,7 +460,7 @@ class MeetingViewSet(TrashMixin, RoleBasedQuerySetMixin, viewsets.ModelViewSet):
         filters.OrderingFilter,
     ]
     filterset_class = MeetingFilter
-    search_fields = ["title", "description"]
+    search_fields = ["uid", "title", "description"]
     ordering_fields = ["start_time", "created_at"]
     trash_user_field = "organizer"
 

@@ -652,22 +652,15 @@ class LiveKitService:
 
         is_organizer = meeting.organizer_id == user.id
         is_participant = meeting.participants.filter(id=user.id).exists()
-        is_cohost = is_participant and (
-            user.is_superuser
-            or user.has_role(Role.ADMIN)
-            or (meeting.project and meeting.project.manager_id == user.id)
-        )
-        has_admin_grants = is_organizer or is_cohost
-
         grants = api.VideoGrants(
             room_join=True,
             room=meeting.uid,
             can_publish=True,
             can_subscribe=True,
             can_publish_data=True,
-            room_create=has_admin_grants,
-            room_admin=has_admin_grants,
-            room_record=has_admin_grants,
+            room_create=False,
+            room_admin=False,
+            room_record=False,
         )
 
         unique_suffix = str(device_id).strip() if device_id else uuid.uuid4().hex[:6]
@@ -699,6 +692,69 @@ class LiveKitService:
         )
 
         return token.to_jwt()
+
+    @classmethod
+    async def async_mute_track(
+        cls, room_name, participant_identity, track_source="microphone", muted=True
+    ):
+        http_url = getattr(settings, "LIVEKIT_INTERNAL_URL", "http://127.0.0.1:7880")
+        api_key = settings.LIVEKIT_API_KEY
+        api_secret = settings.LIVEKIT_API_SECRET
+
+        try:
+            async with api.LiveKitAPI(http_url, api_key, api_secret) as lk:
+                participant = await lk.room.get_participant(
+                    api.RoomParticipantIdentity(
+                        room=room_name, identity=participant_identity
+                    )
+                )
+                target_source = (
+                    api.TrackSource.MICROPHONE
+                    if track_source == "microphone"
+                    else api.TrackSource.CAMERA
+                )
+                track_sid = None
+                for track in participant.tracks:
+                    if track.source == target_source:
+                        track_sid = track.sid
+                        break
+                    if not track_sid:
+                        if (
+                            track_source == "microphone"
+                            and track.type == api.TrackType.AUDIO
+                        ):
+                            track_sid = track.sid
+                        elif (
+                            track_source == "camera"
+                            and track.type == api.TrackType.VIDEO
+                            and track.source != api.TrackSource.SCREEN_SHARE
+                        ):
+                            track_sid = track.sid
+
+                if not track_sid:
+                    return False, "track_not_published"
+
+                await lk.room.mute_published_track(
+                    api.MuteRoomTrackRequest(
+                        room=room_name,
+                        identity=participant_identity,
+                        track_sid=track_sid,
+                        muted=muted,
+                    )
+                )
+                return True, None
+        except Exception as e:
+            return False, str(e)
+
+    @classmethod
+    def mute_track(
+        cls, room_name, participant_identity, track_source="microphone", muted=True
+    ):
+        from asgiref.sync import async_to_sync
+
+        return async_to_sync(cls.async_mute_track)(
+            room_name, participant_identity, track_source, muted
+        )
 
     @classmethod
     def delete_room(cls, room_name):
