@@ -557,6 +557,10 @@ class Task(BaseModel):
                 if self.deadline > timezone.now() and self.status == TaskStatus.OVERDUE:
                     self.status = TaskStatus.IN_PROGRESS
 
+            if self.deadline and self.deadline < timezone.now() and self.status in [TaskStatus.TODO, TaskStatus.IN_PROGRESS]:
+                self.status = TaskStatus.OVERDUE
+                self.was_overdue = True
+
             if self.status == TaskStatus.CHECKED:
                 if not self.completed_at:
                     self.completed_at = timezone.now()

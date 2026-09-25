@@ -1,4 +1,5 @@
 from datetime import timedelta
+from django.utils import timezone
 
 from django.db import transaction
 from drf_spectacular.utils import extend_schema
@@ -124,6 +125,13 @@ class ProjectViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        Project.objects.filter(
+            status=ProjectStatus.ACTIVE,
+            deadline__lt=timezone.now(),
+            is_deleted=False,
+            is_active=True,
+        ).update(status=ProjectStatus.OVERDUE, was_overdue=True)
+
         queryset = super().get_queryset()
         if getattr(self, "action", None) in ["trash", "restore", "hard_delete"]:
             return queryset.filter(is_deleted=True)
@@ -243,6 +251,13 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
+        Task.objects.filter(
+            status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
+            deadline__lt=timezone.now(),
+            is_deleted=False,
+            is_active=True,
+        ).update(status=TaskStatus.OVERDUE, was_overdue=True)
+
         queryset = super().get_queryset()
         if getattr(self, "action", None) in ["trash", "restore", "hard_delete"]:
             return queryset.filter(is_deleted=True)

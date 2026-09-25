@@ -94,11 +94,11 @@ def update_overdue_status_and_notify():
             status__in=[TaskStatus.TODO, TaskStatus.IN_PROGRESS],
             is_deleted=False,
             is_active=True,
-            project__status=ProjectStatus.ACTIVE,
+            project__status__in=[ProjectStatus.ACTIVE, ProjectStatus.OVERDUE],
             deadline__lt=now,
         )
         .select_related("project")
-        .only("id", "title", "project__manager_id", "status", "was_overdue")
+        .only("id", "title", "project__manager_id", "assignee_id", "status", "was_overdue")
     )
 
     for task in overdue_tasks:
@@ -119,6 +119,27 @@ def update_overdue_status_and_notify():
             broadcast_data.append(
                 {
                     "user_id": task.project.manager_id,
+                    "title": "Vazifa muddati o'tdi",
+                    "message": msg,
+                    "type": NotificationType.ALERT,
+                    "extra_data": {"task_id": task.id, "action": "open_task"},
+                }
+            )
+
+        if task.assignee_id and (not task.project or task.assignee_id != task.project.manager_id):
+            msg = f"'{task.title}' vazifangiz muddati o'tdi."
+
+            notifications_to_create.append(
+                Notification(
+                    user_id=task.assignee_id,
+                    title="Vazifa muddati o'tdi",
+                    message=msg,
+                    type=NotificationType.ALERT,
+                )
+            )
+            broadcast_data.append(
+                {
+                    "user_id": task.assignee_id,
                     "title": "Vazifa muddati o'tdi",
                     "message": msg,
                     "type": NotificationType.ALERT,

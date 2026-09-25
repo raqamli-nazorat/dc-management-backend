@@ -209,6 +209,7 @@ class TaskService:
         transitions = {
             TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
             TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
+            TaskStatus.OVERDUE: [TaskStatus.DONE, TaskStatus.IN_PROGRESS],
             TaskStatus.DONE: [TaskStatus.PRODUCTION],
             TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
         }
