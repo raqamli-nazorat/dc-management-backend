@@ -79,7 +79,13 @@ class ExpenseRequestViewSet(
         serializer.instance = expense
 
     def perform_update(self, serializer):
-        if self.get_object().status != Status.PENDING:
+        expense = self.get_object()
+        if expense.user_id != self.request.user.id:
+            raise PermissionDenied(
+                "Faqat o'z xarajat so'rovingizni tahrirlashingiz mumkin."
+            )
+
+        if expense.status != Status.PENDING:
             raise PermissionDenied(
                 "Siz allaqachon ko'rib chiqilayotgan yoki to'langan so'rovni tahrirlay olmaysiz."
             )

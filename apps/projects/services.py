@@ -209,7 +209,7 @@ class TaskService:
         transitions = {
             TaskStatus.TODO: [TaskStatus.IN_PROGRESS],
             TaskStatus.IN_PROGRESS: [TaskStatus.DONE],
-            TaskStatus.OVERDUE: [TaskStatus.DONE, TaskStatus.IN_PROGRESS],
+            TaskStatus.OVERDUE: [TaskStatus.DONE],
             TaskStatus.DONE: [TaskStatus.PRODUCTION],
             TaskStatus.REJECTED: [TaskStatus.IN_PROGRESS],
         }
@@ -225,6 +225,11 @@ class TaskService:
     def _handle_claim_logic(cls, task, user, new_status, now):
         if not user.has_role(Role.EMPLOYEE):
             raise PermissionDenied("Vazifani faqat xodimlar o'zlashtirishi mumkin.")
+
+        if task.status == TaskStatus.OVERDUE:
+            raise PermissionDenied(
+                "Muddati o'tgan vazifani davom ettirish uchun muddatini menejer, admin yoki vazifa yaratuvchisi uzaytirishi kerak."
+            )
 
         if new_status != TaskStatus.IN_PROGRESS:
             raise PermissionDenied("Vazifani olish uchun uni jarayonga o'tkazing.")
