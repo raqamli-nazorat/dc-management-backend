@@ -29,7 +29,7 @@ class TaskService:
     def create_task(cls, user, validated_data):
         task = Task.objects.create(created_by=user, **validated_data)
 
-        if task.assignee and task.assignee != user:
+        if task.assignee and task.assignee != user and task.assignee != task.created_by:
             deadline_str = task.deadline.strftime("%d.%m.%Y %H:%M")
             cls._send_task_notification(
                 task.assignee,
@@ -48,6 +48,66 @@ class TaskService:
             )
 
         return task
+
+    @classmethod
+    def send_task_update_notifications(cls, task, user, old_deadline, old_assignee):
+        deadline_str = (
+            timezone.localtime(task.deadline).strftime("%d.%m.%Y %H:%M")
+            if task.deadline
+            else ""
+        )
+
+        if task.assignee and task.assignee != user and task.assignee != task.created_by:
+            if old_assignee != task.assignee:
+                cls._send_task_notification(
+                    task.assignee,
+                    task,
+                    "Yangi vazifa biriktirildi",
+                    f"Sizga '{task.title}' nomli yangi vazifa topshirildi. Muddati: {deadline_str}",
+                )
+            elif old_deadline != task.deadline:
+                cls._send_task_notification(
+                    task.assignee,
+                    task,
+                    "Vazifa muddati uzaytirildi",
+                    f"'{task.title}' vazifangiz muddati {deadline_str} gacha uzaytirildi.",
+                )
+            else:
+                cls._send_task_notification(
+                    task.assignee,
+                    task,
+                    "Vazifa tahrirlandi",
+                    f"'{task.title}' vazifangiz ma'lumotlari tahrirlandi.",
+                )
+
+        if (
+            old_assignee
+            and old_assignee != task.assignee
+            and old_assignee != user
+            and old_assignee != task.created_by
+        ):
+            cls._send_task_notification(
+                old_assignee,
+                task,
+                "Vazifa olib tashlandi",
+                f"'{task.title}' vazifasi sizdan olib tashlandi.",
+            )
+
+    @classmethod
+    @transaction.atomic
+    def update_task(cls, task, user, validated_data):
+        old_deadline = task.deadline
+        old_assignee = task.assignee
+
+        for attr, value in validated_data.items():
+            setattr(task, attr, value)
+
+        task._current_user = user
+        task.save()
+
+        cls.send_task_update_notifications(task, user, old_deadline, old_assignee)
+        return task
+
 
     @classmethod
     @transaction.atomic

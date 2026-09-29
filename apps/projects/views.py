@@ -329,8 +329,8 @@ class TaskViewSet(RoleBasedQuerySetMixin, TrashMixin, viewsets.ModelViewSet):
         is_creator = task.created_by == user
 
         if is_admin_or_manager or is_creator:
-            serializer.instance._current_user = user
-            serializer.save()
+            task = TaskService.update_task(task, user, serializer.validated_data)
+            serializer.instance = task
         else:
             raise PermissionDenied("Sizda ushbu vazifani tahrirlash huquqi yo'q.")
 

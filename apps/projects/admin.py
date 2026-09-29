@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.utils import timezone
 from django.utils.html import format_html
 from unfold.admin import ModelAdmin
 
@@ -271,8 +272,42 @@ class TaskAdmin(ModelAdmin):
     )
 
     def save_model(self, request, obj, form, change):
-        obj._current_user = request.user
-        super().save_model(request, obj, form, change)
+        if change:
+            old_task = (
+                Task.objects.filter(pk=obj.pk)
+                .only("deadline", "assignee_id")
+                .first()
+            )
+            old_deadline = old_task.deadline if old_task else None
+            old_assignee = old_task.assignee if old_task else None
+            obj._current_user = request.user
+            super().save_model(request, obj, form, change)
+            from .services import TaskService
+
+            TaskService.send_task_update_notifications(
+                obj, request.user, old_deadline, old_assignee
+            )
+        else:
+            obj._current_user = request.user
+            super().save_model(request, obj, form, change)
+            if (
+                obj.assignee
+                and obj.assignee != request.user
+                and obj.assignee != obj.created_by
+            ):
+                from .services import TaskService
+
+                deadline_str = (
+                    timezone.localtime(obj.deadline).strftime("%d.%m.%Y %H:%M")
+                    if obj.deadline
+                    else ""
+                )
+                TaskService._send_task_notification(
+                    obj.assignee,
+                    obj,
+                    "Yangi vazifa biriktirildi",
+                    f"Sizga '{obj.title}' nomli yangi vazifa topshirildi. Muddati: {deadline_str}",
+                )
 
     @admin.display(description="Turi")
     def type_badge(self, obj):
