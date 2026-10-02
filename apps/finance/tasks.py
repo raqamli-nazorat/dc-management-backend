@@ -1,11 +1,9 @@
 import logging
 from decimal import Decimal, ROUND_HALF_UP
-from datetime import timedelta
 
 from celery import shared_task
 from django.db import transaction
 from django.db.models import Q
-from django.utils import timezone
 
 from apps.finance.models import Payroll
 from apps.finance.utils import get_month_range, get_month_display_name
@@ -70,6 +68,9 @@ def _calc_meeting_penalty(user):
 
     for att in unexcused_qs:
         processed_atts.append(att.id)
+        if att.meeting.penalty_percentage <= 0:
+            continue
+
         if not att.is_attended:
             pct = att.meeting.penalty_percentage
             desc = f'"{att.meeting.title}" meetga sababsiz kirmaganingiz uchun'
