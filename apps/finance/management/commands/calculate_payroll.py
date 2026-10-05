@@ -73,12 +73,12 @@ class Command(BaseCommand):
         user_arg = options.get("user")
         if user_arg:
             if user_arg.isdigit():
-                user_obj = User.objects.filter(id=int(user_arg)).first()
+                user_obj = User.objects.filter(id=int(user_arg), is_active=True).first()
             else:
-                user_obj = User.objects.filter(username=user_arg).first()
+                user_obj = User.objects.filter(username=user_arg, is_active=True).first()
 
             if not user_obj:
-                raise CommandError(f"'{user_arg}' foydalanuvchisi topilmadi!")
+                raise CommandError(f"'{user_arg}' faol foydalanuvchisi topilmadi!")
             user_id = user_obj.id
 
         self.stdout.write(self.style.MIGRATE_HEADING("=" * 70))
